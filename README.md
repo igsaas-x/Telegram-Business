@@ -27,7 +27,7 @@ git clone https://your-repository-url.git
 cd your-repository-directory
 ```
 
-Install dependencies:
+__Install dependencies:__
 
 ```bash
 pip install telethon
@@ -57,7 +57,7 @@ python tg_message_listener_main.py
 
 __tg_message_listener_main.py__: The main script that initializes the Telegram client and sets up event listeners for incoming messages.
 
-Listener Modules: 
+__Listener Modules:__
 
 Separate scripts like __dexscreener_tg_message_listener.py__, __dextools_tg_message_listener.py__, and __direct_address_tg_listener.py__ that define specific processing logic for different message types.
 
