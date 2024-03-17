@@ -55,10 +55,11 @@ python tg_message_listener_main.py
 ```
 ## Structure
 
-'tg_message_listener_main.py': The main script that initializes the Telegram client and sets up event listeners for incoming messages.
+__tg_message_listener_main.py__: The main script that initializes the Telegram client and sets up event listeners for incoming messages.
 
 Listener Modules: 
-Separate scripts like 'dexscreener_tg_message_listener.py', 'dextools_tg_message_listener.py', and 'direct_address_tg_listener.py' that define specific processing logic for different message types.
+
+Separate scripts like __dexscreener_tg_message_listener.py__, __dextools_tg_message_listener.py__, and __direct_address_tg_listener.py__ that define specific processing logic for different message types.
 
 ## Contributing
 
