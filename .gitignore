@@ -1,0 +1,13 @@
+# IDE-specific
+.idea/
+
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Session files
+*.session
+anon.*
