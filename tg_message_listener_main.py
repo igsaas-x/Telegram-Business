@@ -2,9 +2,9 @@ from telethon import TelegramClient, events
 import asyncio
 import json
 # Import your handler functions
-from dexscreener_tg_message_listener import handle_dexscreener_message
-from dextools_tg_message_listener import handle_dextools_message
-from direct_address_tg_listener import handle_direct_address_message
+from handler.dexscreener_tg_message_listener import handle_dexscreener_message
+from handler.dextools_tg_message_listener import handle_dextools_message
+from handler.direct_address_tg_listener import handle_direct_address_message
 
 async def load_credentials():
     with open('credentials_telegram.json', 'r') as f:
@@ -14,10 +14,10 @@ async def load_credentials():
 async def main():
     credentials = await load_credentials()
 
-    client = TelegramClient('anon', credentials['api_id'], credentials['api_hash'])
-    await client.start(bot_token=credentials['bot_token_1'])
+    client = TelegramClient('+85568813335', credentials['api_id'], credentials['api_hash'])
+    await client.start(phone='+85568813335')
 
-    @client.on(events.NewMessage(chats=int(credentials['chat_id_1'])))
+    @client.on(events.NewMessage(chats=int(credentials['chat_id'])))
     async def new_message_listener(event):
         loop = asyncio.get_event_loop()
         if "dexscreener.com/ethereum/" in event.message.text:
