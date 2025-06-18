@@ -14,8 +14,8 @@ async def load_credentials():
 async def main():
     credentials = await load_credentials()
 
-    client = TelegramClient('+85568813335', credentials['api_id'], credentials['api_hash'])
-    await client.start(phone='+85568813335')
+    client = TelegramClient('+number', credentials['api_id'], credentials['api_hash'])
+    await client.start(phone='+number')
 
     @client.on(events.NewMessage(chats=int(credentials['chat_id'])))
     async def new_message_listener(event):
