@@ -1,5 +1,6 @@
 import requests
 import json
+import asyncio
 import socket
 from contextlib import contextmanager
 
@@ -17,7 +18,7 @@ def force_ipv4_connections():
     finally:
         socket.getaddrinfo = original_getaddrinfo
 
-def handle_direct_address_message(event):
+async def handle_direct_address_message(event):
     """
     Simple listener that prints the incoming Telegram message.
     Args:
@@ -37,6 +38,8 @@ def handle_direct_address_message(event):
     }
 
     try:
+        print("[Direct Address Listener] Waiting for 5 seconds...")
+        await asyncio.sleep(5)
         print(f"[Direct Address Listener] Attempting API call to: {url}")
         with force_ipv4_connections():
             response = requests.post(url, data=json.dumps(payload), headers=headers)

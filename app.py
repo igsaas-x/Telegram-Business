@@ -25,7 +25,7 @@ async def main():
         elif "dextools.io/app/en/ether/pair-explorer/" in event.message.text:
             await loop.run_in_executor(None, handle_dextools_message, event.message.text)
         else:
-            await loop.run_in_executor(None, handle_direct_address_message, event)
+            await handle_direct_address_message(event)
 
     await client.run_until_disconnected()
 
