@@ -17,6 +17,7 @@ Event-Driven Processing: Employs Telethon's event listener capabilities for effe
 - Telethon library
 - A valid Telegram API ID and hash, obtainable through my.telegram.org
 - (Optional) A Telegram bot token, obtainable via BotFather if operating in bot mode.
+- MySQL database
 
 ## Installation
 
@@ -27,23 +28,26 @@ git clone https://your-repository-url.git
 cd your-repository-directory
 ```
 
-__Install dependencies:__
+**Install dependencies:**
 
 ```bash
-pip install telethon
+pip install -r requirements.txt
 ```
 
-Configure your credentials:
-
-Rename credentials_telegram.json.example to credentials_telegram.json and fill in your Telegram API credentials and bot token (if using a bot).
-
+Configure your credentials in .env file:
 
 ```bash
-{
-  "api_id": "YOUR_API_ID",
-  "api_hash": "YOUR_API_HASH",
-  "bot_token": "YOUR_BOT_TOKEN" // Optional for bot use
-}
+DB_NAME=telegram_bot
+DB_USER=root
+DB_PASSWORD=
+DB_HOST=localhost
+
+BOT_TOKEN=BOT_NAME
+BOT_NAME=BOT_NAME
+CHAT_ID=CHAT_ID
+PHONE_NUMBER=PHONE_NUMBER
+API_ID=API_ID
+API_HASH=API_HASH
 ```
 
 ## Usage
@@ -51,15 +55,12 @@ Rename credentials_telegram.json.example to credentials_telegram.json and fill i
 Run the script to start listening for and processing messages:
 
 ```bash
-python tg_message_listener_main.py
+python main.py
 ```
+
 ## Structure
 
-__tg_message_listener_main.py__: The main script that initializes the Telegram client and sets up event listeners for incoming messages.
-
-__Listener Modules:__
-
-Separate scripts like __dexscreener_tg_message_listener.py__, __dextools_tg_message_listener.py__, and __direct_address_tg_listener.py__ that define specific processing logic for different message types.
+**main.py**: The main script that initializes the Telegram client and sets up event listeners for incoming messages.
 
 ## Contributing
 
