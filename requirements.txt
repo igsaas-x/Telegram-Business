@@ -1,1 +1,5 @@
-requests
+python-telegram-bot==20.7
+python-dotenv==1.0.1
+sqlalchemy
+python-dotenv
+mysql-connector-python
