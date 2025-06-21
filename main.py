@@ -83,33 +83,25 @@ async def start_telegram_bot(bot_token:str):
         if event.message.text.startswith('/'):
             return
             
-        chat_id = event.chat_id
-        
-        # Check if this is a reply to one of our tracked questions
+        # Only process replies to messages
         replied_message = await event.message.get_reply_message()
         
-        # If this is a direct message (not a reply)
+        # Skip if not a reply to any message
         if not replied_message:
-            # Check for pending questions in the database
-            conversation_service = ConversationService()
-            pending_question = await conversation_service.get_pending_question(chat_id=chat_id)
+            return
             
-            if pending_question and pending_question.question_type == "date_input":
-                # Handle date input response
-                await handle_date_input_response(event, pending_question)
-                return
-        else:
-            # This is a reply to a message
-            conversation_service = ConversationService()
-            question = await conversation_service.get_question_by_message_id(
-                chat_id=chat_id,
-                message_id=replied_message.id
-            )
-            
-            if question and question.question_type == "date_input":
-                # Handle date input response
-                await handle_date_input_response(event, question)
-                return
+        # Check if this is a reply to one of our tracked questions
+        chat_id = event.chat_id
+        conversation_service = ConversationService()
+        question = await conversation_service.get_question_by_message_id(
+            chat_id=chat_id,
+            message_id=replied_message.id
+        )
+        
+        if question and question.question_type == "date_input":
+            # Handle date input response
+            await handle_date_input_response(event, question)
+            return
     
     try:
         print("Bot is running...")
@@ -278,10 +270,10 @@ async def handle_period_summary(event, report_handler, data):
 async def handle_other_dates(event, report_handler):
     chat_id = event.chat_id
     
-    # Send a new message prompting for the date
+    # Send a new message prompting for the date, clearly indicating to reply to this message
     result = await event.client.send_message(
         chat_id,
-        "ឆែករបាយការណ៍ថ្ងៃទី: សូមវាយថ្ងៃ (1-31)"
+        "ឆែករបាយការណ៍ថ្ងៃទី:\n\nសូមវាយថ្ងៃ (1-31) ជាការឆ្លើយតបសារនេះដោយប្រើប៊ូតុង 'Reply' ឬ 'ឆ្លើយតប'"
     )
     
     # Keep the menu with an acknowledgment of the selection
