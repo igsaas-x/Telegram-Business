@@ -148,17 +148,27 @@ async def handle_date_summary(event, report_handler, data):
             end_date=selected_date + timedelta(days=1)
         )
         
+        # Acknowledge the button press
+        await event.answer(f"Fetching data for {selected_date.strftime('%d %b %Y')}")
+        
+        # Keep the menu active but indicate selection
+        await event.edit(f"Selected: {selected_date.strftime('%d %b %Y')}")
+        
+        # Send a new message with results
         if not incomes:
-            back_button = [[Button.inline("ត្រឡប់ក្រោយ", "daily_summary")]]
-            await event.edit(f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។", buttons=back_button)
+            await event.client.send_message(
+                chat_id, 
+                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
+            )
             return
         
         message = report_handler.format_totals_message(f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes)
-        back_button = [[Button.inline("ត្រឡប់ក្រោយ", "daily_summary")]]
-        await event.edit(message, buttons=back_button)
+        
+        # Send results as a new message
+        await event.client.send_message(chat_id, message)
+        
     except ValueError:
-        back_button = [[Button.inline("ត្រឡប់ក្រោយ", "daily_summary")]]
-        await event.edit("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ", buttons=back_button)
+        await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
 
 async def handle_period_summary(event, report_handler, data):
     chat_id = event.chat_id
@@ -178,6 +188,12 @@ async def handle_period_summary(event, report_handler, data):
             back_data = "monthly_summary"
         else:
             raise ValueError("Invalid period format")
+        
+        # Acknowledge the button press
+        await event.answer(f"Fetching data for {period_text}")
+        
+        # Keep the menu active but indicate selection
+        await event.edit(f"Selected: {period_text}")
             
         income_service = IncomeService()
         incomes = await income_service.get_income_by_date_and_chat_id(
@@ -186,20 +202,32 @@ async def handle_period_summary(event, report_handler, data):
             end_date=end_date
         )
         
+        # Send a new message with results
         if not incomes:
-            back_button = [[Button.inline("ត្រឡប់ក្រោយ", back_data)]]
-            await event.edit(f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។", buttons=back_button)
+            await event.client.send_message(
+                chat_id,
+                f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+            )
             return
             
         message = report_handler.format_totals_message(period_text, incomes)
-        back_button = [[Button.inline("ត្រឡប់ក្រោយ", back_data)]]
-        await event.edit(message, buttons=back_button)
+        
+        # Send results as a new message
+        await event.client.send_message(chat_id, message)
+        
     except ValueError:
-        back_button = [[Button.inline("ត្រឡប់ក្រោយ", "get_menu")]]
-        await event.edit("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ", buttons=back_button)
+        await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
 
 async def handle_other_dates(event, report_handler):
-    await event.edit("ឆែករបាយការណ៍ថ្ងៃទី: សូមវាយថ្ងៃ (1-31)")
+    # Send a new message prompting for the date
+    await event.client.send_message(
+        event.chat_id,
+        "ឆែករបាយការណ៍ថ្ងៃទី: សូមវាយថ្ងៃ (1-31)"
+    )
+    
+    # Keep the menu with an acknowledgment of the selection
+    await event.edit("Selected: ថ្ងៃផ្សេងទៀត")
+    
     # Note: For a complete implementation, you would need to handle text responses differently
     # This would require additional event handlers for NewMessage events
 
