@@ -1,35 +1,42 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, MessageHandler, filters
-from telethon import TelegramClient, events
-from handlers.callback_handlers import menu_callback_handler
-from handlers.command_handlers import get_menu_handler
+from telethon import TelegramClient, events, Button
 from helper.credential_loader import CredentialLoader
 from models.income_balance import IncomeService
 from helper.message_parser import extract_amount_and_currency
-from handlers.report_handlers import handle_date_input
 from config.database_config import init_db
 
 load_dotenv()
 
+
 async def start_telegram_bot(bot_token:str):
-    app = ApplicationBuilder().token(bot_token).build()
+    # Initialize Telethon bot client
+    bot = TelegramClient('bot', int(os.getenv('API_ID')), os.getenv('API_HASH'))
+    await bot.start(bot_token=bot_token)
     
-    app.add_handler(get_menu_handler)
-    app.add_handler(menu_callback_handler)  
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input))
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
+    @bot.on(events.NewMessage(pattern='/get_menu'))
+    async def get_menu_handler(event):
+        # Simple menu using Telethon's Button
+        buttons = [
+            [Button.inline("ថ្ងៃនេះ", "daily_summary")],
+            [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
+            [Button.inline("ប្រចាំខែ", "monthly_summary")]
+        ]
+        await event.respond("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
+
+    @bot.on(events.CallbackQuery())
+    async def callback_handler(event):
+        # Simple acknowledgment of button press
+        data = event.data.decode()
+        await event.answer(f"Selected: {data}")
+        # Additional handling could be implemented here
     
     try:
-        while True:
-            await asyncio.sleep(1)
-            await asyncio.sleep(1)
+        print("Bot is running...")
+        await bot.run_until_disconnected()
     except asyncio.CancelledError:
-        await app.stop()
-        await app.shutdown()
+        await bot.disconnect()
         print("Bot stopped by user")
 
 async def start_telethon_client(loader):
@@ -47,13 +54,22 @@ async def start_telethon_client(loader):
     await client.run_until_disconnected()
 
 async def main():
-    loader = CredentialLoader()
-    await loader.load_credentials()
-    
-    await asyncio.gather(
-        start_telegram_bot(loader.bot_token),
-        start_telethon_client(loader)
-    )
+    try:
+        # Initialize database
+        init_db()
+        
+        # Load credentials
+        loader = CredentialLoader()
+        await loader.load_credentials()
+        
+        # Start both clients
+        await asyncio.gather(
+            start_telegram_bot(loader.bot_token),
+            start_telethon_client(loader)
+        )
+    except Exception as e:
+        print(f"Error in main: {e}")
+        raise
 
 if __name__ == "__main__":
     try:
