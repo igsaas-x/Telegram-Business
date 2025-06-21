@@ -11,3 +11,4 @@ __pycache__/
 # Session files
 *.session
 anon.*
+*.session-journal

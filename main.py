@@ -21,7 +21,7 @@ async def start_telegram_bot(bot_token:str):
     async def get_menu_handler(event):
         # Simple menu using Telethon's Button
         buttons = [
-            [Button.inline("ថ្ងៃនេះ", "daily_summary")],
+            [Button.inline("ប្រចាំថ្ងៃ", "daily_summary")],
             [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
             [Button.inline("ប្រចាំខែ", "monthly_summary")]
         ]
