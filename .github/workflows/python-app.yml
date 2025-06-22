@@ -46,96 +46,63 @@ jobs:
     environment: deploy
     
     steps:
-    # First checkout the code to have access to scripts
     - uses: actions/checkout@v3
-      
-    # Install sshpass for password-based SSH authentication
-    - name: Install sshpass
-      run: sudo apt-get install -y sshpass
-      
-    # Deploy using direct SSH commands instead of the problematic action
-    - name: Deploy via SSH
-      env:
-        SSH_HOST: ${{ secrets.HOST }}
-        SSH_USER: ${{ secrets.USERNAME }}
-        SSH_PASS: ${{ secrets.PASSWORD }}
-      run: |
-        # Create deploy script
-        cat > deploy.sh << 'EOL'
-        #!/bin/bash
-        echo "=== DEPLOYMENT STARTED: $(date) ===" 
-        
-        # Set the project directory
-        PROJECT_DIR="$HOME/telegram-listener"
-        echo "Using project directory: $PROJECT_DIR"
-        
-        # Create directory if it doesn't exist
-        if [ ! -d "$PROJECT_DIR" ]; then
-          echo "Creating project directory..."
-          mkdir -p "$PROJECT_DIR"
-          cd "$PROJECT_DIR"
-          git clone https://github.com/chanhengseang3/telegram-listener.git .
-          echo "Repository cloned successfully."
-        else
-          # Pull latest changes
-          cd "$PROJECT_DIR"
-          echo "Pulling latest changes..."
-          git fetch --all
-          git reset --hard origin/main
-          echo "Repository updated successfully."
-        fi
-        
-        # Set up Python environment
-        echo "Setting up Python environment..."
-        if command -v python3 &>/dev/null; then
-          PYTHON_CMD="python3"
-        else
-          PYTHON_CMD="python"
-        fi
-        echo "Using $PYTHON_CMD for installation"
-        $PYTHON_CMD -m pip install --user --upgrade pip
-        $PYTHON_CMD -m pip install --user -r requirements.txt
-        echo "Dependencies installed."
-        
-        # Stop existing bot process if running
-        echo "Checking for existing bot process..."
-        if pgrep -f "python.*main\.py"; then
-          echo "Stopping existing bot process..."
-          pkill -f "python.*main\.py"
-          sleep 2
-          # Force kill if still running
-          if pgrep -f "python.*main\.py"; then
-            echo "Force killing process..."
-            pkill -9 -f "python.*main\.py"
+    
+    # Deploy using SSH (simple version with no conditionals)
+    - name: Deploy via SSH with password
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          cd $HOME
+          echo "=== DEPLOYMENT STARTED: $(date) ==="
+          
+          # Set project directory
+          PROJECT_DIR="$HOME/telegram-listener"
+          
+          # Create directory if it doesn't exist
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "Creating project directory..."
+            mkdir -p "$PROJECT_DIR"
+            cd "$PROJECT_DIR"
+            git clone https://github.com/chanhengseang3/telegram-listener.git .
+            echo "Repository cloned"
+          else
+            # Update existing repository
+            cd "$PROJECT_DIR"
+            echo "Pulling latest changes..."
+            git fetch --all
+            git reset --hard origin/main
+            echo "Repository updated"
           fi
-        else
-          echo "No existing bot process found."
-        fi
-        
-        # Start bot with nohup
-        echo "Starting telegram bot..."
-        cd "$PROJECT_DIR"
-        LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
-        nohup $PYTHON_CMD main.py > $LOG_FILE 2>&1 &
-        
-        # Check if bot started successfully
-        sleep 5
-        if pgrep -f "$PYTHON_CMD.*main\.py"; then
-          echo "Bot started successfully!"
-          echo "Log file: $PROJECT_DIR/$LOG_FILE"
-          tail -n 5 $LOG_FILE
-        else
-          echo "ERROR: Bot failed to start!"
-          echo "Last 20 lines of log file:"
-          tail -n 20 $LOG_FILE
-          exit 1
-        fi
-        
-        echo "=== DEPLOYMENT COMPLETED: $(date) ==="
-        EOL
-        
-        # Make script executable
-        chmod +x deploy.sh
-        
-        # Run deployment using sshpass for password authentication
-        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST 'bash -s' < deploy.sh
+          
+          # Install dependencies
+          echo "Installing dependencies..."
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          echo "Dependencies installed"
+          
+          # Stop any existing bot processes
+          echo "Stopping any existing bot processes..."
+          pkill -f "python.*main.py" || echo "No processes found to stop"
+          sleep 2
+          
+          # Start the bot
+          echo "Starting the bot..."
+          cd "$PROJECT_DIR"
+          nohup python3 main.py > bot.log 2>&1 &
+          sleep 2
+          
+          # Verify bot is running
+          if pgrep -f "python.*main.py"; then
+            echo "Bot started successfully"
+          else
+            echo "Failed to start bot. Check logs."
+            tail -20 bot.log
+            exit 1
+          fi
+          
+          echo "=== DEPLOYMENT COMPLETED: $(date) ==="
