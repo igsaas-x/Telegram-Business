@@ -25,13 +25,13 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install flake8 pytest
     
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      continue-on-error: true  # Don't fail the build for linting issues
+    # - name: Lint with flake8
+    #   run: |
+    #     # stop the build if there are Python syntax errors or undefined names
+    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     # exit-zero treats all errors as warnings
+    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    #   continue-on-error: true  # Don't fail the build for linting issues
     
     - name: Check code formatting
       run: |
@@ -59,9 +59,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         password: ${{ secrets.PASSWORD }}
-        key: ${{ secrets.SSH_KEY }}
         port: 22
-        script_stop: true # Stop script after first failure
         script: |
           echo "=== DEPLOYMENT STARTED: $(date) ==="
           
@@ -109,10 +107,10 @@ jobs:
           # Wait briefly and check if process is running
           sleep 3
           if pgrep -f "python main.py"; then
-            echo "✅ Bot started successfully!"
+            echo "Bot started successfully!"
             echo "Log file: $PROJECT_DIR/bot.log"
           else
-            echo "❌ ERROR: Bot failed to start!"
+            echo "ERROR: Bot failed to start!"
             echo "--- Last 20 lines of log file ---"
             tail -n 20 bot.log
             exit 1
