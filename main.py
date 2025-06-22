@@ -3,7 +3,7 @@ import asyncio
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 
-from config.database_config import init_db
+from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
 from helper.message_parser import extract_amount_and_currency
 from models.income_balance import IncomeService
@@ -28,7 +28,7 @@ async def start_telethon_client(loader):
 async def main():
     try:
         # Initialize database
-        init_db()
+        create_db_tables()
         
         # Load credentials
         loader = CredentialLoader()

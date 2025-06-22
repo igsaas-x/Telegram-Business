@@ -1,9 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, inspect
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-import os
+from sqlalchemy import Column, Integer, String
 
-Base = declarative_base()
+from config.database_config import Base, SessionLocal
+
 
 class Chat(Base):
     __tablename__ = 'chats'
@@ -12,10 +10,7 @@ class Chat(Base):
 
 class ChatService:
     def __init__(self):
-        db_url = f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
-        self.engine = create_engine(db_url)
-        Base.metadata.create_all(self.engine)  # Create table if it doesn't exist
-        self.Session = sessionmaker(bind=self.engine)
+        self.Session = SessionLocal
 
     def register_chat_id(self, chat_id):
         session = self.Session()
