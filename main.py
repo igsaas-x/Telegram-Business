@@ -45,13 +45,17 @@ async def main():
         await loader.load_credentials()
         
         # Start both clients
+        print("--- before asyncio.gather() ---")
         await asyncio.gather(
             start_telegram_bot(loader.bot_token),
             start_telethon_client(loader)
         )
+        print("--- after asyncio.gather() ---")
     except Exception as e:
         print(f"Error in main: {e}")
         raise
+    finally:
+        print("--- main() finished ---")
 
 if __name__ == "__main__":
     print("--- if __name__ == '__main__' ---")
