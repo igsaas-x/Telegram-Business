@@ -43,7 +43,6 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: deploy
     
     steps:
     - uses: actions/checkout@v3
@@ -77,15 +76,6 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             echo "Repository updated"
-          fi
-          
-          # Install pip if needed without using apt-get
-          echo "Setting up Python environment..."
-          if ! command -v pip3 &>/dev/null && ! python3 -m pip --version &>/dev/null; then
-            echo "Installing pip using get-pip.py..."
-            curl -s https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-            python3 get-pip.py --user
-            export PATH="$HOME/.local/bin:$PATH"
           fi
           
           # Install dependencies with fallbacks
