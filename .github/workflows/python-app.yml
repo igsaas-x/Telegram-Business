@@ -48,106 +48,94 @@ jobs:
     steps:
     # First checkout the code to have access to scripts
     - uses: actions/checkout@v3
-    
-    # Setup SSH keys with ssh-agent (uncomment if you switch to SSH key authentication)
-    # - name: Setup SSH Key
-    #   uses: webfactory/ssh-agent@v0.7.0
-    #   with:
-    #     ssh-private-key: ${{ secrets.SSH_KEY }}
       
-    # Deploy using SSH
-    - name: Deploy to server via SSH
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        port: 22
-        debug: true  # Enable debug mode to see detailed logs
-        script: |
-          echo "=== DEPLOYMENT STARTED: $(date) ==="
-          
-          # Set the project directory (modify this to match your server's path)
-          PROJECT_DIR="$HOME/telegram-listener"
-          echo "Using project directory: $PROJECT_DIR"
-          
-          # Create directory if it doesn't exist
-          if [ ! -d "$PROJECT_DIR" ]; then
-            echo "Creating project directory..."
-            mkdir -p "$PROJECT_DIR"
-            cd "$PROJECT_DIR"
-            # Use HTTPS with token (works for both public and private repos)
-            git clone https://github.com/${{ github.repository }}.git .
-            echo "Repository cloned successfully."
-          else
-            # Pull latest changes
-            cd "$PROJECT_DIR"
-            echo "Pulling latest changes..."
-            git fetch --all
-            git reset --hard origin/main
-            echo "Repository updated successfully."
-          fi
-          
-          # Set up Python environment - try different Python commands to ensure compatibility
-          echo "Setting up Python environment..."
-          if command -v python3 &>/dev/null; then
-            echo "Using python3..."
-            python3 -m pip install --user --upgrade pip
-            python3 -m pip install --user -r requirements.txt
-          elif command -v python &>/dev/null; then
-            echo "Using python..."
-            python -m pip install --user --upgrade pip
-            python -m pip install --user -r requirements.txt
-          else
-            echo "ERROR: Python not found!"
-            exit 1
-          fi
-          echo "Dependencies installed."
-          
-          # Stop existing bot process if running - check for both python and python3 processes
-          echo "Checking for existing bot process..."
-          if pgrep -f "python.*main\.py"; then
-            echo "Stopping existing bot process..."
-            pkill -f "python.*main\.py"
-            sleep 3
-            if pgrep -f "python.*main\.py"; then
-              echo "Force killing any remaining processes..."
-              pkill -9 -f "python.*main\.py"
-              sleep 2
-            fi
-          else
-            echo "No existing bot process found."
-          fi
-          
-          # Determine which Python command to use
-          if command -v python3 &>/dev/null; then
-            PYTHON_CMD="python3"
-          else
-            PYTHON_CMD="python"
-          fi
-          echo "Using $PYTHON_CMD for bot startup"
-          
-          # Start bot with nohup
-          echo "Starting telegram bot..."
+    # Install sshpass for password-based SSH authentication
+    - name: Install sshpass
+      run: sudo apt-get install -y sshpass
+      
+    # Deploy using direct SSH commands instead of the problematic action
+    - name: Deploy via SSH
+      env:
+        SSH_HOST: ${{ secrets.HOST }}
+        SSH_USER: ${{ secrets.USERNAME }}
+        SSH_PASS: ${{ secrets.PASSWORD }}
+      run: |
+        # Create deploy script
+        cat > deploy.sh << 'EOL'
+        #!/bin/bash
+        echo "=== DEPLOYMENT STARTED: $(date) ===" 
+        
+        # Set the project directory
+        PROJECT_DIR="$HOME/telegram-listener"
+        echo "Using project directory: $PROJECT_DIR"
+        
+        # Create directory if it doesn't exist
+        if [ ! -d "$PROJECT_DIR" ]; then
+          echo "Creating project directory..."
+          mkdir -p "$PROJECT_DIR"
           cd "$PROJECT_DIR"
-          # Add timestamp to logs
-          LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
-          echo "Starting bot with log file: $LOG_FILE"
-          nohup $PYTHON_CMD main.py > $LOG_FILE 2>&1 &
-          
-          # Wait briefly and check if process is running
-          echo "Waiting for bot to start..."
-          sleep 5
-          if pgrep -f "$PYTHON_CMD.*main\.py"; then
-            echo "✅ Bot started successfully!"
-            echo "Log file: $PROJECT_DIR/$LOG_FILE"
-            echo "Last few log lines:"
-            tail -n 5 $LOG_FILE
-          else
-            echo "❌ ERROR: Bot failed to start!"
-            echo "--- Last 30 lines of log file ---"
-            tail -n 30 $LOG_FILE
-            exit 1
+          git clone https://github.com/chanhengseang3/telegram-listener.git .
+          echo "Repository cloned successfully."
+        else
+          # Pull latest changes
+          cd "$PROJECT_DIR"
+          echo "Pulling latest changes..."
+          git fetch --all
+          git reset --hard origin/main
+          echo "Repository updated successfully."
+        fi
+        
+        # Set up Python environment
+        echo "Setting up Python environment..."
+        if command -v python3 &>/dev/null; then
+          PYTHON_CMD="python3"
+        else
+          PYTHON_CMD="python"
+        fi
+        echo "Using $PYTHON_CMD for installation"
+        $PYTHON_CMD -m pip install --user --upgrade pip
+        $PYTHON_CMD -m pip install --user -r requirements.txt
+        echo "Dependencies installed."
+        
+        # Stop existing bot process if running
+        echo "Checking for existing bot process..."
+        if pgrep -f "python.*main\.py"; then
+          echo "Stopping existing bot process..."
+          pkill -f "python.*main\.py"
+          sleep 2
+          # Force kill if still running
+          if pgrep -f "python.*main\.py"; then
+            echo "Force killing process..."
+            pkill -9 -f "python.*main\.py"
           fi
-          
-          echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
+        else
+          echo "No existing bot process found."
+        fi
+        
+        # Start bot with nohup
+        echo "Starting telegram bot..."
+        cd "$PROJECT_DIR"
+        LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
+        nohup $PYTHON_CMD main.py > $LOG_FILE 2>&1 &
+        
+        # Check if bot started successfully
+        sleep 5
+        if pgrep -f "$PYTHON_CMD.*main\.py"; then
+          echo "Bot started successfully!"
+          echo "Log file: $PROJECT_DIR/$LOG_FILE"
+          tail -n 5 $LOG_FILE
+        else
+          echo "ERROR: Bot failed to start!"
+          echo "Last 20 lines of log file:"
+          tail -n 20 $LOG_FILE
+          exit 1
+        fi
+        
+        echo "=== DEPLOYMENT COMPLETED: $(date) ==="
+        EOL
+        
+        # Make script executable
+        chmod +x deploy.sh
+        
+        # Run deployment using sshpass for password authentication
+        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST 'bash -s' < deploy.sh
