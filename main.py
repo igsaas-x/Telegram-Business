@@ -23,14 +23,12 @@ async def start_telethon_client(loader):
     await client.start(phone=loader.phone_number)
 
     chat_service = ChatService()
-    chat_ids = chat_service.get_all_chat_ids()
-    if not chat_ids:
-        print("Warning: No chat IDs found in the database. The message listener will not be active on any specific chats.")
-    else:
-        print(f"Listening for new messages in the following chats: {chat_ids}")
 
-    @client.on(events.NewMessage(chats=chat_ids))
+    @client.on(events.NewMessage)
     async def new_message_listener(event):
+        chat_ids = chat_service.get_all_chat_ids()
+        if event.chat_id not in chat_ids:
+            return
         currency, amount = extract_amount_and_currency(event.message.text)
         if currency and amount:
             service = IncomeService()
