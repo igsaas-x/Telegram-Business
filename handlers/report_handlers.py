@@ -1,10 +1,16 @@
-from telethon import Button
-from datetime import datetime, timedelta
-from models.income_balance import IncomeService, CurrencyEnum
 from calendar import monthrange
+from datetime import datetime, timedelta
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telethon import Button
+
+from helper.get_main_menu_keyword import get_main_menu_keyboard
+from models.income_balance import IncomeService, CurrencyEnum
+
 # No longer using get_main_menu_keyboard
 
 user_date_input_state = {}
+
 
 class ReportHandler:
     @staticmethod
@@ -207,10 +213,11 @@ class ReportHandler:
     async def handle_other_dates(self, update, context):
         query = update.callback_query
         chat_id = update.effective_chat.id
-        user_date_input_state[chat_id] = True  
+        user_date_input_state[chat_id] = True
         await query.edit_message_text(
             text="ឆែករបាយការណ៍ថ្ងៃទី:"
         )
+
 
 async def handle_date_input(update, context):
     chat_id = update.effective_chat.id

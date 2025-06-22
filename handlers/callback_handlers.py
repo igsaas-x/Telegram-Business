@@ -1,4 +1,5 @@
-from telegram.ext import CallbackQueryHandler, CommandHandler
+from telegram.ext import CallbackQueryHandler
+
 from handlers.report_handlers import ReportHandler
 
 report_handler = ReportHandler()
