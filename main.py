@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
@@ -10,7 +11,11 @@ from models.chat import ChatService
 from models.income_balance import IncomeService
 from services.bot import start_telegram_bot
 
-load_dotenv()
+# Load environment variables from .env.local if it exists, otherwise from .env
+if os.path.exists('.env.local'):
+    load_dotenv(dotenv_path='.env.local')
+else:
+    load_dotenv()
 
 async def start_telethon_client(loader):
     client = TelegramClient('user', int(loader.api_id), loader.api_hash)

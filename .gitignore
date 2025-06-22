@@ -12,3 +12,6 @@ __pycache__/
 *.session
 anon.*
 *.session-journal
+
+# Environment files
+.env.local
