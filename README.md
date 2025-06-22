@@ -72,6 +72,41 @@ For issues, questions, or contributions, please open an issue in the GitHub repo
 
 Feedback and contributions are welcome!
 
+## Deployment
+
+### GitHub Actions
+
+This project uses GitHub Actions for CI/CD. The workflow will automatically build, test, and deploy your application when you push to the main branch.
+
+### Setting up SSH Deployment
+
+To enable automatic deployment to your server, you need to add the following secrets in your GitHub repository:
+
+1. Go to your GitHub repository → Settings → Secrets and variables → Actions → New repository secret
+2. Add the following secrets:
+
+   - `HOST`: Your server IP address or domain name
+   - `USERNAME`: SSH username for your server
+   - `SSH_PRIVATE_KEY`: The private SSH key for authentication
+   - `SSH_PASSPHRASE`: The passphrase for your SSH key (if applicable)
+   - `SSH_PORT`: The SSH port number (usually 22)
+   - `PROJECT_PATH`: The full path to your project directory on the server
+
+### Docker Deployment
+
+You can also deploy using Docker:
+
+```bash
+# Build and start containers
+docker-compose up -d
+
+# View logs
+docker-compose logs -f bot
+
+# Stop containers
+docker-compose down
+```
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

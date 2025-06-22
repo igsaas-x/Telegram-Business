@@ -1,0 +1,92 @@
+name: Python Application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install flake8 pytest
+    
+    # - name: Lint with flake8
+    #   run: |
+    #     # stop the build if there are Python syntax errors or undefined names
+    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     # exit-zero treats all errors as warnings
+    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Check code formatting
+      run: |
+        pip install black
+        black --check .
+      continue-on-error: true  # Don't fail the build for formatting issues
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Execute remote SSH commands
+      uses: appleboy/ssh-action@master
+      # These values are from GitHub repository secrets
+      # Configure these in your repo: Settings > Secrets and variables > Actions
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: 22
+        script: |
+          # PROJECT_PATH is the full path to your project directory on the server
+          # Configure this in your repository secrets
+          
+          # Navigate to project directory
+          cd telegram-listener
+          
+          # Pull latest changes
+          git pull
+          
+          # Update dependencies
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Create or update tables if needed
+          # You might want to run a migration script here if needed
+          
+          # Stop existing process if running
+          if pgrep -f "python main.py"; then
+            pkill -f "python main.py"
+            echo "Stopped existing bot process"
+            sleep 3
+          fi
+          
+          # Start bot in background with nohup
+          cd telegram-listener
+          nohup python main.py > bot.log 2>&1 &
+          echo "Bot started in background"
+          sleep 2
+          
+          # Verify bot is running
+          if pgrep -f "python main.py"; then
+            echo "Bot is running successfully!"
+          else
+            echo "ERROR: Bot failed to start!"
+            exit 1
+          fi

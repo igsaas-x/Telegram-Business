@@ -1,23 +1,18 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telethon import Button
 
 def get_main_menu_keyboard():
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("ថ្ងៃ", callback_data='daily_summary'),
-        InlineKeyboardButton("សប្ដាហ៍", callback_data='weekly_summary'),
-        InlineKeyboardButton("ខែ", callback_data='monthly_summary')
-    ]])
+    return [
+        [Button.inline("ថ្ងៃ", 'daily_summary'),
+        Button.inline("សប្ដាហ៍", 'weekly_summary'),
+        Button.inline("ខែ", 'monthly_summary')]
+    ]
 
-async def handle_main_menu(self, update, context):
-    query = update.callback_query
-    keyboard = [
+async def handle_main_menu(event):
+    buttons = [
         [
-            InlineKeyboardButton("ថ្ងៃ", callback_data='daily_summary'),
-            InlineKeyboardButton("សប្ដាហ៍", callback_data='weekly_summary'),
-            InlineKeyboardButton("ខែ", callback_data='monthly_summary')
+            Button.inline("ថ្ងៃ", 'daily_summary'),
+            Button.inline("សប្ដាហ៍", 'weekly_summary'),
+            Button.inline("ខែ", 'monthly_summary')
         ]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="ជ្រើសរើសរបាយការណ៍ប្រចាំ:",
-        reply_markup=reply_markup
-    )
+    await event.edit("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)

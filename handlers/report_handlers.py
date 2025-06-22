@@ -1,8 +1,8 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telethon import Button
 from datetime import datetime, timedelta
 from models.income_balance import IncomeService, CurrencyEnum
 from calendar import monthrange
-from helper.get_main_menu_keyword import get_main_menu_keyboard
+# No longer using get_main_menu_keyboard
 
 user_date_input_state = {}
 
@@ -13,7 +13,7 @@ class ReportHandler:
         for period in periods:
             label = label_func(period)
             callback_data = f"{callback_prefix}{period['callback_value']}"
-            buttons.append([InlineKeyboardButton(text=label, callback_data=callback_data)])
+            buttons.append([Button.inline(label, callback_data)])
         return buttons
 
     @staticmethod
@@ -23,9 +23,7 @@ class ReportHandler:
             "month": "monthly_summary",
             "daily": "daily_summary"
         }.get(period_type, "daily_summary")
-        return InlineKeyboardMarkup([[
-            InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data=callback_data)
-        ]])
+        return [[Button.inline("ត្រឡប់ក្រោយ", callback_data)]]
 
     @staticmethod
     def format_totals_message(period_text: str, incomes):
