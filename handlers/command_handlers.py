@@ -27,6 +27,6 @@ async def register(update, context):
             text="You are already registered."
         )
 
-get_menu_handler = CommandHandler("menu", menu)
+menu_handler = CommandHandler("menu", menu)
 register_handler = CommandHandler("register", register)
 
