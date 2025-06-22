@@ -1,11 +1,11 @@
-from sqlalchemy import Float, String, Column, Integer, DateTime, UniqueConstraint, func, BigInteger
-from sqlalchemy.sql import expression
 from datetime import datetime, timedelta
-from config.database_config import init_db, Base
 from enum import Enum
 
+from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger
 
-SessionLocal = init_db()
+from config.database_config import Base, SessionLocal
+
+
 class IncomeBalance(Base):
     __tablename__ = 'income_balance'
     id = Column(Integer, primary_key=True)

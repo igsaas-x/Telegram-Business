@@ -1,8 +1,9 @@
-from sqlalchemy import String, Column, Integer, DateTime, Boolean, ForeignKey, BigInteger
 from datetime import datetime
-from config.database_config import init_db, Base
 
-SessionLocal = init_db()
+from sqlalchemy import String, Column, Integer, DateTime, Boolean, BigInteger
+
+from config.database_config import Base, SessionLocal
+
 
 class BotQuestion(Base):
     __tablename__ = 'bot_questions'

@@ -2,7 +2,7 @@ from telegram import  InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler
 from helper.get_main_menu_keyword import get_main_menu_keyboard
 
-async def get_menu(update, context):
+async def menu(update, context):
     reply_markup = get_main_menu_keyboard()
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -12,6 +12,4 @@ async def get_menu(update, context):
     )
 
 
-get_menu_handler = CommandHandler("get_menu", get_menu)
-
-
+menu_handler = CommandHandler("menu", menu)
