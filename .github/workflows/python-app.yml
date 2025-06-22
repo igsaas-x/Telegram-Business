@@ -43,6 +43,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: deploy
     
     steps:
     # First checkout the code to have access to scripts
