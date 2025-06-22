@@ -6,6 +6,7 @@ from telethon import TelegramClient, events
 from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
 from helper.message_parser import extract_amount_and_currency
+from models.chat import ChatService
 from models.income_balance import IncomeService
 from services.bot import start_telegram_bot
 
@@ -16,7 +17,14 @@ async def start_telethon_client(loader):
     await client.connect()
     await client.start(phone=loader.phone_number)
 
-    @client.on(events.NewMessage(chats=int(loader.chat_id)))
+    chat_service = ChatService()
+    chat_ids = chat_service.get_all_chat_ids()
+    if not chat_ids:
+        print("Warning: No chat IDs found in the database. The message listener will not be active on any specific chats.")
+    else:
+        print(f"Listening for new messages in the following chats: {chat_ids}")
+
+    @client.on(events.NewMessage(chats=chat_ids))
     async def new_message_listener(event):
         currency, amount = extract_amount_and_currency(event.message.text)
         if currency and amount:

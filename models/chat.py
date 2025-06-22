@@ -30,3 +30,14 @@ class ChatService:
             return False, f"Error registering chat ID: {e}"
         finally:
             session.close()
+
+    def get_all_chat_ids(self):
+        session = self.Session()
+        try:
+            chats = session.query(Chat.chat_id).all()
+            return [int(c[0]) for c in chats]
+        except Exception as e:
+            print(f"Error fetching chat IDs: {e}")
+            return []
+        finally:
+            session.close()

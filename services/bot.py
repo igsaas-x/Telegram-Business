@@ -11,11 +11,11 @@ from models.conversation_tracker import ConversationService
 from models.income_balance import IncomeService
 
 
-async def start_telegram_bot(bot_token:str):
+async def start_telegram_bot(bot_token: str):
     # Initialize Telethon bot client
     bot = TelegramClient('bot', int(os.getenv('API_ID')), os.getenv('API_HASH'))
     await bot.start(bot_token=bot_token)
-    
+
     @bot.on(events.NewMessage(pattern='/menu'))
     async def menu_handler(event):
         # Simple menu using Telethon's Button
@@ -37,10 +37,10 @@ async def start_telegram_bot(bot_token:str):
     async def callback_handler(event):
         data = event.data.decode()
         chat_id = event.chat_id
-        
+
         # Create report handler
         report_handler = ReportHandler()
-        
+
         # Handle different callback types based on the data pattern
         if data.startswith("summary_week_") or data.startswith("summary_month_"):
             await handle_period_summary(event, report_handler, data)
@@ -59,21 +59,21 @@ async def start_telegram_bot(bot_token:str):
                 await handle_date_summary(event, report_handler, data)
             else:
                 await handle_daily_summary(event, report_handler)
-                
+
     # Handler for text responses
     @bot.on(events.NewMessage())
     async def message_handler(event):
         # Ignore command messages
         if event.message.text.startswith('/'):
             return
-            
+
         # Only process replies to messages
         replied_message = await event.message.get_reply_message()
-        
+
         # Skip if not a reply to any message
         if not replied_message:
             return
-            
+
         # Check if this is a reply to one of our tracked questions
         chat_id = event.chat_id
         conversation_service = ConversationService()
@@ -81,12 +81,12 @@ async def start_telegram_bot(bot_token:str):
             chat_id=chat_id,
             message_id=replied_message.id
         )
-        
+
         if question and question.question_type == "date_input":
             # Handle date input response
             await handle_date_input_response(event, question)
             return
-    
+
     try:
         print("Bot is running...")
         await bot.run_until_disconnected()
@@ -94,35 +94,36 @@ async def start_telegram_bot(bot_token:str):
         await bot.disconnect()
         print("Bot stopped by user")
 
+
 async def handle_date_input_response(event, question):
     """Handle a response to a date input question"""
     try:
         # Get the day number from the message text
         day_str = event.message.text.strip()
         day = int(day_str)
-        
+
         if day < 1 or day > 31:
             await event.respond("ថ្ងៃមិនត្រឹមត្រូវ។ សូមជ្រើសរើសថ្ងៃពី 1 ដល់ 31។")
             return
-        
+
         # Get the current month from the question context
         conversation_service = ConversationService()
         context_data = {}
         if question.context_data:
             context_data = json.loads(question.context_data)
-            
+
         current_month = context_data.get("current_month", datetime.now().strftime("%Y-%m"))
         date_str = f"{current_month}-{day:02d}"
-        
+
         try:
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
-            
+
             # Mark the question as replied
             await conversation_service.mark_as_replied(
                 chat_id=event.chat_id,
                 message_id=question.message_id
             )
-            
+
             # Get income data
             report_handler = ReportHandler()
             income_service = IncomeService()
@@ -131,17 +132,17 @@ async def handle_date_input_response(event, question):
                 start_date=selected_date,
                 end_date=selected_date + timedelta(days=1)
             )
-            
+
             if not incomes:
                 await event.respond(f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។")
                 return
-            
+
             message = report_handler.format_totals_message(f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes)
             await event.respond(message)
-            
+
         except ValueError:
             await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
-            
+
     except ValueError:
         await event.respond("សូមវាយថ្ងៃជាលេខពី 1 ដល់ 31")
     except Exception as e:
@@ -184,7 +185,7 @@ async def handle_weekly_summary(event, report_handler):
     from calendar import monthrange
     last_day = monthrange(year, month)[1]
 
-    week_ranges = [(1, 7), (8, 14), (15, 21), (22, last_day)]
+    week_ranges = [(1, 8), (8, 15), (15, 22), (22, last_day + 1)]
     buttons = []
 
     for start_day, end_day in week_ranges:
