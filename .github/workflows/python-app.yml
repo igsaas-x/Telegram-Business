@@ -38,22 +38,55 @@ jobs:
         black --check .
       continue-on-error: true  # Don't fail the build for formatting issues
 
-  # Uncomment the deploy job if you want to set up automatic deployment
-  # deploy:
-  #   needs: build
-  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  #   runs-on: ubuntu-latest
-  #   
-  #   steps:
-  #   - name: Execute remote SSH commands
-  #     uses: appleboy/ssh-action@master
-  #     with:
-  #       host: ${{ secrets.HOST }}
-  #       username: ${{ secrets.USERNAME }}
-  #       key: ${{ secrets.SSH_PRIVATE_KEY }}
-  #       script: |
-  #         cd /path/to/your/bot
-  #         git pull
-  #         pip install -r requirements.txt
-  #         # Restart your bot service
-  #         sudo systemctl restart your-bot-service
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Execute remote SSH commands
+      uses: appleboy/ssh-action@master
+      # These values are from GitHub repository secrets
+      # Configure these in your repo: Settings > Secrets and variables > Actions
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          # PROJECT_PATH is the full path to your project directory on the server
+          # Configure this in your repository secrets
+          
+          # Navigate to project directory
+          cd telegram-listener
+          
+          # Pull latest changes
+          git pull
+          
+          # Update dependencies
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Create or update tables if needed
+          # You might want to run a migration script here if needed
+          
+          # Stop existing process if running
+          if pgrep -f "python main.py"; then
+            pkill -f "python main.py"
+            echo "Stopped existing bot process"
+            sleep 3
+          fi
+          
+          # Start bot in background with nohup
+          cd telegram-listener
+          nohup python main.py > bot.log 2>&1 &
+          echo "Bot started in background"
+          sleep 2
+          
+          # Verify bot is running
+          if pgrep -f "python main.py"; then
+            echo "Bot is running successfully!"
+          else
+            echo "ERROR: Bot failed to start!"
+            exit 1
+          fi
