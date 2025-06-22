@@ -13,5 +13,3 @@ async def menu(update, context):
 
 
 menu_handler = CommandHandler("menu", menu)
-
-

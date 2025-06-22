@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from telethon import TelegramClient, events, Button
 
 from handlers.report_handlers import ReportHandler
+from models.chat import ChatService, Chat
 from models.conversation_tracker import ConversationService
 from models.income_balance import IncomeService
 
@@ -20,6 +21,7 @@ async def start_telegram_bot(bot_token:str):
         from sqlalchemy import create_engine, inspect
         from models.conversation_tracker import BotQuestion
         from models.income_balance import IncomeBalance
+        from models.chat import Chat
         
         # First, drop the tables if they exist to recreate them with the updated schema
         engine = create_engine(f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}")
@@ -32,9 +34,13 @@ async def start_telegram_bot(bot_token:str):
         if 'income_balance' in inspector.get_table_names():
             IncomeBalance.__table__.drop(engine)
             
+        if 'chats' in inspector.get_table_names():
+            Chat.__table__.drop(engine)
+            
         # Create the tables with the new schema
         BotQuestion.__table__.create(engine)
         IncomeBalance.__table__.create(engine)
+        Chat.__table__.create(engine)
         print("Database tables initialized.")
     except Exception as e:
         print(f"Error initializing database tables: {e}")
@@ -50,6 +56,13 @@ async def start_telegram_bot(bot_token:str):
             [Button.inline("ប្រចាំខែ", "monthly_summary")]
         ]
         await event.respond("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
+
+    @bot.on(events.NewMessage(pattern='/register'))
+    async def register_handler(event):
+        chat_id = event.chat_id
+        chat_service = ChatService()
+        success, message = chat_service.register_chat_id(chat_id)
+        await event.respond(message)
 
     @bot.on(events.CallbackQuery())
     async def callback_handler(event):
@@ -208,7 +221,7 @@ async def handle_weekly_summary(event, report_handler):
     for start_day, end_day in week_ranges:
         start_date = datetime(year, month, start_day)
         end_date = datetime(year, month, min(end_day, last_day))
-        label = f"{start_date.strftime('%d %b')} - {end_date.strftime('%d %b')}"
+        label = f"{start_date.strftime('%d')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"
         callback_value = start_date.strftime("%Y-%m-%d")
         buttons.append([Button.inline(label, f"summary_week_{callback_value}")])
 
