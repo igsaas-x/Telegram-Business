@@ -5,6 +5,7 @@ from telethon import TelegramClient, events, Button
 from models.income_balance import IncomeService
 from models.conversation_tracker import ConversationService
 from handlers.report_handlers import ReportHandler
+from services.registration import RegistrationService
 from datetime import datetime, timedelta
 
 
@@ -15,6 +16,16 @@ async def start_telegram_bot(bot_token:str):
     
 
     
+    @bot.on(events.NewMessage(pattern='/register'))
+    async def register_handler(event):
+        chat_id = event.chat_id
+        service = RegistrationService()
+        success = await service.register_chat(chat_id)
+        if success:
+            await event.respond("You have been registered successfully!")
+        else:
+            await event.respond("You are already registered.")
+
     @bot.on(events.NewMessage(pattern='/get_menu'))
     async def get_menu_handler(event):
         # Simple menu using Telethon's Button
@@ -73,12 +84,8 @@ async def start_telegram_bot(bot_token:str):
                     await handle_date_input_response(event, question)
                 # Add other question type handlers here if needed
                 
-    try:
-        print("Bot is running...")
-        await bot.run_until_disconnected()
-    finally:
-        print("--- start_telegram_bot() finished ---")
-        await bot.disconnect()
+    print("Bot is running...")
+    await bot.run_until_disconnected()
 
 async def handle_main_menu(event, report_handler):
     buttons = [
