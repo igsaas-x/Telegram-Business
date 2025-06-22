@@ -49,9 +49,9 @@ jobs:
       # These values are from GitHub repository secrets
       # Configure these in your repo: Settings > Secrets and variables > Actions
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
         port: 22
         script: |
           # PROJECT_PATH is the full path to your project directory on the server

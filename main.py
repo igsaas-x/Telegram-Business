@@ -24,20 +24,27 @@ async def start_telegram_bot(bot_token:str):
     try:
         from sqlalchemy import create_engine, inspect
         from models.conversation_tracker import BotQuestion
+        from models.income_balance import IncomeBalance
         
-        # First, drop the table if it exists to recreate it with the updated schema
+        # First, drop the tables if they exist to recreate them with the updated schema
         engine = create_engine(f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}")
         inspector = inspect(engine)
         
-        # Check if table exists and drop it to recreate with new schema
+        # Check if tables exist and drop them to recreate with new schema
         if 'bot_questions' in inspector.get_table_names():
             BotQuestion.__table__.drop(engine)
             
-        # Create the table with the new schema
+        if 'income_balance' in inspector.get_table_names():
+            IncomeBalance.__table__.drop(engine)
+            
+        # Create the tables with the new schema
         BotQuestion.__table__.create(engine)
-        print("Bot questions table initialized.")
+        IncomeBalance.__table__.create(engine)
+        print("Database tables initialized.")
     except Exception as e:
         print(f"Error initializing database tables: {e}")
+        # Don't raise the exception to allow the bot to start even if table creation fails
+        # The user can manually fix the database issues
     
     @bot.on(events.NewMessage(pattern='/get_menu'))
     async def get_menu_handler(event):
