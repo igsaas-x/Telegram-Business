@@ -10,7 +10,7 @@ async def handle_menu_click(update, context):
         await report_handler.handle_period_summary(update, context)
     else:
         match data:
-            case "get_menu":
+            case "menu":
                 await report_handler.handle_main_menu(update, context)
             case "daily_summary":
                 await report_handler.handle_daily_summary(update, context)
@@ -28,7 +28,7 @@ async def handle_menu_click(update, context):
 menu_callback_handler = CallbackQueryHandler(
     handle_menu_click,
     pattern=(
-        r"^(get_menu|daily_summary|weekly_summary|monthly_summary|"
+        r"^(menu|daily_summary|weekly_summary|monthly_summary|"
         r"other_dates|"
         r"summary_of_\d{4}-\d{2}-\d{2}|"
         r"summary_week_\d{4}-\d{2}-\d{2}|"

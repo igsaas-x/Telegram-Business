@@ -90,7 +90,7 @@ class ReportHandler:
             callback_prefix="summary_of_"
         )
         buttons.append([InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")])
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="get_menu")])
+        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.edit_message_text(
             text="ឆែករបាយការណ៍ថ្ងៃ:",
@@ -125,7 +125,7 @@ class ReportHandler:
             label_func=lambda p: p["label"],
             callback_prefix="summary_week_"
         )
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="get_menu")])
+        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.edit_message_text(
             text="ជ្រើសរើសសប្តាហ៍:",
@@ -148,7 +148,7 @@ class ReportHandler:
             label_func=lambda p: p["label"],
             callback_prefix="summary_month_"
         )
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="get_menu")])
+        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.edit_message_text(
             text="ជ្រើសរើសខែ:",
