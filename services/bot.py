@@ -230,9 +230,6 @@ async def handle_date_summary(event, report_handler, data):
         # Acknowledge the button press
         await event.answer(f"Fetching data for {selected_date.strftime('%d %b %Y')}")
 
-        # Keep the menu active but indicate selection
-        await event.edit(f"Selected: {selected_date.strftime('%d %b %Y')}")
-
         # Send a new message with results
         if not incomes:
             await event.client.send_message(
@@ -272,9 +269,6 @@ async def handle_period_summary(event, report_handler, data):
         # Acknowledge the button press
         await event.answer(f"Fetching data for {period_text}")
 
-        # Keep the menu active but indicate selection
-        await event.edit(f"Selected: {period_text}")
-
         income_service = IncomeService()
         incomes = await income_service.get_income_by_date_and_chat_id(
             chat_id=chat_id,
@@ -307,9 +301,6 @@ async def handle_other_dates(event, report_handler):
         chat_id,
         "ឆែករបាយការណ៍ថ្ងៃទី:\n\nសូមវាយថ្ងៃ (1-31) ជាការឆ្លើយតបសារនេះដោយប្រើប៊ូតុង 'Reply' ឬ 'ឆ្លើយតប'"
     )
-
-    # Keep the menu with an acknowledgment of the selection
-    await event.edit("Selected: ថ្ងៃផ្សេងទៀត")
 
     # Save this question in our tracking database
     conversation_service = ConversationService()
