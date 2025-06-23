@@ -14,7 +14,5 @@ def load_environment(env: Optional[str] = None) -> None:
     if current_env == 'local' and os.path.exists('.env.local'):
         load_dotenv(dotenv_path='.env.local', override=True)
     
-    print(os.getenv('PHONE_NUMBER'))
-
 load_environment()
 CURRENT_ENV = os.getenv('APP_ENV', 'local') 
