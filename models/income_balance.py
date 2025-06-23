@@ -27,6 +27,7 @@ class IncomeBalance(Base):
     amount = Column(Float, nullable=False)
     chat_id = Column(BigInteger, nullable=False)
     currency = Column(String(16), nullable=False)
+    original_amount = Column(Float, nullable=False)
     income_date = Column(DateTime, default=datetime.now, nullable=False)
 
 
@@ -42,35 +43,21 @@ class IncomeService:
         finally:
             db.close()
 
-    async def insert_income(self, chat_id: int, amount: float, currency: str) -> IncomeBalance:
+    async def insert_income(self, chat_id: int, amount: float, currency: str, original_amount: float) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
         current_date = datetime.now()
         
-        today_date = datetime(current_date.year, current_date.month, current_date.day)
-        tomorrow_date = today_date + timedelta(days=1)
-        
         with self._get_db() as db:
             try:
-                existing_record = db.query(IncomeBalance).filter(
-                    IncomeBalance.chat_id == chat_id,
-                    IncomeBalance.currency == currency_code,
-                    IncomeBalance.income_date >= today_date,
-                    IncomeBalance.income_date < tomorrow_date
-                ).first()
-                
-                if existing_record:
-                    existing_record.amount += amount
-                    db.commit()
-                    db.refresh(existing_record)
-                    return existing_record
-                
                 new_income = IncomeBalance(
                     chat_id=chat_id,
                     amount=amount,
                     currency=currency_code,
-                    income_date=current_date
+                    income_date=current_date,
+                    original_amount=original_amount
                 )
+
                 db.add(new_income)
                 db.commit()
                 db.refresh(new_income)

@@ -26,23 +26,24 @@ async def start_telethon_client(loader):
         if event.chat_id not in chat_ids:
             return
         currency, amount = extract_amount_and_currency(event.message.text)
-        print(currency, amount)
         if currency and amount:
             service = IncomeService()
-            await service.insert_income(event.chat_id, amount, currency)
+            await service.insert_income(event.chat_id, amount, currency, amount)
 
     await client.run_until_disconnected()
 
 async def main():
     try:
-        # Initialize database
+        
+        from alembic import command
+        from alembic.config import Config
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
         create_db_tables()
         
-        # Load credentials
         loader = CredentialLoader()
         await loader.load_credentials()
         
-        # Start both clients
         await asyncio.gather(
             start_telegram_bot(loader.bot_token),
             start_telethon_client(loader)

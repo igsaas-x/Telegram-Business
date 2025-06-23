@@ -79,16 +79,6 @@ class ConversationService:
         chat_id: int, 
         question_type: Optional[QuestionType] = None
     ) -> Optional[BotQuestion]:
-        """
-        Get the most recent pending question for a chat.
-        
-        Args:
-            chat_id: Telegram chat ID
-            question_type: Optional filter by question type
-            
-        Returns:
-            Optional[BotQuestion]: Most recent pending question or None
-        """
         query = self._db.query(BotQuestion).filter(
             BotQuestion.chat_id == chat_id,
             BotQuestion.is_replied == False
