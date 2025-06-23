@@ -21,12 +21,14 @@ async def main():
         await loader.load_credentials()
         await asyncio.gather(
             telegramBotService.start(loader.bot_token),
-            telethonClientService.start(loader)
+            telethonClientService.start('user',loader),
+            telethonClientService.start('user1',loader)
         )
         
     except Exception as e:
         print(f"Error in main: {e}")
         raise
+
 
 if __name__ == "__main__":
     try:

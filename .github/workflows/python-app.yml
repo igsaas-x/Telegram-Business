@@ -74,43 +74,31 @@ jobs:
             cd "$PROJECT_DIR"
             echo "Pulling latest changes..."
             git fetch --all
-            git reset --hard origin/main
+            git pull
             echo "Repository updated"
           fi
           
-          # Install dependencies with fallbacks
-          echo "Installing dependencies..."
-          if python3 -m pip --version &>/dev/null; then
-            python3 -m pip install --user --upgrade pip
-            python3 -m pip install --user -r requirements.txt
-          elif command -v pip3 &>/dev/null; then
-            pip3 install --user --upgrade pip
-            pip3 install --user -r requirements.txt
-          else
-            echo "WARNING: Could not find pip or install dependencies!"
-            # Continue anyway - the dependencies might already be installed
-          fi
-          echo "Dependencies setup completed"
-          
-          # Stop any existing bot processes with proper handling
-          echo "Stopping any existing bot processes..."
-          if pgrep -f "python.*main.py"; then
-            echo "Found existing process, stopping it..."
-            pkill -15 -f "python.*main.py"
-            sleep 3
-            # Force kill if still running
-            if pgrep -f "python.*main.py"; then
-              echo "Process still running, force killing..."
-              pkill -9 -f "python.*main.py"
-              sleep 2
-            fi
-          else
-            echo "No existing processes found"
-          fi
+#          # Stop any existing bot processes with proper handling
+#          echo "Stopping any existing bot processes..."
+#          if pgrep -f "python.*main.py"; then
+#            echo "Found existing process, stopping it..."
+#            pkill -15 -f "python.*main.py"
+#            sleep 3
+#            # Force kill if still running
+#            if pgrep -f "python.*main.py"; then
+#              echo "Process still running, force killing..."
+#              pkill -9 -f "python.*main.py"
+#              sleep 2
+#            fi
+#          else
+#            echo "No existing processes found"
+#          fi
           
           # Start the bot
           echo "Starting the bot..."
-          cd "$PROJECT_DIR"
+          python3 -m venv myenv
+          source myenv/bin/activate
+          # cd "$PROJECT_DIR"
           # Add timestamp to log for tracking multiple deployments
           LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
           echo "Starting bot with log file: $LOG_FILE"
