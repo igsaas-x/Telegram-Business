@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Generator, Any
 from contextlib import contextmanager
 
 from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger
@@ -36,7 +36,7 @@ class IncomeService:
         self._session_factory = SessionLocal
 
     @contextmanager
-    def _get_db(self) -> Session:
+    def _get_db(self) -> Generator[Session, Any, Any]:
         db = self._session_factory()
         try:
             yield db
