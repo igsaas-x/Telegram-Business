@@ -7,8 +7,8 @@ class TelethonClientService:
     def __init__(self):
         self.client = None
         
-    async def start(self, loader):
-        self.client = TelegramClient('user', int(loader.api_id), loader.api_hash)
+    async def start(self,username, loader):
+        self.client = TelegramClient(username, int(loader.api_id), loader.api_hash)
         await self.client.connect()
         await self.client.start(phone=loader.phone_number) #type: ignore
 
