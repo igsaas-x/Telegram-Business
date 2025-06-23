@@ -74,23 +74,9 @@ jobs:
             cd "$PROJECT_DIR"
             echo "Pulling latest changes..."
             git fetch --all
-            git reset --hard origin/main
+            git pull
             echo "Repository updated"
           fi
-          
-          # Install dependencies with fallbacks
-          echo "Installing dependencies..."
-          if python3 -m pip --version &>/dev/null; then
-            python3 -m pip install --user --upgrade pip
-            python3 -m pip install --user -r requirements.txt
-          elif command -v pip3 &>/dev/null; then
-            pip3 install --user --upgrade pip
-            pip3 install --user -r requirements.txt
-          else
-            echo "WARNING: Could not find pip or install dependencies!"
-            # Continue anyway - the dependencies might already be installed
-          fi
-          echo "Dependencies setup completed"
           
           # Stop any existing bot processes with proper handling
           echo "Stopping any existing bot processes..."
@@ -110,7 +96,9 @@ jobs:
           
           # Start the bot
           echo "Starting the bot..."
-          cd "$PROJECT_DIR"
+          python3 -m venv myenv
+          source myenv/bin/activate
+          # cd "$PROJECT_DIR"
           # Add timestamp to log for tracking multiple deployments
           LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
           echo "Starting bot with log file: $LOG_FILE"
