@@ -78,21 +78,21 @@ jobs:
             echo "Repository updated"
           fi
           
-          # Stop any existing bot processes with proper handling
-          echo "Stopping any existing bot processes..."
-          if pgrep -f "python.*main.py"; then
-            echo "Found existing process, stopping it..."
-            pkill -15 -f "python.*main.py"
-            sleep 3
-            # Force kill if still running
-            if pgrep -f "python.*main.py"; then
-              echo "Process still running, force killing..."
-              pkill -9 -f "python.*main.py"
-              sleep 2
-            fi
-          else
-            echo "No existing processes found"
-          fi
+#          # Stop any existing bot processes with proper handling
+#          echo "Stopping any existing bot processes..."
+#          if pgrep -f "python.*main.py"; then
+#            echo "Found existing process, stopping it..."
+#            pkill -15 -f "python.*main.py"
+#            sleep 3
+#            # Force kill if still running
+#            if pgrep -f "python.*main.py"; then
+#              echo "Process still running, force killing..."
+#              pkill -9 -f "python.*main.py"
+#              sleep 2
+#            fi
+#          else
+#            echo "No existing processes found"
+#          fi
           
           # Start the bot
           echo "Starting the bot..."
