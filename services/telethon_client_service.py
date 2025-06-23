@@ -22,6 +22,6 @@ class TelethonClientService:
             currency, amount = extract_amount_and_currency(event.message.text)
             if currency and amount:
                 service = IncomeService()
-                await service.insert_income(event.chat_id, amount, currency) #type: ignore
+                await service.insert_income(event.chat_id, amount, currency, amount) #type: ignore
 
         await self.client.run_until_disconnected() #type: ignore
