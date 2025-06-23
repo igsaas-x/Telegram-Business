@@ -2,7 +2,6 @@ from telethon import Button
 from datetime import datetime, timedelta
 from models.income_balance import IncomeService, CurrencyEnum
 from calendar import monthrange
-# No longer using get_main_menu_keyboard
 
 user_date_input_state = {}
 
@@ -28,8 +27,14 @@ class ReportHandler:
     @staticmethod
     def format_totals_message(period_text: str, incomes):
         totals = {currency.name: 0 for currency in CurrencyEnum}
+        transaction_counts = {
+            "KHR": 0,
+            "USD": 0
+        }
+        
         for income in incomes:
             if income.currency in totals:
+                transaction_counts[income.currency] += 1
                 totals[income.currency] += income.amount
             else:
                 totals[income.currency] = income.amount
@@ -39,11 +44,12 @@ class ReportHandler:
             code = currency.name
             symbol = currency.value
             total = totals.get(code, 0)
-            message += f"{symbol} ({code}): {total:,.2f}\n"
+            format_string = "{:,.0f}" if code == "KHR" else "{:,.2f}"
+            transaction_count = transaction_counts.get(code, 0)
+            message += f"{symbol} ({code}): {format_string.format(total)} ចំនួនប្រតិបត្តិការសរុប​​: {transaction_count}\n"
         return message
 
     async def handle_date_summary(self, update, context):
-        """Handle specific date summary request."""
         query = update.callback_query
         chat_id = update.effective_chat.id
         date_str = query.data.replace("summary_of_", "")
@@ -89,9 +95,9 @@ class ReportHandler:
             label_func=lambda p: p["label"],
             callback_prefix="summary_of_"
         )
-        buttons.append([InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")])
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
-        reply_markup = InlineKeyboardMarkup(buttons)
+        buttons.append([Button.inline("ថ្ងៃផ្សេងទៀត","other_dates")])
+        buttons.append([Button.inline("ត្រឡប់ក្រោយ","menu")])
+        reply_markup = Button.inline.markup(buttons)
         await query.edit_message_text(
             text="ឆែករបាយការណ៍ថ្ងៃ:",
             reply_markup=reply_markup
@@ -102,31 +108,40 @@ class ReportHandler:
         now = datetime.now()
         year = now.year
         month = now.month
-        last_day = monthrange(year, month)[1]
-
-        week_ranges = [
-            (1, 7),
-            (8, 14),
-            (15, 21),
-            (22, last_day)
-        ]
-
+        
+        first_day = datetime(year, month, 1)
+        last_day = datetime(year, month, monthrange(year, month)[1])
+        
+        # Find the first Monday (or Sunday) before or on the first day of the month
+        current_date = first_day
+        start_weekday = 0  # 0 for Monday, 6 for Sunday
+        while current_date.weekday() != start_weekday:
+            current_date -= timedelta(days=1)
+            
         periods = []
-        for start_day, end_day in week_ranges:
-            start_date = datetime(year, month, start_day)
-            end_date = datetime(year, month, min(end_day, last_day))
-            periods.append({
-                "label": f"{start_date.strftime('%d %b')} - {end_date.strftime('%d %b')}",
-                "callback_value": start_date.strftime("%Y-%m-%d")
-            })
+        
+        # Keep generating weeks until we pass the current month
+        while current_date <= last_day:
+            week_end = current_date + timedelta(days=6)
+            if week_end > last_day:
+                week_end = last_day
+                
+            # Only add the period if it overlaps with the current month
+            if not (week_end < first_day or current_date > last_day):
+                periods.append({
+                    "label": f"{current_date.strftime('%d %b')} - {week_end.strftime('%d %b')}",
+                    "callback_value": current_date.strftime("%Y-%m-%d")
+                })
+            
+            current_date += timedelta(days=7)
 
         buttons = self.generate_summary_buttons(
             periods,
             label_func=lambda p: p["label"],
             callback_prefix="summary_week_"
         )
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
-        reply_markup = InlineKeyboardMarkup(buttons)
+        buttons.append([Button.inline("ត្រឡប់ក្រោយ", "menu")])
+        reply_markup = Button.inline.markup(buttons)
         await query.edit_message_text(
             text="ជ្រើសរើសសប្តាហ៍:",
             reply_markup=reply_markup
@@ -148,8 +163,8 @@ class ReportHandler:
             label_func=lambda p: p["label"],
             callback_prefix="summary_month_"
         )
-        buttons.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
-        reply_markup = InlineKeyboardMarkup(buttons)
+        buttons.append([Button.inline("ត្រឡប់ក្រោយ","menu")])
+        reply_markup = Button.inline(buttons)
         await query.edit_message_text(
             text="ជ្រើសរើសខែ:",
             reply_markup=reply_markup
@@ -202,7 +217,7 @@ class ReportHandler:
         await query.edit_message_text(
             text="ជ្រើសរើសរបាយការណ៍ប្រចាំ:",
             reply_markup=reply_markup
-        )
+        )   
 
     async def handle_other_dates(self, update, context):
         query = update.callback_query

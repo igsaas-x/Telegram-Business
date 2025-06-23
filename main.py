@@ -1,7 +1,7 @@
 import asyncio
 import os
 
-from dotenv import load_dotenv
+from config import load_environment, CURRENT_ENV
 from telethon import TelegramClient, events
 
 from config.database_config import create_db_tables
@@ -11,11 +11,7 @@ from models.chat import ChatService
 from models.income_balance import IncomeService
 from services.bot import start_telegram_bot
 
-# Load environment variables from .env.local if it exists, otherwise from .env
-if os.path.exists('.env.local'):
-    load_dotenv(dotenv_path='.env.local')
-else:
-    load_dotenv()
+load_environment()
 
 async def start_telethon_client(loader):
     client = TelegramClient('user', int(loader.api_id), loader.api_hash)
@@ -32,20 +28,22 @@ async def start_telethon_client(loader):
         currency, amount = extract_amount_and_currency(event.message.text)
         if currency and amount:
             service = IncomeService()
-            await service.insert_income(event.chat_id, amount, currency)
+            await service.insert_income(event.chat_id, amount, currency, amount)
 
     await client.run_until_disconnected()
 
 async def main():
     try:
-        # Initialize database
+        
+        from alembic import command
+        from alembic.config import Config
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
         create_db_tables()
         
-        # Load credentials
         loader = CredentialLoader()
         await loader.load_credentials()
         
-        # Start both clients
         await asyncio.gather(
             start_telegram_bot(loader.bot_token),
             start_telethon_client(loader)
