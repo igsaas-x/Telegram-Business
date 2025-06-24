@@ -1,11 +1,12 @@
 import asyncio
-from config import load_environment
 
-from config.database_config import create_db_tables
-from helper.credential_loader import CredentialLoader
-from services import TelegramBotService, TelethonClientService        
 from alembic import command
 from alembic.config import Config
+
+from config import load_environment
+from config.database_config import create_db_tables
+from helper.credential_loader import CredentialLoader
+from services import TelegramBotService, TelethonClientService
 
 load_environment()
 async def main():
@@ -21,8 +22,8 @@ async def main():
         await loader.load_credentials()
         await asyncio.gather(
             telegramBotService.start(loader.bot_token),
-            telethonClientService.start('user',loader),
-            telethonClientService.start('user1',loader)
+            telethonClientService.start(loader.phone_number,loader),
+            telethonClientService.start(loader.phone_number1,loader)
         )
         
     except Exception as e:
