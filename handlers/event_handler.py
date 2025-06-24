@@ -16,8 +16,9 @@ class EventHandler:
 
     async def register(self, event):
         chat_id = event.chat_id
+        group_name = event.chat.title
         chat_service = ChatService()
-        message = chat_service.register_chat_id(chat_id)
+        success, message = chat_service.register_chat_id(chat_id, group_name)
         await event.respond(message)
 
     async def message(self, event):

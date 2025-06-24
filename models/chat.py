@@ -7,12 +7,13 @@ class Chat(Base):
     __tablename__ = 'chats'
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(String(255), unique=True, nullable=False)
+    group_name = Column(String(255), nullable=False)
 
 class ChatService:
     def __init__(self):
         self.Session = SessionLocal
 
-    def register_chat_id(self, chat_id):
+    def register_chat_id(self, chat_id, group_name):
         session = self.Session()
         try:
             # Check if chat_id already exists
@@ -21,7 +22,7 @@ class ChatService:
                 return False, f"Chat ID {chat_id} is already registered."
 
             # Insert new chat_id
-            new_chat = Chat(chat_id=str(chat_id))
+            new_chat = Chat(chat_id=str(chat_id),group_name=group_name)
             session.add(new_chat)
             session.commit()
             return True, f"Chat ID {chat_id} registered successfully."
