@@ -7,8 +7,8 @@ class TelethonClientService:
     def __init__(self):
         self.client = None
         
-    async def start(self, loader):
-        self.client = TelegramClient('user', int(loader.api_id), loader.api_hash)
+    async def start(self,username, loader):
+        self.client = TelegramClient(username, int(loader.api_id), loader.api_hash)
         await self.client.connect()
         await self.client.start(phone=loader.phone_number) #type: ignore
 
@@ -22,6 +22,6 @@ class TelethonClientService:
             currency, amount = extract_amount_and_currency(event.message.text)
             if currency and amount:
                 service = IncomeService()
-                await service.insert_income(event.chat_id, amount, currency) #type: ignore
+                await service.insert_income(event.chat_id, amount, currency, amount) #type: ignore
 
         await self.client.run_until_disconnected() #type: ignore

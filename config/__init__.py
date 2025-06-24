@@ -16,3 +16,8 @@ def load_environment(env: Optional[str] = None) -> None:
     
 load_environment()
 CURRENT_ENV = os.getenv('APP_ENV', 'local') 
+
+
+__all__ = [
+    'CURRENT_ENV',
+]   
