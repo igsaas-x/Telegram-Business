@@ -2,106 +2,63 @@ name: Python Application
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
-  workflow_dispatch: # Allows manual triggering
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.13"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install flake8 pytest
-
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        continue-on-error: true # Don't fail the build for linting issues
-
-      - name: Check code formatting
-        run: |
-          pip install black
-          black --check .
-        continue-on-error: true # Don't fail the build for formatting issues
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install flake8 pytest
+    
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true  # Don't fail the build for linting issues
+    
+    - name: Check code formatting
+      run: |
+        pip install black
+        black --check .
+      continue-on-error: true  # Don't fail the build for formatting issues
 
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v3
-
-      # Deploy using SSH (simple version with no conditionals)
-      - name: Deploy via SSH with password
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: 22
-          script: |
-            cd $HOME
-            echo "=== DEPLOYMENT STARTED: $(date) ==="
-
-            # Set project directory
-            PROJECT_DIR="$HOME/telegram-listener"
-
-            # Create directory if it doesn't exist
-            if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Creating project directory..."
-              mkdir -p "$PROJECT_DIR"
-              cd "$PROJECT_DIR"
-              git clone https://github.com/chanhengseang3/telegram-listener.git .
-              echo "Repository cloned"
-            else
-              # Update existing repository
-              cd "$PROJECT_DIR"
-              echo "Pulling latest changes..."
-              git fetch --all
-              git pull
-              echo "Repository updated"
-            fi
-
-            # Start the bot
-            echo "Starting the bot..."
-            python3 -m venv myenv
-            source myenv/bin/activate
-
-            # Install requirements in the virtual environment
-            pip install -r requirements.txt
-
-            # Add timestamp to log for tracking multiple deployments
-            LOG_FILE="bot_$(date +%Y%m%d_%H%M%S).log"
-            echo "Starting bot with log file: $LOG_FILE"
-            nohup python3 main.py > $LOG_FILE 2>&1 &
-            sleep 5
-
-            # Verify bot is running with better error handling
-            if pgrep -f "python.*main.py"; then
-              echo "Bot started successfully"
-              echo "Process ID: $(pgrep -f "python.*main.py")"
-              echo "Recent log output:"
-              tail -10 $LOG_FILE
-            else
-              echo "ERROR: Failed to start bot. Check logs:"
-              tail -30 $LOG_FILE
-              exit 1
-            fi
-
-            echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
+    - uses: actions/checkout@v3
+    
+    # Deploy using SSH (simple version with no conditionals)
+    - name: Deploy via SSH with password
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          cd telegram-listener
+          git pull origin main
+          source myenv/bin/activate
+          pip install -r requirements.txt
+          sudo systemctl restart mytelegrambot
+          echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
