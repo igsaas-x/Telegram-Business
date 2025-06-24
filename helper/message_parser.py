@@ -11,3 +11,9 @@ def extract_amount_and_currency(text: str):
             return None, None
         return currency, amount
     return None, None
+
+def extract_trx_id(message_text: str) -> str | None:
+    match = re.search(r'Trx\. ID:\s*([0-9]+)', message_text)
+    if match:
+        return match.group(1)
+    return None
