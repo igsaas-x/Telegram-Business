@@ -1,9 +1,10 @@
 import os
 
-from config import load_environment, CURRENT_ENV
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+from config import load_environment
 
 load_environment()
 DATABASE_URL = (

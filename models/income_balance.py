@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Optional, List, Generator, Any
 from contextlib import contextmanager
+from datetime import datetime
+from enum import Enum
+from typing import Optional, Generator, Any
 
 from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ class CurrencyEnum(Enum):
         return None
 
 
-class IncomeBalance(Base):    
+class IncomeBalance(Base):
     __tablename__ = 'income_balance'
     id = Column(Integer, primary_key=True)
     amount = Column(Float, nullable=False)
@@ -47,7 +47,7 @@ class IncomeService:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
         current_date = datetime.now()
-        
+
         with self._get_db() as db:
             try:
                 new_income = IncomeBalance(
@@ -62,7 +62,7 @@ class IncomeService:
                 db.commit()
                 db.refresh(new_income)
                 return new_income
-                
+
             except Exception as e:
                 db.rollback()
                 raise e
@@ -73,18 +73,18 @@ class IncomeService:
                 IncomeBalance.id == income_id
             ).first()
 
-    async def get_income_by_chat_id(self, chat_id: int) -> List[IncomeBalance]:
+    async def get_income_by_chat_id(self, chat_id: int) -> list[type[IncomeBalance]]:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(
                 IncomeBalance.chat_id == chat_id
             ).all()
 
     async def get_income_by_date_and_chat_id(
-        self, 
-        chat_id: int, 
-        start_date: datetime, 
-        end_date: datetime
-    ) -> List[IncomeBalance]:
+            self,
+            chat_id: int,
+            start_date: datetime,
+            end_date: datetime
+    ) -> list[type[IncomeBalance]]:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(
                 IncomeBalance.chat_id == chat_id,

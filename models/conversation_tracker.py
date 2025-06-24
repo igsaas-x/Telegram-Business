@@ -1,12 +1,13 @@
-from datetime import datetime
-from typing import Optional, Union
 from contextlib import contextmanager
+from datetime import datetime
 from enum import Enum
+from typing import Optional, Union
 
 from sqlalchemy import String, Column, Integer, DateTime, Boolean, BigInteger
 from sqlalchemy.orm import Session
 
 from config.database_config import Base, SessionLocal
+
 
 class QuestionType(Enum):
     DATE_INPUT = "date_input"
@@ -61,7 +62,7 @@ class ConversationService:
             session.add(new_question)
             return new_question
 
-    async def mark_as_replied(self, chat_id: int, message_id: int) -> Optional[BotQuestion]:
+    async def mark_as_replied(self, chat_id: int, message_id: int) -> type[BotQuestion] | None:
         with self.session_scope() as session:
             question = session.query(BotQuestion).filter(
                 BotQuestion.chat_id == chat_id,

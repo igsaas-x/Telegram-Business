@@ -1,9 +1,10 @@
 from logging.config import fileConfig
-import os
-from config import load_environment
+
+from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from alembic import context
+
+from config import load_environment
 from config.database_config import DATABASE_URL, Base
 
 load_environment()
