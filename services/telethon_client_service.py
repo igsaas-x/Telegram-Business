@@ -1,4 +1,5 @@
 from telethon import TelegramClient, events
+
 from helper import extract_amount_and_currency, extract_trx_id
 from models import ChatService, IncomeService
 
@@ -25,9 +26,7 @@ class TelethonClientService:
             message_id: int = event.message.id
             trx_id = extract_trx_id(event.message.text)
 
-            if await self.service.get_income_by_message_id(
-                message_id
-            ) and await self.service.get_income_by_trx_id(trx_id):
+            if await self.service.get_income_by_message_id(message_id) and await self.service.get_income_by_trx_id(trx_id):
                 return
 
             if currency and amount and trx_id:
