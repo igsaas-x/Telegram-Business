@@ -1,6 +1,11 @@
+from datetime import date, datetime, timedelta, timezone, time
+from typing import List, Set
+from alembic.op import f
 from telethon import TelegramClient, events
 from helper import extract_amount_and_currency, extract_trx_id
+from helper.total_summary_report_helper import total_summary_report
 from models import ChatService, IncomeService
+from models.income_balance import CurrencyEnum, IncomeBalance
 
 
 class TelethonClientService:
@@ -12,11 +17,71 @@ class TelethonClientService:
         self.client = TelegramClient(username, int(loader.api_id), loader.api_hash)
         await self.client.connect()
         await self.client.start(phone=loader.phone_number)  # type: ignore
-
         chat_service = ChatService()
 
+        @self.client.on(events.NewMessage(pattern="/verify"))
+        async def _verify_current_date_report(event):
+            chat = event.chat_id
+            today = datetime.now(timezone.utc).date()
+            yesterday = today - timedelta(days=1)
+            start_of_yesterday = datetime.combine(
+                yesterday, time.min, tzinfo=timezone.utc
+            )
+
+            incomes: List[IncomeBalance] = []
+            processed_message_ids: set[int] = set()
+            last_yesterday_message = await self.service.get_last_yesterday_message(
+                start_of_yesterday
+            )
+
+            last_yesterday_message_id = 0
+            if last_yesterday_message:
+                message_id = getattr(last_yesterday_message, "message_id", 0)
+                last_yesterday_message_id = int(message_id)
+
+            async for msg in self.client.iter_messages(  # type: ignore
+                chat, search="paid by", min_id=last_yesterday_message_id
+            ):
+                if not msg.text or not msg.date:
+                    continue
+                if msg.id in processed_message_ids:
+                    continue
+
+                currency, amount = extract_amount_and_currency(msg.text)
+                trx_id = extract_trx_id(msg.text)
+                processed_message_ids.add(msg.id)
+
+                if currency and amount:
+                    currency_code = next(
+                        (c.name for c in CurrencyEnum if c.value == currency), None
+                    )
+                    if not currency_code:
+                        continue
+
+                    try:
+                        amount_value = float(
+                            str(amount).replace(",", "").replace(" ", "")
+                        )
+                    except Exception:
+                        continue
+
+                    income = IncomeBalance(
+                        amount=amount_value,
+                        chat_id=chat,
+                        currency=currency_code,
+                        original_amount=amount_value,
+                        income_date=msg.date,
+                        message_id=msg.id,
+                        message=msg.text,
+                        trx_id=trx_id,
+                    )
+                    incomes.append(income)
+
+            summary = total_summary_report(incomes, "របាយការណ៍សរុបប្រចាំថ្ងៃនេះ")
+            await event.client.send_message(chat, summary)
+
         @self.client.on(events.NewMessage)  # type: ignore
-        async def new_message_listener(event):
+        async def _new_message_listener(event):
             chat_ids = chat_service.get_all_chat_ids()
             if event.chat_id not in chat_ids:
                 return
