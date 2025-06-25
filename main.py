@@ -1,77 +1,31 @@
 import asyncio
-import os
 
-from dotenv import load_dotenv
-from telethon import TelegramClient, events
+from alembic import command
+from alembic.config import Config
 
+from config import load_environment
 from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
-from helper.message_parser import extract_amount_and_currency
-from models.chat import ChatService
-from models.income_balance import IncomeService
-from services.bot import start_telegram_bot
+from services import TelegramBotService, TelethonClientService
 
-# Load environment variables from .env.local if it exists, otherwise from .env
-if os.path.exists('.env.local'):
-    load_dotenv(dotenv_path='.env.local')
-else:
-    load_dotenv()
-
-
-async def start_telethon_client(loader):
-    client = TelegramClient('user', int(loader.api_id), loader.api_hash)
-    await client.connect()
-    await client.start(phone=loader.phone_number)
-
-    chat_service = ChatService()
-
-    @client.on(events.NewMessage)
-    async def new_message_listener(event):
-        chat_ids = chat_service.get_all_chat_ids()
-        if event.chat_id not in chat_ids:
-            return
-        currency, amount = extract_amount_and_currency(event.message.text)
-        if currency and amount:
-            service = IncomeService()
-            await service.insert_income(event.chat_id, amount, currency)
-
-    await client.run_until_disconnected()
-
-async def start_telethon_client1(loader):
-    client = TelegramClient('user1', int(loader.api_id1), loader.api_hash1)
-    await client.connect()
-    await client.start(phone=loader.phone_number1)
-
-    chat_service = ChatService()
-
-    @client.on(events.NewMessage)
-    async def new_message_listener(event):
-        chat_ids = chat_service.get_all_chat_ids()
-        if event.chat_id not in chat_ids:
-            return
-        currency, amount = extract_amount_and_currency(event.message.text)
-        if currency and amount:
-            service = IncomeService()
-            await service.insert_income(event.chat_id, amount, currency)
-
-    await client.run_until_disconnected()
-
-
+load_environment()
 async def main():
     try:
-        # Initialize database
-        create_db_tables()
-
-        # Load credentials
         loader = CredentialLoader()
-        await loader.load_credentials()
+        telegramBotService = TelegramBotService()
+        telethonClientService = TelethonClientService()
 
-        # Start both clients
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+
+        create_db_tables()
+        await loader.load_credentials()
         await asyncio.gather(
-            start_telegram_bot(loader.bot_token),
-            start_telethon_client1(loader),
-            start_telethon_client(loader)
+            telegramBotService.start(loader.bot_token),
+            telethonClientService.start(loader.phone_number,loader),
+            telethonClientService.start(loader.phone_number1,loader)
         )
+        
     except Exception as e:
         print(f"Error in main: {e}")
         raise

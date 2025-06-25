@@ -1,12 +1,12 @@
 import os
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv()
+from config import load_environment
 
+load_environment()
 DATABASE_URL = (
     f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
     f"@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
@@ -29,5 +29,4 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 def create_db_tables():
-    # Import all models here to register them with the Base
     Base.metadata.create_all(bind=engine)
