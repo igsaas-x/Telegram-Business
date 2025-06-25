@@ -16,6 +16,7 @@ async def main():
         loader = CredentialLoader()
         telegramBotService = TelegramBotService()
         telethonClientService = TelethonClientService()
+        telethonClientService1 = TelethonClientService()
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -25,7 +26,7 @@ async def main():
         await asyncio.gather(
             telegramBotService.start(loader.bot_token),
             telethonClientService.start(loader.phone_number, loader),
-            telethonClientService.start(loader.phone_number1, loader)
+            telethonClientService1.start(loader.phone_number1, loader)
         )
 
     except Exception as e:
