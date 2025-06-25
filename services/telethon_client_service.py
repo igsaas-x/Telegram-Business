@@ -13,6 +13,7 @@ class TelethonClientService:
         self.client = TelegramClient(username, int(api_id), api_hash)
         await self.client.connect()
         await self.client.start(phone=username)  # type: ignore
+        print("Account " + username + " started...")
 
         chat_service = ChatService()
 
@@ -26,7 +27,8 @@ class TelethonClientService:
             message_id: int = event.message.id
             trx_id = extract_trx_id(event.message.text)
 
-            if await self.service.get_income_by_message_id(message_id) and await self.service.get_income_by_trx_id(trx_id):
+            if await self.service.get_income_by_message_id(message_id) and await self.service.get_income_by_trx_id(
+                    trx_id):
                 return
 
             if currency and amount and trx_id:
