@@ -9,10 +9,10 @@ class TelethonClientService:
         self.client = None
         self.service = IncomeService()
 
-    async def start(self, username, loader):
-        self.client = TelegramClient(username, int(loader.api_id), loader.api_hash)
+    async def start(self, username, api_id, api_hash):
+        self.client = TelegramClient(username, int(api_id), api_hash)
         await self.client.connect()
-        await self.client.start(phone=loader.phone_number)  # type: ignore
+        await self.client.start(phone=username)  # type: ignore
 
         chat_service = ChatService()
 

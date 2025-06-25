@@ -25,8 +25,8 @@ async def main():
         await loader.load_credentials()
         await asyncio.gather(
             telegramBotService.start(loader.bot_token),
-            telethonClientService.start(loader.phone_number, loader),
-            telethonClientService1.start(loader.phone_number1, loader)
+            telethonClientService.start(loader.phone_number, loader.api_id, loader.api_hash),
+            telethonClientService1.start(loader.phone_number1, loader.api_id1, loader.api_hash1)
         )
 
     except Exception as e:
