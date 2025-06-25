@@ -28,44 +28,38 @@ class TelethonClientService:
                 yesterday, time.min, tzinfo=timezone.utc
             )
 
-            incomes: List[IncomeBalance] = []
-            processed_message_ids: set[int] = set()
-            last_yesterday_message = await self.service.get_last_yesterday_message(
-                start_of_yesterday
-            )
+            last_msg = await self.service.get_last_yesterday_message(start_of_yesterday)
+            min_id = int(getattr(last_msg, "message_id", 0)) if last_msg else 0
 
-            last_yesterday_message_id = 0
-            if last_yesterday_message:
-                message_id = getattr(last_yesterday_message, "message_id", 0)
-                last_yesterday_message_id = int(message_id)
+            incomes = []
+            processed_ids = set()
 
             async for msg in self.client.iter_messages(  # type: ignore
-                chat, search="paid by", min_id=last_yesterday_message_id
+                chat, search="paid by", min_id=min_id
             ):
-                if not msg.text or not msg.date:
-                    continue
-                if msg.id in processed_message_ids:
+                if not (msg.text and msg.date) or msg.id in processed_ids:
                     continue
 
                 currency, amount = extract_amount_and_currency(msg.text)
                 trx_id = extract_trx_id(msg.text)
-                processed_message_ids.add(msg.id)
+                processed_ids.add(msg.id)
 
-                if currency and amount:
-                    currency_code = next(
-                        (c.name for c in CurrencyEnum if c.value == currency), None
-                    )
-                    if not currency_code:
-                        continue
+                if not (currency and amount):
+                    continue
 
-                    try:
-                        amount_value = float(
-                            str(amount).replace(",", "").replace(" ", "")
-                        )
-                    except Exception:
-                        continue
+                currency_code = next(
+                    (c.name for c in CurrencyEnum if c.value == currency), None
+                )
+                if not currency_code:
+                    continue
 
-                    income = IncomeBalance(
+                try:
+                    amount_value = float(str(amount).replace(",", "").replace(" ", ""))
+                except Exception:
+                    continue
+
+                incomes.append(
+                    IncomeBalance(
                         amount=amount_value,
                         chat_id=chat,
                         currency=currency_code,
@@ -75,7 +69,7 @@ class TelethonClientService:
                         message=msg.text,
                         trx_id=trx_id,
                     )
-                    incomes.append(income)
+                )
 
             summary = total_summary_report(incomes, "របាយការណ៍សរុបប្រចាំថ្ងៃនេះ")
             await event.client.send_message(chat, summary)
