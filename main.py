@@ -9,6 +9,8 @@ from helper.credential_loader import CredentialLoader
 from services import TelegramBotService, TelethonClientService
 
 load_environment()
+
+
 async def main():
     try:
         loader = CredentialLoader()
@@ -22,10 +24,10 @@ async def main():
         await loader.load_credentials()
         await asyncio.gather(
             telegramBotService.start(loader.bot_token),
-            telethonClientService.start(loader.phone_number,loader),
-            telethonClientService.start(loader.phone_number1,loader)
+            telethonClientService.start(loader.phone_number, loader),
+            telethonClientService.start(loader.phone_number1, loader)
         )
-        
+
     except Exception as e:
         print(f"Error in main: {e}")
         raise
