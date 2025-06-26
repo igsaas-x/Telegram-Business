@@ -1,9 +1,11 @@
+import json
 from calendar import monthrange
 from datetime import datetime, timedelta
-import json
+
+from telethon import Button
 
 from models import ConversationService, IncomeService, CurrencyEnum
-from telethon import Button
+
 
 class CommandHandler:
     @staticmethod
@@ -28,7 +30,7 @@ class CommandHandler:
             total = totals.get(code, 0)
             format_string = "{:,.0f}" if code == "KHR" else "{:,.2f}"
             transaction_count = transaction_counts.get(code, 0)
-            message += f"{symbol} ({code}): {format_string.format(total)} ចំនួនប្រតិបត្តិការសរុប​​: {transaction_count}\n"
+            message += f" ចំនួនប្រតិបត្តិការសរុប: {transaction_count}, ({code}): {format_string.format(total)}{symbol}\n"
         return message
 
     async def handle_date_input_response(self, event, question):
