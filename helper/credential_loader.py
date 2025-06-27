@@ -57,7 +57,7 @@ class CredentialLoader:
             "phone_number": self.phone_number,
             "bot_token": self.bot_token,
             "bot_name": self.bot_name,
-            "api_id1": self.api_id,
-            "api_hash1": self.api_hash,
-            "phone_number1": self.phone_number
+            "api_id1": self.api_id1,
+            "api_hash1": self.api_hash1,
+            "phone_number1": self.phone_number1
         }

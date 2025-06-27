@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Generator, Any, Text
+from typing import Optional, Generator, Any
 
 from sqlalchemy import (
     Float,
@@ -13,6 +13,8 @@ from sqlalchemy import (
     Text,
     func,
 )
+import pytz as pytz
+from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger, Text
 from sqlalchemy.orm import Session
 
 from config.database_config import Base, SessionLocal
@@ -67,7 +69,8 @@ class IncomeService:
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        current_date = datetime.now()
+        tz = pytz.timezone("Asia/Phnom_Penh")
+        current_date = datetime.now(tz)
 
         with self._get_db() as db:
             try:

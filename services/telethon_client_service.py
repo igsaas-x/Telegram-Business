@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta, timezone, time
 from typing import List, Set
 from alembic.op import f
 from telethon import TelegramClient, events
+
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.total_summary_report_helper import total_summary_report
 from models import ChatService, IncomeService
@@ -13,10 +14,13 @@ class TelethonClientService:
         self.client = None
         self.service = IncomeService()
 
-    async def start(self, username, loader):
-        self.client = TelegramClient(username, int(loader.api_id), loader.api_hash)
+    async def start(self, username, api_id, api_hash):
+        self.client = TelegramClient(username, int(api_id), api_hash)
         await self.client.connect()
         await self.client.start(phone=loader.phone_number)  # type: ignore
+        await self.client.start(phone=username)  # type: ignore
+        print("Account " + username + " started...")
+
         chat_service = ChatService()
 
         @self.client.on(events.NewMessage(pattern="/verify"))
