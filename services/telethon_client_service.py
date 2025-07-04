@@ -1,8 +1,9 @@
-from datetime import datetime, timedelta, timezone, time
+from datetime import timedelta
 
 from telethon import TelegramClient, events
 
 from helper import extract_amount_and_currency, extract_trx_id
+from helper.dateutils import DateUtils
 from helper.total_summary_report_helper import total_summary_report
 from models import ChatService, IncomeService
 from models.income_balance import CurrencyEnum, IncomeBalance
@@ -16,7 +17,6 @@ class TelethonClientService:
     async def start(self, username, api_id, api_hash):
         self.client = TelegramClient(username, int(api_id), api_hash)
         await self.client.connect()
-        await self.client.start(phone=loader.phone_number)  # type: ignore
         await self.client.start(phone=username)  # type: ignore
         print("Account " + username + " started...")
 
@@ -25,11 +25,9 @@ class TelethonClientService:
         @self.client.on(events.NewMessage(pattern="/verify"))
         async def _verify_current_date_report(event):
             chat = event.chat_id
-            today = datetime.now(timezone.utc).date()
+            today = DateUtils.today()
             yesterday = today - timedelta(days=1)
-            start_of_yesterday = datetime.combine(
-                yesterday, time.min, tzinfo=timezone.utc
-            )
+            start_of_yesterday = DateUtils.start_of_day(yesterday)
 
             last_msg = await self.service.get_last_yesterday_message(start_of_yesterday)
             min_id = int(getattr(last_msg, "message_id", 0)) if last_msg else 0

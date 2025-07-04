@@ -14,6 +14,10 @@ class CredentialLoader:
         'API_HASH1',
         'PHONE_NUMBER1'
     ]
+    
+    OPTIONAL_ENV_VARS = [
+        'TIMEZONE'
+    ]
 
     def __init__(self):
         self.api_id: str = ""

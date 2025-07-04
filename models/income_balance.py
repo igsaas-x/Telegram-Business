@@ -3,7 +3,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Generator, Any
 
-import pytz as pytz
 from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger, Text
 from sqlalchemy import (
     func,
@@ -11,6 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session
 
 from config.database_config import Base, SessionLocal
+from helper.dateutils import DateUtils
 
 
 class CurrencyEnum(Enum):
@@ -32,7 +32,7 @@ class IncomeBalance(Base):
     chat_id = Column(BigInteger, nullable=False)
     currency = Column(String(16), nullable=False)
     original_amount = Column(Float, nullable=False)
-    income_date = Column(DateTime, default=datetime.now, nullable=False)
+    income_date = Column(DateTime, default=DateUtils.now, nullable=False)
     message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
     trx_id = Column(String(50), nullable=False)
@@ -62,8 +62,7 @@ class IncomeService:
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        tz = pytz.timezone("Asia/Phnom_Penh")
-        current_date = datetime.now(tz)
+        current_date = DateUtils.now()
 
         with self._get_db() as db:
             try:
