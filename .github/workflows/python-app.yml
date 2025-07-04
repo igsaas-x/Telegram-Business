@@ -60,15 +60,22 @@ jobs:
           git pull origin main
           source myenv/bin/activate
           
-          # Set environment variables from GitHub secrets
-          export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
-          export BOT_NAME="${{ secrets.BOT_NAME }}"
-          export PHONE_NUMBER="${{ secrets.PHONE_NUMBER }}"
-          export API_ID="${{ secrets.API_ID }}"
-          export API_HASH="${{ secrets.API_HASH }}"
-          export PHONE_NUMBER1="${{ secrets.PHONE_NUMBER1 }}"
-          export API_ID1="${{ secrets.API_ID1 }}"
-          export API_HASH1="${{ secrets.API_HASH1 }}"
+          # Create .env file with secrets from GitHub
+          cat > .env << EOF
+          DB_NAME=telegram_bot
+          DB_USER=root
+          DB_PASSWORD=root
+          DB_HOST=localhost
+          
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          BOT_NAME=${{ secrets.BOT_NAME }}
+          PHONE_NUMBER=${{ secrets.PHONE_NUMBER }}
+          API_ID=${{ secrets.API_ID }}
+          API_HASH=${{ secrets.API_HASH }}
+          PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
+          API_ID1=${{ secrets.API_ID1 }}
+          API_HASH1=${{ secrets.API_HASH1 }}
+          EOF
           
           pip install -r requirements.txt
           sudo systemctl restart mytelegrambot
