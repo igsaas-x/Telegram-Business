@@ -49,7 +49,10 @@ class CredentialLoader:
                 missing.append(var)
 
         if missing:
-            raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+            error_msg = f"Missing required environment variables: {', '.join(missing)}\n"
+            error_msg += "For local development, set these in your .env file.\n"
+            error_msg += "For CI/CD deployment, set these as GitHub Secrets in your repository settings."
+            raise EnvironmentError(error_msg)
 
         return {
             "api_id": self.api_id,
