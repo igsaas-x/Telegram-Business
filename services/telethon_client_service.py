@@ -1,6 +1,5 @@
-from datetime import date, datetime, timedelta, timezone, time
-from typing import List, Set
-from alembic.op import f
+from datetime import datetime, timedelta, timezone, time
+
 from telethon import TelegramClient, events
 
 from helper import extract_amount_and_currency, extract_trx_id

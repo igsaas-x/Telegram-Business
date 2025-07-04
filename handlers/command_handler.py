@@ -4,9 +4,8 @@ from datetime import datetime, timedelta
 
 from telethon import Button
 
-from models import ConversationService, IncomeService, CurrencyEnum
-from telethon import Button
 from helper import total_summary_report
+from models import ConversationService, IncomeService
 
 
 class CommandHandler:

@@ -3,18 +3,11 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Generator, Any
 
-from sqlalchemy import (
-    Float,
-    String,
-    Column,
-    Integer,
-    DateTime,
-    BigInteger,
-    Text,
-    func,
-)
 import pytz as pytz
 from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger, Text
+from sqlalchemy import (
+    func,
+)
 from sqlalchemy.orm import Session
 
 from config.database_config import Base, SessionLocal
