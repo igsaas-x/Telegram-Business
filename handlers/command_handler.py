@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from telethon import Button
 
-from helper import total_summary_report
+from helper import total_summary_report, DateUtils
 from models import ConversationService, IncomeService
 
 
@@ -29,7 +29,7 @@ class CommandHandler:
                 context_data = json.loads(question.context_data)
 
             current_month = context_data.get(
-                "current_month", datetime.now().strftime("%Y-%m")
+                "current_month", DateUtils.now().strftime("%Y-%m")
             )
             date_str = f"{current_month}-{day:02d}"
 
@@ -68,7 +68,7 @@ class CommandHandler:
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
     async def handle_daily_summary(self, event):
-        today = datetime.now()
+        today = DateUtils.now()
         buttons = []
 
         for i in range(2, -1, -1):
@@ -83,7 +83,7 @@ class CommandHandler:
         await event.edit("ឆែករបាយការណ៍ថ្ងៃ:", buttons=buttons)
 
     async def handle_weekly_summary(self, event):
-        now = datetime.now()
+        now = DateUtils.now()
         year, month = now.year, now.month
 
         first_day = datetime(year, month, 1)
@@ -114,7 +114,7 @@ class CommandHandler:
         await event.edit("ជ្រើសរើសសប្តាហ៍:", buttons=buttons)
 
     async def handle_monthly_summary(self, event):
-        now = datetime.now()
+        now = DateUtils.now()
         year = now.year
         buttons = []
 
@@ -136,7 +136,7 @@ class CommandHandler:
         )
 
         conversation_service = ConversationService()
-        current_month = datetime.now().strftime("%Y-%m")
+        current_month = DateUtils.now().strftime("%Y-%m")
         context_data = json.dumps({"current_month": current_month})
         await conversation_service.save_question(
             chat_id=chat_id,

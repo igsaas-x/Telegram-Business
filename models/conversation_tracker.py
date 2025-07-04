@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
 
@@ -7,6 +6,7 @@ from sqlalchemy import String, Column, Integer, DateTime, Boolean, BigInteger
 from sqlalchemy.orm import Session
 
 from config.database_config import Base, SessionLocal
+from helper.dateutils import DateUtils
 
 
 class QuestionType(Enum):
@@ -21,13 +21,13 @@ class BotQuestion(Base):
     message_id = Column(Integer, nullable=False)
     question_type = Column(String(32), nullable=False)
     is_replied = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=DateUtils.now)
+    updated_at = Column(DateTime, default=DateUtils.now, onupdate=DateUtils.now)
     context_data = Column(String(512), nullable=True)
 
     def mark_as_replied(self) -> None:
         self.is_replied = True
-        self.updated_at = datetime.now()
+        self.updated_at = DateUtils.now()
 
 class ConversationService:
     def __init__(self, db_session: Optional[Session] = None):
