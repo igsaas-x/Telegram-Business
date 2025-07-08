@@ -109,11 +109,11 @@ class CommandHandler:
             )
             return
 
-        message = self.format_totals_message(
-            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី {last_shift.shift}",
-            incomes,
+        await event.delete()
+        await event.client.send_message(
+            event.chat_id,
+            f"បញ្ជីសម្រាប់​ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេន {last_shift.shift} ត្រូវបានបិទ។",
         )
-        await event.client.send_message(event.chat_id, message)
 
     async def handle_daily_summary(self, event):
         today = DateUtils.now()
