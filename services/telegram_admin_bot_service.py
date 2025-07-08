@@ -42,6 +42,9 @@ class TelegramAdminBot:
         try:
             chat_id = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
+            
             identifier: str = chat.user.identifier if chat.user else "" # type: ignore
             print(f"Identifier: {identifier}")
             user = await self.user_service.get_user_by_identifier(identifier)
@@ -53,8 +56,8 @@ class TelegramAdminBot:
             context.user_data["chat_id_input"] = chat_id  # type: ignore
             context.user_data["found_user"] = user  # type: ignore
             return await self.show_user_confirmation(update, context, user) 
-        except ValueError:
-            await update.message.reply_text("Invalid identifier.")  # type: ignore
+        except Exception as e:
+            await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             return ConversationHandler.END
 
 
@@ -266,6 +269,8 @@ class TelegramAdminBot:
             # Validate not found
             chat_id: str = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
 
             # Validate already activated
             if chat.is_active:  # type: ignore
@@ -275,8 +280,8 @@ class TelegramAdminBot:
             await self.chat_service.update_chat_status(chat_id, True)
             await update.message.reply_text("Chat has been activated successfully.")
 
-        except ValueError:
-            await update.message.reply_text("Invalid chat ID.")
+        except Exception as e:
+            await update.message.reply_text(f"Error: {str(e)}")
 
         return ConversationHandler.END
 
@@ -289,6 +294,8 @@ class TelegramAdminBot:
         try:
             chat_id: str = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
 
             # Validate already deactivated
             if not chat.is_active:  # type: ignore
@@ -298,8 +305,8 @@ class TelegramAdminBot:
             await self.chat_service.update_chat_status(chat_id, False)
             await update.message.reply_text("Chat has been deactivated successfully.")
 
-        except ValueError:
-            await update.message.reply_text("Invalid chat ID.")
+        except Exception as e:
+            await update.message.reply_text(f"Error: {str(e)}")
 
         return ConversationHandler.END
 
@@ -338,6 +345,7 @@ class TelegramAdminBot:
         )
 
         # Package command handler with multiple states
+        # Note: per_message=False warning is expected when mixing CallbackQueryHandler with other handler types
         package_handler = ConversationHandler(
             entry_points=[CommandHandler("package", self.package)],
             states={

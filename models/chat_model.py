@@ -75,6 +75,19 @@ class ChatService:
         finally:
             session.close()
 
+    async def update_chat_user_id(self, chat_id: str, user_id: int):
+        session = self.Session()
+        try:
+            session.query(Chat).filter_by(chat_id=chat_id).update({"user_id": user_id})
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating chat user_id: {e}")
+            return False
+        finally:
+            session.close()
+
     async def get_chat_by_chat_id(self, chat_id: str) -> Chat | None:
         session = self.Session()
         try:

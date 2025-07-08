@@ -44,7 +44,12 @@ class TelegramBotService:
                 # Check if chat_id already exists
                 existing_chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
                 if existing_chat:
-                    await event.respond(f"Chat ID {event.chat_id} is already registered.")
+                    # Update the existing chat with the current user_id
+                    if user and existing_chat.user_id != user.id:
+                        await self.chat_service.update_chat_user_id(str(event.chat_id), user.id)
+                        await event.respond(f"Chat ID {event.chat_id} is already registered. Updated with current user.")
+                    else:
+                        await event.respond(f"Chat ID {event.chat_id} is already registered.")
                     return
 
                 await self.event_handler.register(event, user)
