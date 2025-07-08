@@ -163,8 +163,8 @@ class TelegramAdminBot:
             chat_id: str = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
 
-            # Validate already activated
-            if chat.is_active:  # type: ignore
+            # Validate already deactivated
+            if not chat.is_active:  # type: ignore
                 await update.message.reply_text("Chat has already been deactivated.")
                 return ConversationHandler.END
 
