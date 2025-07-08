@@ -15,10 +15,11 @@ class EventHandler:
         buttons = [
             [
                 Button.inline(
-                    "ប្រចាំថ្ងៃ" if not shift_number else f"ប្រចាំថ្ងៃ(វេន)",
+                    "ប្រចាំថ្ងៃ",
                     "daily_summary",
                 )
             ],
+            [Button.inline("ប្រចាំថ្ងៃ(វេន)", "report_per_shift")] if shift_number else [],
             [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
             [Button.inline("ប្រចាំខែ", "monthly_summary")],
         ]
@@ -62,7 +63,8 @@ class EventHandler:
             "daily_summary": self.command_handler.handle_daily_summary,
             "weekly_summary": self.command_handler.handle_weekly_summary,
             "monthly_summary": self.command_handler.handle_monthly_summary,
-            "close_shift": self.command_handler.handle_report_per_shift,
+            "report_per_shift": self.command_handler.handle_report_per_shift,
+            "close_shift": self.command_handler.close_shift,
             "other_dates": self.command_handler.handle_other_dates,
         }
 

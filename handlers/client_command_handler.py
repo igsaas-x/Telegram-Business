@@ -73,7 +73,7 @@ class CommandHandler:
                 message = self.format_totals_message(
                     f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
                 )
-                await self._handle_unlimited_package_report(event, message)
+                await event.client.send_message(event.chat_id, message)
 
             except ValueError:
                 await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -85,6 +85,7 @@ class CommandHandler:
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
     async def handle_report_per_shift(self, event):
+        await event.delete()
         chat_id = event.chat_id
         income_service = IncomeService()
         last_shift = await income_service.get_last_shift_id(chat_id)
@@ -109,10 +110,21 @@ class CommandHandler:
             )
             return
 
+        message = self.format_totals_message(
+            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី {last_shift.shift}",
+            incomes,
+        )
+        await event.client.send_message(
+            event.chat_id,
+            message,
+            buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")],
+        )
+
+    async def close_shift(self, event):
         await event.delete()
         await event.client.send_message(
             event.chat_id,
-            f"បញ្ជីសម្រាប់​ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេន {last_shift.shift} ត្រូវបានបិទ។",
+            "បានបិទបញ្ជីសម្រាប់វេន។",
         )
 
     async def handle_daily_summary(self, event):
@@ -221,7 +233,7 @@ class CommandHandler:
             message = self.format_totals_message(
                 f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
             )
-            await self._handle_unlimited_package_report(event, message)
+            await event.client.send_message(chat_id, message)
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
