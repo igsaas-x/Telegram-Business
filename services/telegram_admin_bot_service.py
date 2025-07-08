@@ -190,7 +190,9 @@ class TelegramAdminBot:
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True
+            per_chat=True,
+            per_user=True,
+            per_message=False
         )
 
         deactivate_command_handler = ConversationHandler(
@@ -203,7 +205,9 @@ class TelegramAdminBot:
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True
+            per_chat=True,
+            per_user=True,
+            per_message=False
         )
 
         package_command_handler = ConversationHandler(
@@ -215,7 +219,10 @@ class TelegramAdminBot:
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True
+            per_chat=True,
+            per_user=True,
+            per_message=False,
+            allow_reentry=True
         )
 
         self.app.add_handler(activate_command_handler)
