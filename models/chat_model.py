@@ -3,7 +3,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 
 from config.database_config import Base, SessionLocal
-from models.user_model import User
+from models import User, IncomeService, ServicePackage
 
 
 class Chat(Base):
@@ -20,6 +20,16 @@ class Chat(Base):
 class ChatService:
     def __init__(self):
         self.Session = SessionLocal
+        self.income_service = IncomeService()
+
+    async def is_unlimited_package(self, chat_id: str) -> int | None:
+        try:
+            chat = self.get_chat_by_chat_id(chat_id)
+            if chat and chat.enable_shift and chat.user.package == ServicePackage.UNLIMITED:  # type: ignore
+                last_shift = await self.income_service.get_last_shift_id(chat_id)
+                return last_shift.shift if last_shift else None  # type: ignore
+        except Exception as e:
+            print(f"Error checking unlimited package: {e}")
 
     def register_chat_id(self, chat_id, group_name, user: User | None):
         session = self.Session()

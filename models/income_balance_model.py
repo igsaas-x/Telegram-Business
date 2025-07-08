@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Optional, Generator, Any
 
@@ -38,10 +38,10 @@ class IncomeBalance(BaseModel):
 
     id = Column(Integer, primary_key=True)
     amount = Column(Float, nullable=False)
-    chat_id = Column(BigInteger, nullable=False)
+    chat_id = Column(String(255), nullable=False)
     currency = Column(String(16), nullable=False)
     original_amount = Column(Float, nullable=False)
-    income_date = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    income_date = Column(DateTime, default=lambda: datetime.now(), nullable=False)
     message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
     shift = Column(Integer, nullable=True, default=1)
@@ -70,7 +70,7 @@ class IncomeService:
                 return income.first()
             return None
 
-    async def get_last_shift_id(self, chat_id: int) -> IncomeBalance:
+    async def get_last_shift_id(self, chat_id: str) -> IncomeBalance:
         with self._get_db() as db:
             last_income = (
                 db.query(IncomeBalance)
@@ -82,7 +82,7 @@ class IncomeService:
 
     async def insert_income(
         self,
-        chat_id: int,
+        chat_id: str,
         amount: float,
         currency: str,
         original_amount: float,
@@ -93,7 +93,7 @@ class IncomeService:
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        current_date = datetime.now(UTC)
+        current_date = datetime.now()
 
         with self._get_db() as db:
             try:
@@ -122,7 +122,7 @@ class IncomeService:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(IncomeBalance.id == income_id).first()
 
-    async def get_income_by_chat_id(self, chat_id: int) -> list[IncomeBalance]:
+    async def get_income_by_chat_id(self, chat_id: str) -> list[IncomeBalance]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance).filter(IncomeBalance.chat_id == chat_id).all()
@@ -172,7 +172,7 @@ class IncomeService:
     async def get_income_chat_id_and_shift(
         self, chat_id: int, shift: int
     ) -> list[IncomeBalance]:
-        current_date = datetime.now(UTC)
+        current_date = datetime.now()
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance)

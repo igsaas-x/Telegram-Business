@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from sqlalchemy import Column, DateTime
 from config.database_config import Base
 
@@ -6,10 +6,10 @@ from config.database_config import Base
 class BaseModel(Base):
     __abstract__ = True
 
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(), nullable=False)
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(),
+        onupdate=lambda: datetime.now(),
         nullable=False,
     )

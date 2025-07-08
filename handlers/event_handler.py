@@ -11,14 +11,17 @@ class EventHandler:
         self.income_service = IncomeService()
 
     async def menu(self, event):
+        shift_number = await self.chat_service.is_unlimited_package(event.chat_id)
         buttons = [
-            [Button.inline("ប្រចាំថ្ងៃ", "daily_summary")],
+            [
+                Button.inline(
+                    "ប្រចាំថ្ងៃ" if not shift_number else f"ប្រចាំថ្ងៃ(វេន)",
+                    "daily_summary",
+                )
+            ],
             [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
             [Button.inline("ប្រចាំខែ", "monthly_summary")],
         ]
-        chat = self.chat_service.get_chat_by_chat_id(event.chat_id)
-        if chat and chat.enable_shift and chat.user.package == ServicePackage.UNLIMITED:  # type: ignore
-            buttons.append([Button.inline("បិទបញ្ជី", "close_shift")])
         await event.respond("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
 
     async def register(self, event, user: User | None):

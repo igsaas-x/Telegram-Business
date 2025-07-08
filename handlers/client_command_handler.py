@@ -5,14 +5,31 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from helper import total_summary_report, DateUtils
-from models import ConversationService, IncomeService
+from models import ConversationService, IncomeService, ChatService, ServicePackage
 
 
 class CommandHandler:
+    def __init__(self):
+        self.chat_service = ChatService()
+
     @staticmethod
     def format_totals_message(period_text: str, incomes):
         title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, title)
+
+    async def _handle_unlimited_package_report(self, event, message: str):
+        buttons = []
+        shift_number = await self.chat_service.is_unlimited_package(event.chat_id)
+        if shift_number:
+            buttons.append(
+                [
+                    Button.inline(
+                        f"បិទបញ្ជីសម្រាប់វេន ({shift_number})",
+                        "close_shift",
+                    )
+                ]
+            )
+        await event.client.send_message(event.chat_id, message, buttons=buttons)
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -56,7 +73,7 @@ class CommandHandler:
                 message = self.format_totals_message(
                     f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
                 )
-                await event.client.send_message(event.chat_id, message)
+                await self._handle_unlimited_package_report(event, message)
 
             except ValueError:
                 await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -204,7 +221,7 @@ class CommandHandler:
             message = self.format_totals_message(
                 f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
             )
-            await event.client.send_message(chat_id, message)
+            await self._handle_unlimited_package_report(event, message)
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")

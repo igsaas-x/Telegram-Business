@@ -93,7 +93,6 @@ class TelegramAdminBot:
                 identifier: str = chat.user.identifier if chat.user else "" # type: ignore
                 await self.user_service.update_user_package(identifier, ServicePackage(selected_package))
                 if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
-                    print(f"Updating chat enable shift to True for chat_id: {chat_id}")
                     self.chat_service.update_chat_enable_shift(chat_id, True)
                 else:
                     self.chat_service.update_chat_enable_shift(chat_id, False)
