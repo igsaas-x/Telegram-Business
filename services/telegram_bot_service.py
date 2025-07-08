@@ -3,12 +3,15 @@ import os
 
 from telethon import TelegramClient, events
 from handlers import EventHandler
+from models import UserService, ChatService
 
 
 class TelegramBotService:
     def __init__(self):
         self.bot: TelegramClient = None  # type: ignore
         self.event_handler = EventHandler()
+        self.user_service = UserService()
+        self.chat_service = ChatService()
 
     async def start(self, bot_token: str):
         self.bot = TelegramClient(
@@ -32,7 +35,16 @@ class TelegramBotService:
         # Register command handler
         @self.bot.on(events.NewMessage(pattern="/register"))
         async def register_handler(event):
-            await self.event_handler.register(event)
+            # Check if user already exists
+            existing_chat = self.chat_service.get_chat_by_chat_id(event.chat_id)
+            if existing_chat:
+                await event.respond(f"Chat ID {event.chat_id} is already registered.")
+                return
+
+            # Insert user on registration
+            sender = await event.get_sender()
+            user = await self.user_service.create_user(sender)
+            await self.event_handler.register(event, user)
 
         # Callback query handler
         @self.bot.on(events.CallbackQuery())
