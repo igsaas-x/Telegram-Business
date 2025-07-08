@@ -39,6 +39,31 @@ jobs:
         black --check .
       continue-on-error: true  # Don't fail the build for formatting issues
 
+    - name: Verify required secrets are set
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        MISSING_SECRETS=0
+        REQUIRED_SECRETS=("HOST" "USERNAME" "PASSWORD" "BOT_TOKEN" "BOT_NAME" "PHONE_NUMBER" "API_ID" "API_HASH" "PHONE_NUMBER1" "API_ID1" "API_HASH1" "ADMIN_BOT_TOKEN")
+        
+        echo "Checking for required secrets..."
+        for SECRET in "${REQUIRED_SECRETS[@]}"
+        do
+          VALUE=$(echo "${{ toJSON(secrets) }}" | jq -r ".$SECRET // \"\"")
+          if [ -z "$VALUE" ] || [ "$VALUE" == "null" ]; then
+            echo "::error::Required secret '$SECRET' is not set."
+            MISSING_SECRETS=$((MISSING_SECRETS+1))
+          else
+            echo "Secret '$SECRET' is properly set."
+          fi
+        done
+        
+        if [ $MISSING_SECRETS -gt 0 ]; then
+          echo "::error::$MISSING_SECRETS required secret(s) are missing. Deployment will fail."
+          exit 1
+        else
+          echo "All required secrets are properly configured."
+        fi
+
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
