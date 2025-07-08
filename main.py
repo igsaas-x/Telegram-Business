@@ -34,6 +34,7 @@ async def main(loader: CredentialLoader) -> None:
     try:
         telegramBotService = TelegramBotService()
         telethonClientService = TelethonClientService()
+        telethonClientService1 = TelethonClientService()
         adminBot = TelegramAdminBot(loader.admin_bot_token)
 
         alembic_cfg = Config("alembic.ini")
@@ -48,6 +49,11 @@ async def main(loader: CredentialLoader) -> None:
             asyncio.create_task(telegramBotService.start(loader.bot_token)),
             asyncio.create_task(
                 telethonClientService.start(
+                    loader.phone_number, loader.api_id, loader.api_hash
+                )
+            ),
+            asyncio.create_task(
+                telethonClientService1.start(
                     loader.phone_number, loader.api_id, loader.api_hash
                 )
             ),
