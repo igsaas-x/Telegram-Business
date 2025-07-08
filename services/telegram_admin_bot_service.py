@@ -319,7 +319,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False
+            per_message=True
         )
 
         deactivate_command_handler = ConversationHandler(
@@ -334,7 +334,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False
+            per_message=True
         )
 
         # Package command handler with multiple states
@@ -355,7 +355,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False
+            per_message=True
         )
 
         self.app.add_handler(activate_command_handler)
