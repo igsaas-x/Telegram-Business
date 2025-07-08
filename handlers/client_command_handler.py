@@ -5,14 +5,31 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from helper import total_summary_report, DateUtils
-from models import ConversationService, IncomeService
+from models import ConversationService, IncomeService, ChatService, ServicePackage
 
 
 class CommandHandler:
+    def __init__(self):
+        self.chat_service = ChatService()
+
     @staticmethod
     def format_totals_message(period_text: str, incomes):
         title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, title)
+
+    async def _handle_unlimited_package_report(self, event, message: str):
+        buttons = []
+        shift_number = await self.chat_service.is_unlimited_package(event.chat_id)
+        if shift_number:
+            buttons.append(
+                [
+                    Button.inline(
+                        f"បិទបញ្ជីសម្រាប់វេន ({shift_number})",
+                        "close_shift",
+                    )
+                ]
+            )
+        await event.client.send_message(event.chat_id, message, buttons=buttons)
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -66,6 +83,49 @@ class CommandHandler:
         except Exception as e:
             print(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
+
+    async def handle_report_per_shift(self, event):
+        await event.delete()
+        chat_id = event.chat_id
+        income_service = IncomeService()
+        last_shift = await income_service.get_last_shift_id(chat_id)
+        if last_shift is None or last_shift.shift_closed:  # type: ignore
+            await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
+            return
+
+        income_service = IncomeService()
+        incomes = await income_service.get_income_chat_id_and_shift(
+            chat_id=event.chat_id,
+            shift=last_shift.shift,  # type: ignore
+        )
+
+        await income_service.update_shift(
+            income_id=last_shift.id,  # type: ignore
+            shift=last_shift.shift + 1,  # type: ignore
+        )
+
+        if not incomes:
+            await event.respond(
+                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។"
+            )
+            return
+
+        message = self.format_totals_message(
+            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី {last_shift.shift}",
+            incomes,
+        )
+        await event.client.send_message(
+            event.chat_id,
+            message,
+            buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")],
+        )
+
+    async def close_shift(self, event):
+        await event.delete()
+        await event.client.send_message(
+            event.chat_id,
+            "បានបិទបញ្ជីសម្រាប់វេន។",
+        )
 
     async def handle_daily_summary(self, event):
         today = DateUtils.now()

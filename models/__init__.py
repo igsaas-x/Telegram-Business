@@ -1,11 +1,16 @@
-from .chat import ChatService
-from .conversation_tracker import ConversationService
-from .income_balance import IncomeService
-from .income_balance import CurrencyEnum
+# Import the models first
+from models.user_model import User, UserService, ServicePackage
+from models.income_balance_model import IncomeService, CurrencyEnum
+from models.chat_model import Chat, ChatService
+from models.conversation_tracker_model import ConversationService
 
 __all__ = [
-    'ChatService',
-    'ConversationService',
-    'IncomeService',
-    'CurrencyEnum'
-]   
+    "ChatService",
+    "IncomeService",
+    "User",
+    "ConversationService",
+    "CurrencyEnum",
+    "UserService",
+    "Chat",
+    "ServicePackage",
+]
