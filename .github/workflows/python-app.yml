@@ -75,6 +75,7 @@ jobs:
           PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
           API_ID1=${{ secrets.API_ID1 }}
           API_HASH1=${{ secrets.API_HASH1 }}
+          ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
           EOF
           
           pip install -r requirements.txt

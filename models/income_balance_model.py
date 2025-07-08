@@ -3,7 +3,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Generator, Any
 
-from pydantic.main import BaseModel
 from sqlalchemy import (
     Boolean,
     Float,
@@ -18,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session
 
 from config.database_config import SessionLocal
+from helper import DateUtils
 from models.base_model import BaseModel
 
 
@@ -41,7 +41,7 @@ class IncomeBalance(BaseModel):
     chat_id = Column(String(255), nullable=False)
     currency = Column(String(16), nullable=False)
     original_amount = Column(Float, nullable=False)
-    income_date = Column(DateTime, default=lambda: datetime.now(), nullable=False)
+    income_date = Column(DateTime, default=lambda: DateUtils.now, nullable=False)
     message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
     shift = Column(Integer, nullable=True, default=1)
@@ -70,7 +70,7 @@ class IncomeService:
                 return income.first()
             return None
 
-    async def get_last_shift_id(self, chat_id: str) -> IncomeBalance:
+    async def get_last_shift_id(self, chat_id: str) -> type[IncomeBalance] | None:
         with self._get_db() as db:
             last_income = (
                 db.query(IncomeBalance)
@@ -81,19 +81,19 @@ class IncomeService:
             return last_income
 
     async def insert_income(
-        self,
-        chat_id: str,
-        amount: float,
-        currency: str,
-        original_amount: float,
-        message_id: int,
-        message: str,
-        trx_id: str,
-        shift: int,
+            self,
+            chat_id: str,
+            amount: float,
+            currency: str,
+            original_amount: float,
+            message_id: int,
+            message: str,
+            trx_id: str,
+            shift: int,
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        current_date = datetime.now()
+        current_date = DateUtils.today()
 
         with self._get_db() as db:
             try:
@@ -122,7 +122,7 @@ class IncomeService:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(IncomeBalance.id == income_id).first()
 
-    async def get_income_by_chat_id(self, chat_id: str) -> list[IncomeBalance]:
+    async def get_income_by_chat_id(self, chat_id: str) -> list[type[IncomeBalance]]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance).filter(IncomeBalance.chat_id == chat_id).all()
@@ -131,21 +131,21 @@ class IncomeService:
     async def get_income_by_message_id(self, message_id: int) -> bool:
         with self._get_db() as db:
             return (
-                db.query(IncomeBalance)
-                .filter(IncomeBalance.message_id == message_id)
-                .first()
-                is not None
+                    db.query(IncomeBalance)
+                    .filter(IncomeBalance.message_id == message_id)
+                    .first()
+                    is not None
             )
 
     async def get_income_by_trx_id(self, trx_id: str) -> bool:
         with self._get_db() as db:
             return (
-                db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()
-                is not None
+                    db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()
+                    is not None
             )
 
     async def get_last_yesterday_message(
-        self, date: datetime
+            self, date: datetime
     ) -> Optional[IncomeBalance]:
         with self._get_db() as db:
             return (
@@ -156,8 +156,8 @@ class IncomeService:
             )
 
     async def get_income_by_date_and_chat_id(
-        self, chat_id: int, start_date: datetime, end_date: datetime
-    ) -> list[IncomeBalance]:
+            self, chat_id: int, start_date: datetime, end_date: datetime
+    ) -> list[type[IncomeBalance]]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance)
@@ -170,9 +170,9 @@ class IncomeService:
             )
 
     async def get_income_chat_id_and_shift(
-        self, chat_id: int, shift: int
-    ) -> list[IncomeBalance]:
-        current_date = datetime.now()
+            self, chat_id: int, shift: int
+    ) -> list[type[IncomeBalance]]:
+        current_date = DateUtils.today()
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance)
