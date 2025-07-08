@@ -210,24 +210,28 @@ class TelegramAdminBot:
             per_message=False
         )
 
-        package_command_handler = ConversationHandler(
+        # Split the package command handler into two separate handlers
+        # First handler for text input
+        package_text_handler = ConversationHandler(
             entry_points=[CommandHandler("package", self.package)],
             states={
                 PACKAGE_COMMAND_CODE: [
                     MessageHandler(filters.TEXT & filters.REPLY, self.validate_user_identifier),
-                    CallbackQueryHandler(self.package_button),
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
-            allow_reentry=True
+            per_message=False
         )
+        
+        # Second handler specifically for button callbacks
+        package_button_handler = CallbackQueryHandler(self.package_button)
 
         self.app.add_handler(activate_command_handler)
         self.app.add_handler(deactivate_command_handler)
-        self.app.add_handler(package_command_handler)
+        self.app.add_handler(package_text_handler)
+        self.app.add_handler(package_button_handler)  # Add the callback handler separately
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
