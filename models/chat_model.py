@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
 from models import User, IncomeService, ServicePackage
@@ -91,7 +91,8 @@ class ChatService:
     async def get_chat_by_chat_id(self, chat_id: str) -> Chat | None:
         session = self.Session()
         try:
-            return session.query(Chat).filter_by(chat_id=chat_id).first()
+            chat = session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first()
+            return chat
         except Exception as e:
             print(f"Error fetching chat by chat ID: {e}")
             return None
