@@ -2,7 +2,7 @@
 
 Revision ID: 03_modify_name_fields
 Revises: 02_add_timestamps
-Create Date: 2025-07-08 15:30:00
+Create Date: 2025-07-08 15:39:00
 
 """
 import sqlalchemy as sa
@@ -16,29 +16,30 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Drop unique constraints
-    op.drop_constraint('users_first_name_key', 'users', type_='unique')
-    op.drop_constraint('users_last_name_key', 'users', type_='unique')
+    # MySQL-compatible approach: directly alter columns to remove unique and make nullable
+    conn = op.get_bind()
     
-    # Make columns nullable
-    op.alter_column('users', 'first_name',
-                    existing_type=sa.String(50),
-                    nullable=True)
-    op.alter_column('users', 'last_name',
-                    existing_type=sa.String(50),
-                    nullable=True)
+    # Use raw SQL to modify first_name column
+    conn.execute(sa.text(
+        "ALTER TABLE users MODIFY first_name VARCHAR(50) NULL"
+    ))
+    
+    # Use raw SQL to modify last_name column
+    conn.execute(sa.text(
+        "ALTER TABLE users MODIFY last_name VARCHAR(50) NULL"
+    ))
 
 
 def downgrade() -> None:
-    # Revert columns back to not nullable
-    # Note: This might fail if there are null values in these columns
-    op.alter_column('users', 'first_name',
-                    existing_type=sa.String(50),
-                    nullable=False)
-    op.alter_column('users', 'last_name',
-                    existing_type=sa.String(50),
-                    nullable=False)
+    # Revert columns back to not nullable and unique
+    conn = op.get_bind()
     
-    # Recreate unique constraints
-    op.create_unique_constraint('users_first_name_key', 'users', ['first_name'])
-    op.create_unique_constraint('users_last_name_key', 'users', ['last_name'])
+    # Use raw SQL to revert first_name column
+    conn.execute(sa.text(
+        "ALTER TABLE users MODIFY first_name VARCHAR(50) NOT NULL UNIQUE"
+    ))
+    
+    # Use raw SQL to revert last_name column
+    conn.execute(sa.text(
+        "ALTER TABLE users MODIFY last_name VARCHAR(50) NOT NULL UNIQUE"
+    ))
