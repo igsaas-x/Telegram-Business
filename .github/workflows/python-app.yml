@@ -39,6 +39,20 @@ jobs:
       continue-on-error: true  # Don't fail the build for formatting issues
 
     - name: Verify required secrets are set
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      env:
+        CHECK_HOST: ${{ secrets.HOST != '' && 'true' || 'false' }}
+        CHECK_USERNAME: ${{ secrets.USERNAME != '' && 'true' || 'false' }}
+        CHECK_PASSWORD: ${{ secrets.PASSWORD != '' && 'true' || 'false' }}
+        CHECK_BOT_TOKEN: ${{ secrets.BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_BOT_NAME: ${{ secrets.BOT_NAME != '' && 'true' || 'false' }}
+        CHECK_PHONE_NUMBER: ${{ secrets.PHONE_NUMBER != '' && 'true' || 'false' }}
+        CHECK_API_ID: ${{ secrets.API_ID != '' && 'true' || 'false' }}
+        CHECK_API_HASH: ${{ secrets.API_HASH != '' && 'true' || 'false' }}
+        CHECK_PHONE_NUMBER1: ${{ secrets.PHONE_NUMBER1 != '' && 'true' || 'false' }}
+        CHECK_API_ID1: ${{ secrets.API_ID1 != '' && 'true' || 'false' }}
+        CHECK_API_HASH1: ${{ secrets.API_HASH1 != '' && 'true' || 'false' }}
+        CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
       run: |
         MISSING_SECRETS=0
         REQUIRED_SECRETS=("HOST" "USERNAME" "PASSWORD" "BOT_TOKEN" "BOT_NAME" "PHONE_NUMBER" "API_ID" "API_HASH" "PHONE_NUMBER1" "API_ID1" "API_HASH1" "ADMIN_BOT_TOKEN")
@@ -46,8 +60,8 @@ jobs:
         echo "Checking for required secrets..."
         for SECRET in "${REQUIRED_SECRETS[@]}"
         do
-          VALUE=$(echo "${{ toJSON(secrets) }}" | jq -r ".$SECRET // \"\"")
-          if [ -z "$VALUE" ] || [ "$VALUE" == "null" ]; then
+          CHECK_VAR="CHECK_${SECRET}"
+          if [ "${!CHECK_VAR}" != "true" ]; then
             echo "::error::Required secret '$SECRET' is not set."
             MISSING_SECRETS=$((MISSING_SECRETS+1))
           else
