@@ -6,7 +6,7 @@ from helper import extract_amount_and_currency, extract_trx_id
 from helper.dateutils import DateUtils
 from helper.total_summary_report_helper import total_summary_report
 from models import ChatService, IncomeService
-from models.income_balance import CurrencyEnum, IncomeBalance
+from models.income_balance_model import CurrencyEnum, IncomeBalance
 
 
 class TelethonClientService:
@@ -83,7 +83,7 @@ class TelethonClientService:
 
             currency, amount = extract_amount_and_currency(event.message.text)
             message_id: int = event.message.id
-            trx_id = extract_trx_id(event.message.text)
+            trx_id: str = extract_trx_id(event.message.text) or ""
 
             if await self.service.get_income_by_message_id(
                 message_id
@@ -91,6 +91,8 @@ class TelethonClientService:
                 return
 
             if currency and amount and trx_id:
+                last_income = await self.service.get_last_shift_id(event.chat_id)
+                shift_number: int = last_income.shift if last_income else 1  # type: ignore
                 await self.service.insert_income(
                     event.chat_id,
                     amount,
@@ -99,6 +101,7 @@ class TelethonClientService:
                     message_id,
                     event.message.text,
                     trx_id,
+                    shift_number,
                 )
 
         await self.client.run_until_disconnected()  # type: ignore

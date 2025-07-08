@@ -1,16 +1,24 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional, Generator, Any
 
-from sqlalchemy import Float, String, Column, Integer, DateTime, BigInteger, Text
+from pydantic.main import BaseModel
 from sqlalchemy import (
+    Boolean,
+    Float,
+    String,
+    Column,
+    Integer,
+    DateTime,
+    BigInteger,
+    Text,
     func,
 )
 from sqlalchemy.orm import Session
 
-from config.database_config import Base, SessionLocal
-from helper.dateutils import DateUtils
+from config.database_config import SessionLocal
+from models.base_model import BaseModel
 
 
 class CurrencyEnum(Enum):
@@ -25,16 +33,19 @@ class CurrencyEnum(Enum):
         return None
 
 
-class IncomeBalance(Base):
+class IncomeBalance(BaseModel):
     __tablename__ = "income_balance"
+
     id = Column(Integer, primary_key=True)
     amount = Column(Float, nullable=False)
     chat_id = Column(BigInteger, nullable=False)
     currency = Column(String(16), nullable=False)
     original_amount = Column(Float, nullable=False)
-    income_date = Column(DateTime, default=DateUtils.now, nullable=False)
+    income_date = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
+    shift = Column(Integer, nullable=True, default=1)
+    shift_closed = Column(Boolean, nullable=True, default=False)
     trx_id = Column(String(50), nullable=False)
 
 
@@ -50,6 +61,25 @@ class IncomeService:
         finally:
             db.close()
 
+    async def update_shift(self, income_id: int, shift: int):
+        with self._get_db() as db:
+            income = db.query(IncomeBalance).filter(IncomeBalance.id == income_id)
+            if income.first():
+                income.update({"shift": shift, "shift_closed": True})
+                db.commit()
+                return income.first()
+            return None
+
+    async def get_last_shift_id(self, chat_id: int) -> IncomeBalance:
+        with self._get_db() as db:
+            last_income = (
+                db.query(IncomeBalance)
+                .filter(IncomeBalance.chat_id == chat_id)
+                .order_by(IncomeBalance.id.desc())
+                .first()
+            )
+            return last_income
+
     async def insert_income(
         self,
         chat_id: int,
@@ -59,10 +89,11 @@ class IncomeService:
         message_id: int,
         message: str,
         trx_id: str,
+        shift: int,
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        current_date = DateUtils.now()
+        current_date = datetime.now(UTC)
 
         with self._get_db() as db:
             try:
@@ -75,6 +106,7 @@ class IncomeService:
                     message_id=message_id,
                     message=message,
                     trx_id=trx_id,
+                    shift=shift,
                 )
 
                 db.add(new_income)
@@ -90,11 +122,11 @@ class IncomeService:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(IncomeBalance.id == income_id).first()
 
-    async def get_income_by_chat_id(self, chat_id: int) -> list[type[IncomeBalance]]:
+    async def get_income_by_chat_id(self, chat_id: int) -> list[IncomeBalance]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance).filter(IncomeBalance.chat_id == chat_id).all()
-            )  # type: ignore
+            )
 
     async def get_income_by_message_id(self, message_id: int) -> bool:
         with self._get_db() as db:
@@ -105,14 +137,16 @@ class IncomeService:
                 is not None
             )
 
-    async def get_income_by_trx_id(self, trx_id) -> bool:
+    async def get_income_by_trx_id(self, trx_id: str) -> bool:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()
                 is not None
             )
 
-    async def get_last_yesterday_message(self, date: datetime):
+    async def get_last_yesterday_message(
+        self, date: datetime
+    ) -> Optional[IncomeBalance]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance)
@@ -123,7 +157,7 @@ class IncomeService:
 
     async def get_income_by_date_and_chat_id(
         self, chat_id: int, start_date: datetime, end_date: datetime
-    ) -> list[type[IncomeBalance]]:
+    ) -> list[IncomeBalance]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance)
@@ -133,4 +167,20 @@ class IncomeService:
                     IncomeBalance.income_date < end_date,
                 )
                 .all()
-            )  # type: ignore
+            )
+
+    async def get_income_chat_id_and_shift(
+        self, chat_id: int, shift: int
+    ) -> list[IncomeBalance]:
+        current_date = datetime.now(UTC)
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.shift == shift,
+                    IncomeBalance.shift_closed == False,
+                    func.date(IncomeBalance.income_date) == func.date(current_date),
+                )
+                .all()
+            )
