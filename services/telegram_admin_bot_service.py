@@ -91,23 +91,39 @@ class TelegramAdminBot:
                 await query.answer()
                 selected_package = query.data
                 chat_id: str = context.user_data.get("chat_id_reply") # type: ignore
-                chat = self.chat_service.get_chat_by_chat_id(chat_id)
+                
+                # Get chat using async pattern
+                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                if not chat:
+                    await query.edit_message_text("Chat not found.")
+                    return ConversationHandler.END
+                
                 identifier: str = chat.user.identifier if chat.user else "" # type: ignore
-                await self.user_service.update_user_package(identifier, ServicePackage(selected_package))
+                
+                # Update user package with await
+                user = await self.user_service.update_user_package(identifier, ServicePackage(selected_package))
+                if not user:
+                    await query.edit_message_text("Failed to update user package.")
+                    return ConversationHandler.END
+                
+                # Update chat settings based on package
                 if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
-                    self.chat_service.update_chat_enable_shift(chat_id, True)
+                    await self.chat_service.update_chat_enable_shift(chat_id, True)
                 else:
-                    self.chat_service.update_chat_enable_shift(chat_id, False)
+                    await self.chat_service.update_chat_enable_shift(chat_id, False)
+                
+                # Confirm to user
                 await query.edit_message_text(
-                    f"You have successfully subscribed to {selected_package.upper()} package." # type: ignore
+                    f"You have successfully subscribed to {selected_package} package."
                 )
-
                 return ConversationHandler.END
             return PACKAGE_COMMAND_CODE
         except Exception as e:
-            await query.edit_message_text(# type: ignore
-                f"Error updating user package: {e}" 
-            )
+            print(f"Error in package_button: {e}")
+            if query:
+                await query.edit_message_text(
+                    f"Error updating user package: {str(e)}"
+                )
             return ConversationHandler.END
 
     async def _get_chat_with_validation(
@@ -115,7 +131,7 @@ class TelegramAdminBot:
         update: Update,
         chat_id: str,
     ) -> Chat | None:
-        chat = self.chat_service.get_chat_by_chat_id(chat_id)
+        chat = await self.chat_service.get_chat_by_chat_id(chat_id)
         if not chat:
             await update.message.reply_text("Chat is not found.")  # type: ignore
             return None
@@ -145,7 +161,7 @@ class TelegramAdminBot:
                 await update.message.reply_text("Chat has already been activated.")
                 return ConversationHandler.END
 
-            self.chat_service.update_chat_status(chat_id, True)
+            await self.chat_service.update_chat_status(chat_id, True)
             await update.message.reply_text("Chat has been activated successfully.")
 
         except ValueError:
@@ -168,7 +184,7 @@ class TelegramAdminBot:
                 await update.message.reply_text("Chat has already been deactivated.")
                 return ConversationHandler.END
 
-            self.chat_service.update_chat_status(chat_id, False)
+            await self.chat_service.update_chat_status(chat_id, False)
             await update.message.reply_text("Chat has been deactivated successfully.")
 
         except ValueError:

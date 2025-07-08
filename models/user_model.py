@@ -26,8 +26,8 @@ class User(BaseModel):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(50), unique=True, nullable=False)
-    first_name = Column(String(50), unique=True, nullable=False)
-    last_name = Column(String(50), unique=True, nullable=False)
+    first_name = Column(String(50), nullable=True)
+    last_name = Column(String(50), nullable=True)
     identifier = Column(String(50), unique=True, nullable=False)
     phone_number = Column(String(20), unique=True, nullable=True)
     is_paid = Column(Boolean, default=False)
@@ -52,21 +52,21 @@ class UserService:
 
     async def update_user_package(
         self, user_identifier: str, package: ServicePackage
-    ) -> User | None:
+    ) -> type[User] | None:
         with self._get_db() as db:
             user = db.query(User).filter(User.identifier == user_identifier).first()
             if user:
-                user.package = package.value  # type: ignore
+                user.package = package  
                 db.commit()
                 return user
             return None
 
-    async def get_user_by_identifier(self, identifier: str) -> User:
+    async def get_user_by_identifier(self, identifier: str) -> type[User] | None:
         with self._get_db() as db:
             user = db.query(User).filter(User.identifier == identifier).first()
             return user
 
-    async def create_user(self, sender) -> User:
+    async def create_user(self, sender) -> User | type[User]:
         # First check if user already exists by identifier or username
         with self._get_db() as db:
             existing_user = db.query(User).filter(
