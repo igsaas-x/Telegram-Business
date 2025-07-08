@@ -1,3 +1,5 @@
+import logging
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -9,8 +11,8 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
+
 from models import ChatService, Chat, ServicePackage, UserService
-import logging
 
 # Configure logging
 logging.basicConfig(
@@ -188,6 +190,7 @@ class TelegramAdminBot:
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=True
         )
 
         deactivate_command_handler = ConversationHandler(
@@ -200,6 +203,7 @@ class TelegramAdminBot:
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=True
         )
 
         package_command_handler = ConversationHandler(
@@ -210,7 +214,8 @@ class TelegramAdminBot:
                     CallbackQueryHandler(self.package_button),
                 ],
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)]
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=True
         )
 
         self.app.add_handler(activate_command_handler)
