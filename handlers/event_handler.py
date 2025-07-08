@@ -1,5 +1,6 @@
 from telethon import Button
-from models import ChatService, ConversationService, IncomeService, ServicePackage
+
+from models import ChatService, ConversationService, IncomeService
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
@@ -29,7 +30,7 @@ class EventHandler:
         chat_id = event.chat_id
         group_name = event.chat.title
         chat_service = ChatService()
-        success, message = chat_service.register_chat_id(chat_id, group_name, user)
+        success, message = await chat_service.register_chat_id(chat_id, group_name, user)
         await event.respond(message)
 
     async def message(self, event):
