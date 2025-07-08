@@ -1,7 +1,7 @@
 """Make first_name and last_name nullable and not unique
 
 Revision ID: 03_modify_name_fields
-Revises: 02_add_timestamps_to_income_balance
+Revises: 02_add_timestamps
 Create Date: 2025-07-08 15:30:00
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '03_modify_name_fields'
-down_revision = '02_add_timestamps_to_income_balance'
+down_revision = '02_add_timestamps'
 branch_labels = None
 depends_on = None
 
