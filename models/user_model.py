@@ -66,6 +66,11 @@ class UserService:
             user = db.query(User).filter(User.identifier == identifier).first()
             return user
 
+    async def get_user_by_username(self, username: str) -> type[User] | None:
+        with self._get_db() as db:
+            user = db.query(User).filter(User.username == username).first()
+            return user
+
     async def create_user(self, sender) -> User | type[User]:
         # First check if user already exists by identifier or username
         with self._get_db() as db:

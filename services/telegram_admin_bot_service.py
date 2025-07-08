@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 ACTIVATE_COMMAND_CODE = 1001
 DEACTIVATE_COMMAND_CODE = 1002
 PACKAGE_COMMAND_CODE = 1003
+PACKAGE_SELECTION_CODE = 1004
+USER_CONFIRMATION_CODE = 1005
 
 
 class TelegramAdminBot:
@@ -47,40 +49,132 @@ class TelegramAdminBot:
                 await update.message.reply_text("User not found.")  # type: ignore
                 return ConversationHandler.END
 
-            context.user_data["chat_id_reply"] = identifier  # type: ignore
-            return await self.package_button_list(update, context) 
+            context.user_data["user_identifier"] = identifier  # type: ignore
+            context.user_data["chat_id_input"] = chat_id  # type: ignore
+            context.user_data["found_user"] = user  # type: ignore
+            return await self.show_user_confirmation(update, context, user) 
         except ValueError:
             await update.message.reply_text("Invalid identifier.")  # type: ignore
             return ConversationHandler.END
 
-    async def package_button_list(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
-        if update.message and update.message.reply_to_message:
-            if update.message.reply_to_message.message_id == context.user_data.get( # type: ignore
-                "expecting_reply_to"
-            ):  # type: ignore
-                context.user_data["chat_id_reply"] = update.message.text  # type: ignore
 
+    async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
-            [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
-            [InlineKeyboardButton(ServicePackage.PRO.value, callback_data="PRO")],
-            [
-                InlineKeyboardButton(
-                    ServicePackage.UNLIMITED.value, callback_data="UNLIMITED"
-                )
-            ],
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Username", callback_data="use_username")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(  # type: ignore
-            "Please choose a subscription package:", reply_markup=reply_markup
+            "How would you like to identify the user?", reply_markup=reply_markup
         )
-        return PACKAGE_COMMAND_CODE
+        return PACKAGE_SELECTION_CODE
 
-    async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        message = await update.message.reply_text(self.default_question)  # type: ignore
-        context.user_data["expecting_reply_to"] = message.message_id  # type: ignore
-        return PACKAGE_COMMAND_CODE
+    async def package_selection_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        try:
+            if query:
+                await query.answer()
+                selection = query.data
+                
+                if selection == "use_chat_id":
+                    context.user_data["selection_type"] = "chat_id"
+                    await query.edit_message_text("Please provide the chat ID by replying to this message.")
+                    return PACKAGE_COMMAND_CODE
+                elif selection == "use_username":
+                    context.user_data["selection_type"] = "username"
+                    await query.edit_message_text("Please provide the username by replying to this message.")
+                    return PACKAGE_COMMAND_CODE
+                    
+            return PACKAGE_SELECTION_CODE
+        except Exception as e:
+            print(f"Error in package_selection_handler: {e}")
+            if query:
+                await query.edit_message_text(f"Error: {str(e)}")
+            return ConversationHandler.END
+
+    async def validate_user_by_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        try:
+            username = update.message.text.strip()  # type: ignore
+            # Remove @ if user included it
+            if username.startswith("@"):
+                username = username[1:]
+            
+            user = await self.user_service.get_user_by_username(username)
+            if not user:
+                await update.message.reply_text("User not found.")  # type: ignore
+                return ConversationHandler.END
+
+            context.user_data["user_identifier"] = user.identifier  # type: ignore
+            context.user_data["found_user"] = user  # type: ignore
+            return await self.show_user_confirmation(update, context, user) 
+        except ValueError:
+            await update.message.reply_text("Invalid username.")  # type: ignore
+            return ConversationHandler.END
+
+    async def show_user_confirmation(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user) -> int:
+        try:
+            # Display user information with username
+            username = user.username if user.username else "N/A"  # type: ignore
+            first_name = user.first_name if user.first_name else "N/A"  # type: ignore
+            last_name = user.last_name if user.last_name else "N/A"  # type: ignore
+            
+            user_info = f"User Found:\n"
+            user_info += f"Username: @{username}\n"
+            user_info += f"Name: {first_name} {last_name}\n"
+            user_info += f"Current Package: {user.package.value}"  # type: ignore
+            
+            keyboard = [
+                [InlineKeyboardButton(f"✅ Confirm (@{username})", callback_data="confirm_user")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_user")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
+            return USER_CONFIRMATION_CODE
+        except Exception as e:
+            print(f"Error in show_user_confirmation: {e}")
+            await update.message.reply_text("Error displaying user information.")  # type: ignore
+            return ConversationHandler.END
+
+    async def process_package_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        selection_type = context.user_data.get("selection_type")
+        
+        if selection_type == "chat_id":
+            return await self.validate_user_identifier(update, context)
+        elif selection_type == "username":
+            return await self.validate_user_by_username(update, context)
+        else:
+            await update.message.reply_text("Invalid selection type.")  # type: ignore
+            return ConversationHandler.END
+
+    async def user_confirmation_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        try:
+            if query:
+                await query.answer()
+                action = query.data
+                
+                if action == "confirm_user":
+                    # Show package selection
+                    keyboard = [
+                        [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
+                        [InlineKeyboardButton(ServicePackage.PRO.value, callback_data="PRO")],
+                        [InlineKeyboardButton(ServicePackage.UNLIMITED.value, callback_data="UNLIMITED")],
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await query.edit_message_text("Please choose a subscription package:", reply_markup=reply_markup)
+                    return PACKAGE_COMMAND_CODE
+                    
+                elif action == "cancel_user":
+                    await query.edit_message_text("Operation cancelled.")
+                    return ConversationHandler.END
+                    
+            return USER_CONFIRMATION_CODE
+        except Exception as e:
+            print(f"Error in user_confirmation_handler: {e}")
+            if query:
+                await query.edit_message_text(f"Error: {str(e)}")
+            return ConversationHandler.END
 
     async def package_button(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -90,33 +184,50 @@ class TelegramAdminBot:
             if query:
                 await query.answer()
                 selected_package = query.data
-                chat_id: str = context.user_data.get("chat_id_reply") # type: ignore
                 
-                # Get chat using async pattern
-                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
-                if not chat:
-                    await query.edit_message_text("Chat not found.")
+                # Handle selection buttons
+                if selected_package in ["use_chat_id", "use_username"]:
+                    return await self.package_selection_handler(update, context)
+                
+                # Handle user confirmation buttons
+                if selected_package in ["confirm_user", "cancel_user"]:
+                    return await self.user_confirmation_handler(update, context)
+                
+                # Handle package selection buttons
+                if selected_package in ["BASIC", "PRO", "UNLIMITED"]:
+                    user_identifier: str = context.user_data.get("user_identifier") # type: ignore
+                    
+                    if not user_identifier:
+                        await query.edit_message_text("User identifier not found.")
+                        return ConversationHandler.END
+                    
+                    # Update user package with await
+                    user = await self.user_service.update_user_package(user_identifier, ServicePackage(selected_package))
+                    if not user:
+                        await query.edit_message_text("Failed to update user package.")
+                        return ConversationHandler.END
+                    
+                    # Find all chats for this user to update shift settings
+                    selection_type = context.user_data.get("selection_type")
+                    if selection_type == "chat_id":
+                        # If using chat_id, update only that specific chat
+                        chat_id = context.user_data.get("chat_id_input")
+                        if chat_id:
+                            if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
+                                await self.chat_service.update_chat_enable_shift(chat_id, True)
+                            else:
+                                await self.chat_service.update_chat_enable_shift(chat_id, False)
+                    
+                    # Get user info for confirmation message
+                    found_user = context.user_data.get("found_user")
+                    username = found_user.username if found_user and found_user.username else "N/A"  # type: ignore
+                    
+                    # Confirm to user
+                    await query.edit_message_text(
+                        f"✅ Successfully updated package to {selected_package} for user @{username}."
+                    )
                     return ConversationHandler.END
                 
-                identifier: str = chat.user.identifier if chat.user else "" # type: ignore
-                
-                # Update user package with await
-                user = await self.user_service.update_user_package(identifier, ServicePackage(selected_package))
-                if not user:
-                    await query.edit_message_text("Failed to update user package.")
-                    return ConversationHandler.END
-                
-                # Update chat settings based on package
-                if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
-                    await self.chat_service.update_chat_enable_shift(chat_id, True)
-                else:
-                    await self.chat_service.update_chat_enable_shift(chat_id, False)
-                
-                # Confirm to user
-                await query.edit_message_text(
-                    f"You have successfully subscribed to {selected_package} package."
-                )
-                return ConversationHandler.END
             return PACKAGE_COMMAND_CODE
         except Exception as e:
             print(f"Error in package_button: {e}")
@@ -226,13 +337,19 @@ class TelegramAdminBot:
             per_message=False
         )
 
-        # Split the package command handler into two separate handlers
-        # First handler for text input
-        package_text_handler = ConversationHandler(
+        # Package command handler with multiple states
+        package_handler = ConversationHandler(
             entry_points=[CommandHandler("package", self.package)],
             states={
+                PACKAGE_SELECTION_CODE: [
+                    CallbackQueryHandler(self.package_button)
+                ],
                 PACKAGE_COMMAND_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.validate_user_identifier),
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_package_input),
+                    CallbackQueryHandler(self.package_button)
+                ],
+                USER_CONFIRMATION_CODE: [
+                    CallbackQueryHandler(self.package_button)
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
@@ -240,14 +357,10 @@ class TelegramAdminBot:
             per_user=True,
             per_message=False
         )
-        
-        # Second handler specifically for button callbacks
-        package_button_handler = CallbackQueryHandler(self.package_button)
 
         self.app.add_handler(activate_command_handler)
         self.app.add_handler(deactivate_command_handler)
-        self.app.add_handler(package_text_handler)
-        self.app.add_handler(package_button_handler)  # Add the callback handler separately
+        self.app.add_handler(package_handler)
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
