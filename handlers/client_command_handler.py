@@ -67,12 +67,12 @@ class CommandHandler:
             print(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
-    async def handle_close_shift(self, event):
+    async def handle_report_per_shift(self, event):
         chat_id = event.chat_id
         income_service = IncomeService()
         last_shift = await income_service.get_last_shift_id(chat_id)
         if last_shift is None or last_shift.shift_closed:  # type: ignore
-            await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ។")
+            await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
             return
 
         income_service = IncomeService()
@@ -88,12 +88,13 @@ class CommandHandler:
 
         if not incomes:
             await event.respond(
-                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} ទេ។"
+                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។"
             )
             return
 
         message = self.format_totals_message(
-            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')}", incomes
+            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី {last_shift.shift}",
+            incomes,
         )
         await event.client.send_message(event.chat_id, message)
 
