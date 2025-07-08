@@ -77,7 +77,7 @@ class TelethonClientService:
 
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
-            chat_ids = chat_service.get_all_chat_ids()
+            chat_ids = await chat_service.get_all_chat_ids()
             if event.chat_id not in chat_ids:
                 return
 
