@@ -57,6 +57,12 @@ class TelegramBotService:
                 print(f"Error in register_handler: {e}")
                 await event.respond("An error occurred during registration. Please try again.")
 
+        # Contact us command handler
+        @self.bot.on(events.NewMessage(pattern="/contact_us"))
+        async def contact_us_handler(event):
+            message = "សូមទាក់ទងយើងខ្ញុំតាមរយៈ Telegram៖ https://t.me/HK_688"
+            await event.respond(message)
+
         # Callback query handler
         @self.bot.on(events.CallbackQuery())
         async def callback_handler(event):

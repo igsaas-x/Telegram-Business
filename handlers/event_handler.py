@@ -37,7 +37,7 @@ class EventHandler:
             
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to contact admin
-                message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/houhokheng"
+                message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
                 
                 # Check if this is a callback (return button) or new command
                 if hasattr(event, 'callback_query') and event.callback_query:
