@@ -2,7 +2,7 @@ import re
 
 def extract_amount_and_currency(text: str):
     # Pattern 1: Currency symbol before amount (e.g., "$100", "៛50.25")
-    match = re.search(r'([៛$€£])\s?([\d,]+(?:\.\d+)?)', text)
+    match = re.search(r'([៛$])\s?([\d,]+(?:\.\d+)?)', text)
     if match:
         currency = match.group(1)
         amount_str = match.group(2).replace(',', '')
@@ -13,7 +13,7 @@ def extract_amount_and_currency(text: str):
         return currency, amount
     
     # Pattern 2: Amount before currency code (e.g., "65.00 USD", "100.50 KHR")
-    match = re.search(r'([\d,]+(?:\.\d+)?)\s+(USD|KHR|EUR|GBP)', text, re.IGNORECASE)
+    match = re.search(r'([\d,]+(?:\.\d+)?)\s+(USD|KHR)', text, re.IGNORECASE)
     if match:
         amount_str = match.group(1).replace(',', '')
         currency_code = match.group(2).upper()
@@ -21,9 +21,7 @@ def extract_amount_and_currency(text: str):
         # Convert currency codes to symbols
         currency_map = {
             'USD': '$',
-            'KHR': '៛',
-            'EUR': '€',
-            'GBP': '£'
+            'KHR': '៛'
         }
         currency = currency_map.get(currency_code, currency_code)
         
