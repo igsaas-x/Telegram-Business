@@ -59,8 +59,17 @@ class TelegramBotService:
         @self.bot.on(events.NewMessage(pattern="/register"))
         async def register_handler(event):
             try:
+                logger.info(f"Registration attempt from chat {event.chat_id}")
                 # Always insert user if not exists, regardless of chat_id existence
                 sender = await event.get_sender()
+                
+                # Check if sender is anonymous
+                if not sender or not hasattr(sender, 'id') or sender.id is None:
+                    logger.warning(f"Anonymous user registration attempt in chat {event.chat_id}")
+                    await event.respond("⚠️ Registration failed: You must be a non-anonymous user to register this chat. Please disable anonymous mode and try again.")
+                    return
+                
+                logger.info(f"Registration request from user {sender.id} in chat {event.chat_id}")
                 user = await self.user_service.create_user(sender)
                 
                 # Check if chat_id already exists
@@ -68,12 +77,15 @@ class TelegramBotService:
                 if existing_chat:
                     # Update the existing chat with the current user_id
                     if user and existing_chat.user_id != user.id:
+                        logger.info(f"Updated existing chat {event.chat_id} with new user {user.id}")
                         await self.chat_service.update_chat_user_id(str(event.chat_id), user.id)
                         await event.respond(f"Chat ID {event.chat_id} is already registered. Updated with current user.")
                     else:
+                        logger.info(f"Chat {event.chat_id} already registered with same user")
                         await event.respond(f"Chat ID {event.chat_id} is already registered.")
                     return
 
+                logger.info(f"Proceeding with new registration for chat {event.chat_id}")
                 await self.event_handler.register(event, user)
             except Exception as e:
                 logger.error(f"Error in register_handler: {e}", exc_info=True)

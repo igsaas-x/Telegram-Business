@@ -1,14 +1,10 @@
 import os
-from datetime import timedelta
 
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
 
 from helper import extract_amount_and_currency, extract_trx_id
-from helper.dateutils import DateUtils
-from helper.total_summary_report_helper import total_summary_report
 from models import ChatService, IncomeService
-from models.income_balance_model import CurrencyEnum, IncomeBalance
 
 
 class TelethonClientService:
@@ -38,58 +34,73 @@ class TelethonClientService:
 
         chat_service = ChatService()
 
-        @self.client.on(events.NewMessage(pattern="/verify"))
-        async def _verify_current_date_report(event):
-            chat = event.chat_id
-            today = DateUtils.today()
-            yesterday = today - timedelta(days=1)
-            start_of_yesterday = DateUtils.start_of_day(yesterday)
+        # @self.client.on(events.NewMessage(pattern="/verify"))
+        # async def _verify_current_date_report(event):
+        #     chat = event.chat_id
+        #     today = DateUtils.today()
+        #     yesterday = today - timedelta(days=1)
+        #     start_of_yesterday = DateUtils.start_of_day(yesterday)
 
-            last_msg = await self.service.get_last_yesterday_message(start_of_yesterday)
-            min_id = int(getattr(last_msg, "message_id", 0)) if last_msg else 0
+        #     last_msg = await self.service.get_last_yesterday_message(start_of_yesterday)
+        #     min_id = int(getattr(last_msg, "message_id", 0)) if last_msg else 0
 
-            incomes = []
-            processed_ids = set()
+        #     # Get when this client was added to the group
+        #     try:
+        #         me = await self.client.get_me()
+        #         participants = await self.client.get_participants(chat)
+        #         my_participant = next((p for p in participants if p.id == me.id), None)
+                
+        #         # If we can't find when we were added, use current time to avoid historical messages
+        #         join_time = getattr(my_participant, 'date', DateUtils.now()) if my_participant else DateUtils.now()
+        #     except Exception:
+        #         # If we can't get join time, use current time as fallback
+        #         join_time = DateUtils.now()
 
-            async for msg in self.client.iter_messages(  # type: ignore
-                chat, search="paid by", min_id=min_id
-            ):
-                if not (msg.text and msg.date) or msg.id in processed_ids:
-                    continue
+        #     incomes = []
+        #     processed_ids = set()
 
-                currency, amount = extract_amount_and_currency(msg.text)
-                trx_id = extract_trx_id(msg.text)
-                processed_ids.add(msg.id)
+        #     async for msg in self.client.iter_messages(  # type: ignore
+        #         chat, search="paid by", min_id=min_id
+        #     ):
+        #         # Skip messages sent before we joined the group
+        #         if msg.date < join_time:
+        #             continue
+        #         if not (msg.text and msg.date) or msg.id in processed_ids:
+        #             continue
 
-                if not (currency and amount):
-                    continue
+        #         currency, amount = extract_amount_and_currency(msg.text)
+        #         trx_id = extract_trx_id(msg.text)
+        #         processed_ids.add(msg.id)
 
-                currency_code = next(
-                    (c.name for c in CurrencyEnum if c.value == currency), None
-                )
-                if not currency_code:
-                    continue
+        #         if not (currency and amount):
+        #             continue
 
-                try:
-                    amount_value = float(str(amount).replace(",", "").replace(" ", ""))
-                except Exception:
-                    continue
+        #         currency_code = next(
+        #             (c.name for c in CurrencyEnum if c.value == currency), None
+        #         )
+        #         if not currency_code:
+        #             continue
 
-                incomes.append(
-                    IncomeBalance(
-                        amount=amount_value,
-                        chat_id=chat,
-                        currency=currency_code,
-                        original_amount=amount_value,
-                        income_date=msg.date,
-                        message_id=msg.id,
-                        message=msg.text,
-                        trx_id=trx_id,
-                    )
-                )
+        #         try:
+        #             amount_value = float(str(amount).replace(",", "").replace(" ", ""))
+        #         except Exception:
+        #             continue
 
-            summary = total_summary_report(incomes, "របាយការណ៍សរុបប្រចាំថ្ងៃនេះ")
-            await event.client.send_message(chat, summary)
+        #         incomes.append(
+        #             IncomeBalance(
+        #                 amount=amount_value,
+        #                 chat_id=chat,
+        #                 currency=currency_code,
+        #                 original_amount=amount_value,
+        #                 income_date=msg.date,
+        #                 message_id=msg.id,
+        #                 message=msg.text,
+        #                 trx_id=trx_id,
+        #             )
+        #         )
+
+        #     summary = total_summary_report(incomes, "របាយការណ៍សរុបប្រចាំថ្ងៃនេះ")
+        #     await event.client.send_message(chat, summary)
 
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
