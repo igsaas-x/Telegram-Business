@@ -89,9 +89,9 @@ class CommandHandler:
         chat_id = event.chat_id
         income_service = IncomeService()
         last_shift = await income_service.get_last_shift_id(chat_id)
-        if last_shift is None or last_shift.shift_closed:  # type: ignore
-            await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
-            return
+        # if last_shift is None or last_shift.shift_closed:  # type: ignore
+        #     await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
+        #     return
 
         income_service = IncomeService()
         incomes = await income_service.get_income_chat_id_and_shift(

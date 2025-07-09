@@ -25,6 +25,7 @@ DEACTIVATE_COMMAND_CODE = 1002
 PACKAGE_COMMAND_CODE = 1003
 PACKAGE_SELECTION_CODE = 1004
 USER_CONFIRMATION_CODE = 1005
+ENABLE_SHIFT_COMMAND_CODE = 1006
 
 
 class TelegramAdminBot:
@@ -210,15 +211,17 @@ class TelegramAdminBot:
                         await query.edit_message_text("Failed to update user package.")
                         return ConversationHandler.END
                     
-                    # Find all chats for this user to update shift settings
+                    # Update shift settings based on package change
                     selection_type = context.user_data.get("selection_type")
                     if selection_type == "chat_id":
                         # If using chat_id, update only that specific chat
                         chat_id = context.user_data.get("chat_id_input")
                         if chat_id:
                             if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
+                                # When upgrading to unlimited, automatically enable shift
                                 await self.chat_service.update_chat_enable_shift(chat_id, True)
                             else:
+                                # When downgrading from unlimited, disable shift
                                 await self.chat_service.update_chat_enable_shift(chat_id, False)
                     
                     # Get user info for confirmation message
@@ -258,6 +261,10 @@ class TelegramAdminBot:
     async def activate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
         return ACTIVATE_COMMAND_CODE
+
+    async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(self.default_question)  # type: ignore
+        return ENABLE_SHIFT_COMMAND_CODE
 
     async def process_chat_id(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -304,6 +311,44 @@ class TelegramAdminBot:
 
             await self.chat_service.update_chat_status(chat_id, False)
             await update.message.reply_text("Chat has been deactivated successfully.")
+
+        except Exception as e:
+            await update.message.reply_text(f"Error: {str(e)}")
+
+        return ConversationHandler.END
+
+    async def process_enable_shift_chat_id(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        if not update.message:
+            return ConversationHandler.END
+
+        try:
+            chat_id: str = update.message.text.strip()  # type: ignore
+            chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
+
+            # Check if chat has a user
+            if not chat.user:  # type: ignore
+                await update.message.reply_text("Chat does not have an associated user.")
+                return ConversationHandler.END
+
+            # Check if user has unlimited package
+            if chat.user.package != ServicePackage.UNLIMITED:  # type: ignore
+                await update.message.reply_text(
+                    f"User must have UNLIMITED package to enable shift. Current package: {chat.user.package.value}"  # type: ignore
+                )
+                return ConversationHandler.END
+
+            # Check if shift is already enabled
+            if chat.enable_shift:  # type: ignore
+                await update.message.reply_text("Shift is already enabled for this chat.")
+                return ConversationHandler.END
+
+            # Enable shift for the chat
+            await self.chat_service.update_chat_enable_shift(chat_id, True)
+            await update.message.reply_text("Shift has been enabled successfully for this chat.")
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")
@@ -366,9 +411,23 @@ class TelegramAdminBot:
             per_message=False
         )
 
+        enable_shift_handler = ConversationHandler(
+            entry_points=[CommandHandler("enable_shift", self.enable_shift)],
+            states={
+                ENABLE_SHIFT_COMMAND_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_enable_shift_chat_id)
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_chat=True,
+            per_user=True,
+            per_message=False
+        )
+
         self.app.add_handler(activate_command_handler)
         self.app.add_handler(deactivate_command_handler)
         self.app.add_handler(package_handler)
+        self.app.add_handler(enable_shift_handler)
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
