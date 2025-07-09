@@ -2,6 +2,7 @@ import asyncio
 import os
 
 from telethon import TelegramClient, events
+
 from handlers import EventHandler
 from models import UserService, ChatService
 
@@ -35,16 +36,26 @@ class TelegramBotService:
         # Register command handler
         @self.bot.on(events.NewMessage(pattern="/register"))
         async def register_handler(event):
-            # Check if user already exists
-            existing_chat = self.chat_service.get_chat_by_chat_id(event.chat_id)
-            if existing_chat:
-                await event.respond(f"Chat ID {event.chat_id} is already registered.")
-                return
+            try:
+                # Always insert user if not exists, regardless of chat_id existence
+                sender = await event.get_sender()
+                user = await self.user_service.create_user(sender)
+                
+                # Check if chat_id already exists
+                existing_chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+                if existing_chat:
+                    # Update the existing chat with the current user_id
+                    if user and existing_chat.user_id != user.id:
+                        await self.chat_service.update_chat_user_id(str(event.chat_id), user.id)
+                        await event.respond(f"Chat ID {event.chat_id} is already registered. Updated with current user.")
+                    else:
+                        await event.respond(f"Chat ID {event.chat_id} is already registered.")
+                    return
 
-            # Insert user on registration
-            sender = await event.get_sender()
-            user = await self.user_service.create_user(sender)
-            await self.event_handler.register(event, user)
+                await self.event_handler.register(event, user)
+            except Exception as e:
+                print(f"Error in register_handler: {e}")
+                await event.respond("An error occurred during registration. Please try again.")
 
         # Callback query handler
         @self.bot.on(events.CallbackQuery())

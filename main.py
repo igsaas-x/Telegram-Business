@@ -76,8 +76,3 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\nBot stopped by user")
-    finally:
-        # Ensure the event loop is closed
-        loop = asyncio.get_event_loop()
-        if not loop.is_closed():
-            loop.close()

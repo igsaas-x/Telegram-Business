@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from helper import total_summary_report, DateUtils
-from models import ConversationService, IncomeService, ChatService, ServicePackage
+from models import ConversationService, IncomeService, ChatService
 
 
 class CommandHandler:
@@ -89,9 +89,9 @@ class CommandHandler:
         chat_id = event.chat_id
         income_service = IncomeService()
         last_shift = await income_service.get_last_shift_id(chat_id)
-        if last_shift is None or last_shift.shift_closed:  # type: ignore
-            await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
-            return
+        # if last_shift is None or last_shift.shift_closed:  # type: ignore
+        #     await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
+        #     return
 
         income_service = IncomeService()
         incomes = await income_service.get_income_chat_id_and_shift(
@@ -105,8 +105,10 @@ class CommandHandler:
         )
 
         if not incomes:
-            await event.respond(
-                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។"
+            await event.client.send_message(
+                event.chat_id,
+                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។",
+                buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")]
             )
             return
 
@@ -121,10 +123,11 @@ class CommandHandler:
         )
 
     async def close_shift(self, event):
-        await event.delete()
+        await event.edit(buttons=None)
+        current_time = DateUtils.now().strftime("%H:%M")
         await event.client.send_message(
             event.chat_id,
-            "បានបិទបញ្ជីសម្រាប់វេន។",
+            f"បានបិទបញ្ជីសម្រាប់វេន្តនេះ ត្រឹមម៉ោង {current_time}",
         )
 
     async def handle_daily_summary(self, event):
