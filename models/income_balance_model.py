@@ -13,8 +13,9 @@ from sqlalchemy import (
     BigInteger,
     Text,
     func,
+    ForeignKey,
 )
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, relationship
 
 from config.database_config import SessionLocal
 from helper import DateUtils
@@ -44,8 +45,14 @@ class IncomeBalance(BaseModel):
     income_date = Column(DateTime, default=lambda: DateUtils.now, nullable=False)
     message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
-    shift = Column(Integer, nullable=True, default=1)
-    shift_closed = Column(Boolean, nullable=True, default=False)
+    # New shift reference
+    shift_id = Column(Integer, ForeignKey('shifts.id'), nullable=True)
+    shift = relationship("Shift", back_populates="income_records")
+    
+    # DEPRECATED: Keep for backward compatibility during migration
+    old_shift = Column(Integer, nullable=True, default=1)
+    old_shift_closed = Column(Boolean, nullable=True, default=False)
+    
     trx_id = Column(String(50), nullable=False)
 
 
@@ -89,7 +96,7 @@ class IncomeService:
             message_id: int,
             message: str,
             trx_id: str,
-            shift: int,
+            shift_id: int = None,
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
@@ -106,7 +113,7 @@ class IncomeService:
                     message_id=message_id,
                     message=message,
                     trx_id=trx_id,
-                    shift=shift,
+                    shift_id=shift_id,
                 )
 
                 db.add(new_income)
@@ -169,6 +176,16 @@ class IncomeService:
                 .all()
             )
 
+    async def get_income_by_shift_id(self, shift_id: int) -> list[type[IncomeBalance]]:
+        """Get all income records for a specific shift"""
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(IncomeBalance.shift_id == shift_id)
+                .all()
+            )
+
+    # DEPRECATED: Legacy method for backward compatibility
     async def get_income_chat_id_and_shift(
             self, chat_id: int, shift: int
     ) -> list[type[IncomeBalance]]:
@@ -178,8 +195,8 @@ class IncomeService:
                 db.query(IncomeBalance)
                 .filter(
                     IncomeBalance.chat_id == chat_id,
-                    IncomeBalance.shift == shift,
-                    IncomeBalance.shift_closed == False,
+                    IncomeBalance.old_shift == shift,
+                    IncomeBalance.old_shift_closed.is_(False),
                     func.date(IncomeBalance.income_date) == func.date(current_date),
                 )
                 .all()
