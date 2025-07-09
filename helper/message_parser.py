@@ -84,4 +84,9 @@ def extract_trx_id(message_text: str) -> str | None:
     if match:
         return match.group(1)
     
+    # Pattern 5: Advanced Bank of Asia "Txn Hash: abc123def"
+    match = re.search(r'Txn Hash:\s*([a-f0-9]+)', message_text, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    
     return None
