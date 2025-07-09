@@ -21,8 +21,19 @@ class EventHandler:
             ],
             [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
             [Button.inline("ប្រចាំខែ", "monthly_summary")],
+            [Button.inline("បិទ", "close_menu")],
         ]
-        await event.respond("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
+        
+        # Check if this is a callback (return button) or new command
+        if hasattr(event, 'callback_query') and event.callback_query:
+            # This is from a return button - edit existing message
+            await event.edit("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
+        else:
+            # This is from a new command - send new message
+            await event.respond("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
+
+    async def close_menu(self, event):
+        await event.delete()
 
     async def register(self, event, user: User | None):
         chat_id = event.chat_id
@@ -65,6 +76,7 @@ class EventHandler:
             "report_per_shift": self.command_handler.handle_report_per_shift,
             "close_shift": self.command_handler.close_shift,
             "close": self.command_handler.close,
+            "close_menu": self.close_menu,
             "other_dates": self.command_handler.handle_other_dates,
         }
 
