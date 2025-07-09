@@ -1,7 +1,8 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
+from helper import DateUtils
 from models import User, IncomeService, ServicePackage
 
 
@@ -12,6 +13,7 @@ class Chat(Base):
     group_name = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=True, default=False)
     enable_shift = Column(Boolean, nullable=True, default=False)
+    created_at = Column(DateTime, default=DateUtils.now, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     user = relationship("User", back_populates="chats")
 

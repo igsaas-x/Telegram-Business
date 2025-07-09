@@ -1,5 +1,6 @@
 from telethon import Button
 
+from helper import DateUtils
 from models import ChatService, ConversationService, IncomeService
 from models.user_model import User
 from .client_command_handler import CommandHandler
@@ -12,6 +13,38 @@ class EventHandler:
         self.income_service = IncomeService()
 
     async def menu(self, event):
+        # Check if chat is activated and trial status
+        chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+        if not chat:
+            # Chat doesn't exist - ask user to contact admin
+            message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/houhokheng"
+            
+            # Check if this is a callback (return button) or new command
+            if hasattr(event, 'callback_query') and event.callback_query:
+                await event.edit(message)
+            else:
+                await event.respond(message)
+            return
+        
+        # Check if chat is not active (needs trial period check)
+        if not chat.is_active:
+            # Check if it's still within 7-day trial period
+            from datetime import timedelta
+            trial_end = chat.created_at + timedelta(days=7)
+            
+            if DateUtils.now() > trial_end:
+                # Trial expired - ask user to contact admin
+                message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/houhokheng"
+                
+                # Check if this is a callback (return button) or new command
+                if hasattr(event, 'callback_query') and event.callback_query:
+                    await event.edit(message)
+                else:
+                    await event.respond(message)
+                return
+            # If within trial period, continue to show menu (don't update is_active)
+        
+        # Chat is either active (is_active=True) or within trial period - show menu
         buttons = [
             [
                 Button.inline(
