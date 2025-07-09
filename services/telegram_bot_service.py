@@ -102,11 +102,29 @@ class TelegramBotService:
                 logger.error(f"Error in callback_handler: {e}")
                 await event.respond("An error occurred. Please try again.")
 
-        # Message handler
+        # Chat migration handler - only handle migrate_to_chat_id to avoid duplicates
         @self.bot.on(events.NewMessage())
-        async def message_handler(event):
+        async def migration_handler(event):
             try:
+                # Only handle migrate_to_chat_id (from old group) to avoid duplicate processing
+                if hasattr(event.message, 'migrate_to_chat_id') and event.message.migrate_to_chat_id:
+                    old_chat_id = str(event.chat_id)
+                    new_chat_id = str(event.message.migrate_to_chat_id)
+                    
+                    logger.info(f"Chat migration detected: {old_chat_id} -> {new_chat_id}")
+                    
+                    # Migrate the chat_id in the database
+                    success = await self.chat_service.migrate_chat_id(old_chat_id, new_chat_id)
+                    
+                    if success:
+                        logger.info(f"Successfully migrated chat data from {old_chat_id} to {new_chat_id}")
+                    else:
+                        logger.error(f"Failed to migrate chat data from {old_chat_id} to {new_chat_id}")
+                    
+                    return  # Don't process this message further
+                
+                # If not a migration event, process normally
                 await self.event_handler.message(event)
             except Exception as e:
-                logger.error(f"Error in message_handler: {e}")
+                logger.error(f"Error in migration_handler: {e}")
                 # Don't respond here as it might cause message loops for regular messages
