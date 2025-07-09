@@ -37,6 +37,10 @@ jobs:
         pip install black
         black --check .
       continue-on-error: true  # Don't fail the build for formatting issues
+    
+    - name: Run tests
+      run: |
+        python test_message_parser.py
 
     - name: Verify required secrets are set
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')

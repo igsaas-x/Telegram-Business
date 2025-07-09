@@ -36,6 +36,25 @@ def extract_amount_and_currency(text: str):
             return None, None
         return currency, amount
     
+    # Pattern 4: Currency code before amount (e.g., "USD 16.00", "KHR 100.50")
+    match = re.search(r'(USD|KHR)\s+([\d,]+(?:\.\d+)?)', text, re.IGNORECASE)
+    if match:
+        currency_code = match.group(1).upper()
+        amount_str = match.group(2).replace(',', '')
+        
+        # Convert currency codes to symbols
+        currency_map = {
+            'USD': '$',
+            'KHR': '៛'
+        }
+        currency = currency_map.get(currency_code, currency_code)
+        
+        try:
+            amount = float(amount_str) if '.' in amount_str else int(amount_str)
+        except ValueError:
+            return None, None
+        return currency, amount
+    
     return None, None
 
 def extract_khmer_money_amount(text: str) -> float | None:
