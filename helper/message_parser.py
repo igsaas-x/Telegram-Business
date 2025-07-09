@@ -42,26 +42,16 @@ def extract_khmer_money_amount(text: str) -> float | None:
     """
     Extract money amount from Khmer payment notification text.
     
+    Looks for pattern: [number រៀល] regardless of what comes before
+    
     Example inputs: 
     - "លោកអ្នកបានទទួលប្រាក់ចំនួន 11,500 រៀល ពីឈ្មោះ SAREACH YUN..."
     - "បានទទួល 5,000 រៀល ពី 096 7772 667 SIN MONOREA..."
     Returns: 11500.0 or 5000.0
     """
-    # Pattern 1: "ចំនួន [amount] រៀល" (amount in riels)
-    pattern1 = r'ចំនួន\s+([\d,]+(?:\.\d+)?)\s+រៀល'
-    match = re.search(pattern1, text)
-    
-    if match:
-        amount_str = match.group(1).replace(',', '')
-        try:
-            amount = float(amount_str) if '.' in amount_str else float(amount_str)
-            return amount
-        except ValueError:
-            return None
-    
-    # Pattern 2: "បានទទួល [amount] រៀល" (received amount in riels)
-    pattern2 = r'បានទទួល\s+([\d,]+(?:\.\d+)?)\s+រៀល'
-    match = re.search(pattern2, text)
+    # Pattern: [space number រៀល] - matches space, number, space, then រៀល
+    pattern = r'\s([\d,]+(?:\.\d+)?)\s+រៀល'
+    match = re.search(pattern, text)
     
     if match:
         amount_str = match.group(1).replace(',', '')
