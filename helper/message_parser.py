@@ -1,7 +1,12 @@
 import re
 
 def extract_amount_and_currency(text: str):
-    # Pattern 1: Currency symbol before amount (e.g., "$100", "៛50.25")
+    # Pattern 1: Khmer payment notification format (e.g., "ចំនួន 11,500 រៀល")
+    khmer_amount = extract_khmer_money_amount(text)
+    if khmer_amount is not None:
+        return '៛', khmer_amount
+    
+    # Pattern 2: Currency symbol before amount (e.g., "$100", "៛50.25")
     match = re.search(r'([៛$])\s?([\d,]+(?:\.\d+)?)', text)
     if match:
         currency = match.group(1)
@@ -12,7 +17,7 @@ def extract_amount_and_currency(text: str):
             return None, None
         return currency, amount
     
-    # Pattern 2: Amount before currency code (e.g., "65.00 USD", "100.50 KHR")
+    # Pattern 3: Amount before currency code (e.g., "65.00 USD", "100.50 KHR")
     match = re.search(r'([\d,]+(?:\.\d+)?)\s+(USD|KHR)', text, re.IGNORECASE)
     if match:
         amount_str = match.group(1).replace(',', '')
@@ -32,6 +37,28 @@ def extract_amount_and_currency(text: str):
         return currency, amount
     
     return None, None
+
+def extract_khmer_money_amount(text: str) -> float | None:
+    """
+    Extract money amount from Khmer payment notification text.
+    
+    Example input: "លោកអ្នកបានទទួលប្រាក់ចំនួន 11,500 រៀល ពីឈ្មោះ SAREACH YUN..."
+    Returns: 11500.0
+    """
+    # Pattern to match: "ចំនួន [amount] រៀល" (amount in riels)
+    pattern = r'ចំនួន\s+([\d,]+(?:\.\d+)?)\s+រៀល'
+    match = re.search(pattern, text)
+    
+    if match:
+        amount_str = match.group(1).replace(',', '')
+        try:
+            # Convert to float to handle decimal amounts
+            amount = float(amount_str) if '.' in amount_str else float(amount_str)
+            return amount
+        except ValueError:
+            return None
+    
+    return None
 
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"
