@@ -123,9 +123,11 @@ class CommandHandler:
         )
 
     async def close_shift(self, event):
+        await event.edit(buttons=None)
+        current_time = DateUtils.now().strftime("%H:%M")
         await event.client.send_message(
             event.chat_id,
-            "បានបិទបញ្ជីសម្រាប់វេន។",
+            f"បានបិទបញ្ជីសម្រាប់វេន្តនេះ ត្រឹមម៉ោង {current_time}",
         )
 
     async def handle_daily_summary(self, event):
