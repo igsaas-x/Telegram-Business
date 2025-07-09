@@ -32,6 +32,9 @@ class EventHandler:
             from datetime import timedelta
             trial_end = chat.created_at + timedelta(days=7)
             
+            # Make trial_end timezone-aware for comparison
+            trial_end = DateUtils.localize_datetime(trial_end)
+            
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to contact admin
                 message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/houhokheng"
