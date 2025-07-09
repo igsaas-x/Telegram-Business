@@ -134,6 +134,10 @@ class CommandHandler:
         today = DateUtils.now()
         buttons = []
 
+        shift_enabled = await self.chat_service.is_shift_enabled(event.chat_id)
+        if shift_enabled:
+            buttons.append([Button.inline("ប្រចាំវេន​ថ្ងៃ​នេះ", "report_per_shift")])
+
         for i in range(2, -1, -1):
             day = today - timedelta(days=i)
             label = day.strftime("%b %d")

@@ -12,7 +12,6 @@ class EventHandler:
         self.income_service = IncomeService()
 
     async def menu(self, event):
-        shift_number = await self.chat_service.is_unlimited_package(event.chat_id)
         buttons = [
             [
                 Button.inline(
@@ -20,7 +19,6 @@ class EventHandler:
                     "daily_summary",
                 )
             ],
-            [Button.inline("ប្រចាំថ្ងៃ(វេន)", "report_per_shift")] if shift_number else [],
             [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
             [Button.inline("ប្រចាំខែ", "monthly_summary")],
         ]

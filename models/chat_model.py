@@ -109,3 +109,11 @@ class ChatService:
             return []
         finally:
             session.close()
+
+    async def is_shift_enabled(self, chat_id: str) -> bool:
+        try:
+            chat = await self.get_chat_by_chat_id(chat_id)
+            return chat.enable_shift if chat else False
+        except Exception as e:
+            print(f"Error checking shift enabled: {e}")
+            return False
