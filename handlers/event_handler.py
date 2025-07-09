@@ -64,6 +64,7 @@ class EventHandler:
             "monthly_summary": self.command_handler.handle_monthly_summary,
             "report_per_shift": self.command_handler.handle_report_per_shift,
             "close_shift": self.command_handler.close_shift,
+            "close": self.command_handler.close,
             "other_dates": self.command_handler.handle_other_dates,
         }
 

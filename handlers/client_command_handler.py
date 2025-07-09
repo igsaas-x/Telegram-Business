@@ -26,7 +26,8 @@ class CommandHandler:
                     Button.inline(
                         f"បិទបញ្ជីសម្រាប់វេន ({shift_number})",
                         "close_shift",
-                    )
+                    ),
+                    Button.inline("បិទ", "close")
                 ]
             )
         await event.client.send_message(event.chat_id, message, buttons=buttons)
@@ -108,7 +109,9 @@ class CommandHandler:
             await event.client.send_message(
                 event.chat_id,
                 f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។",
-                buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")]
+                buttons=[
+                    [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("បិទ", "close")]
+                ]
             )
             return
 
@@ -119,7 +122,9 @@ class CommandHandler:
         await event.client.send_message(
             event.chat_id,
             message,
-            buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")],
+            buttons=[
+                [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("បិទ", "close")]
+            ],
         )
 
     async def close_shift(self, event):
@@ -129,6 +134,9 @@ class CommandHandler:
             event.chat_id,
             f"បានបិទបញ្ជីសម្រាប់វេន្តនេះ ត្រឹមម៉ោង {current_time}",
         )
+
+    async def close(self, event):
+        await event.edit(buttons=None)
 
     async def handle_daily_summary(self, event):
         today = DateUtils.now()
