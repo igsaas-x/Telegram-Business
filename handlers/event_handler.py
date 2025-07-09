@@ -16,8 +16,8 @@ class EventHandler:
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
         if not chat:
-            # Chat doesn't exist - ask user to contact admin
-            message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/houhokheng"
+            # Chat doesn't exist - ask user to register
+            message = "សូមចុះឈ្មោះដោយប្រើ /register"
             
             # Check if this is a callback (return button) or new command
             if hasattr(event, 'callback_query') and event.callback_query:
