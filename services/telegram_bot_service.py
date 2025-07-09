@@ -7,15 +7,7 @@ from telethon import TelegramClient, events
 from handlers import EventHandler
 from models import UserService, ChatService
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("telegram_bot.log"),
-        logging.StreamHandler()
-    ]
-)
+# Get logger (logging configured in main.py)
 logger = logging.getLogger(__name__)
 
 

@@ -112,12 +112,16 @@ class TelethonClientService:
             message_id: int = event.message.id
             trx_id: str = extract_trx_id(event.message.text) or ""
 
-            if await self.service.get_income_by_message_id(
-                message_id
-            ) and await self.service.get_income_by_trx_id(trx_id):
+            # Check for duplicate based on message_id first
+            if await self.service.get_income_by_message_id(message_id):
                 return
 
-            if currency and amount and trx_id:
+            # Check for duplicate based on trx_id only if trx_id exists
+            if trx_id and await self.service.get_income_by_trx_id(trx_id):
+                return
+
+            # Only require currency and amount, trx_id is optional
+            if currency and amount:
                 last_income = await self.service.get_last_shift_id(event.chat_id)
                 shift_number: int = last_income.shift if last_income else 1  # type: ignore
                 await self.service.insert_income(

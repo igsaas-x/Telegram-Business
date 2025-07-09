@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 from typing import Set
 
@@ -12,6 +13,17 @@ from services import TelegramBotService, TelethonClientService
 from services.telegram_admin_bot_service import TelegramAdminBot
 
 load_environment()
+
+# Configure logging first, before any services are imported
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("telegram_bot.log"),
+        logging.StreamHandler()
+    ]
+)
+
 tasks: Set[asyncio.Task] = set()
 
 

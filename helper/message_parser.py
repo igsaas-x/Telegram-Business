@@ -79,4 +79,9 @@ def extract_trx_id(message_text: str) -> str | None:
     if match:
         return match.group(1)
     
+    # Pattern 4: Khmer transaction format "លេខប្រតិបត្តិការ: 123456"
+    match = re.search(r'លេខប្រតិបត្តិការ:\s*([0-9]+)', message_text)
+    if match:
+        return match.group(1)
+    
     return None

@@ -14,10 +14,7 @@ from telegram.ext import (
 
 from models import ChatService, Chat, ServicePackage, UserService
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+# Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
 
 ACTIVATE_COMMAND_CODE = 1001
