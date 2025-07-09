@@ -1,6 +1,8 @@
+import os
 from datetime import timedelta
 
 from telethon import TelegramClient, events
+from telethon.errors import PersistentTimestampInvalidError
 
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.dateutils import DateUtils
@@ -15,10 +17,24 @@ class TelethonClientService:
         self.service = IncomeService()
 
     async def start(self, username, api_id, api_hash):
-        self.client = TelegramClient(username, int(api_id), api_hash)
-        await self.client.connect()
-        await self.client.start(phone=username)  # type: ignore
-        print("Account " + username + " started...")
+        session_file = f"{username}.session"
+        
+        # Handle persistent timestamp errors by removing corrupted session
+        try:
+            self.client = TelegramClient(username, int(api_id), api_hash)
+            await self.client.connect()
+            await self.client.start(phone=username)  # type: ignore
+            print("Account " + username + " started...")
+        except PersistentTimestampInvalidError:
+            print(f"Session corrupted for {username}, removing session file...")
+            if os.path.exists(session_file):
+                os.remove(session_file)
+            
+            # Recreate client with clean session
+            self.client = TelegramClient(username, int(api_id), api_hash)
+            await self.client.connect()
+            await self.client.start(phone=username)  # type: ignore
+            print("Account " + username + " restarted with clean session...")
 
         chat_service = ChatService()
 
