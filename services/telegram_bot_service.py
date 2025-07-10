@@ -20,7 +20,7 @@ class TelegramBotService:
 
     async def start(self, bot_token: str):
         self.bot = TelegramClient(
-            "bot", int(os.getenv("API_ID")), os.getenv("API_HASH")  # type: ignore
+            "bot", int(os.getenv("API_ID1")), os.getenv("API_HASH1")  # type: ignore
         )  # type: ignore
         await self.bot.start(bot_token=bot_token)  # type: ignore
         self._register_event_handlers()
