@@ -1,7 +1,7 @@
 from telethon import Button
 
 from helper import DateUtils
-from models import ChatService, ConversationService, IncomeService
+from models import ChatService, ConversationService, IncomeService, UserService
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
@@ -16,15 +16,39 @@ class EventHandler:
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
         if not chat:
-            # Chat doesn't exist - ask user to register
-            message = "សូមចុះឈ្មោះដោយប្រើ /register"
-            
-            # Check if this is a callback (return button) or new command
-            if hasattr(event, 'callback_query') and event.callback_query:
-                await event.edit(message)
-            else:
+            # Chat doesn't exist - automatically register using our own register method
+            try:
+                # Get sender information
+                sender = await event.get_sender()
+                
+                # Check if sender is anonymous
+                if not sender or not hasattr(sender, 'id') or sender.id is None:
+                    message = "⚠️ Registration failed: You must be a non-anonymous user to register this chat. Please disable anonymous mode and try again."
+                    await event.respond(message)
+                    return
+                
+                # Create user if not exists
+                user_service = UserService()
+                user = await user_service.create_user(sender)
+                
+                # Use our own register method to register the chat
+                await self.register(event, user)
+                
+                # Refresh chat information after registration
+                chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+                
+                # If still not available, registration failed
+                if not chat:
+                    return  # Register method would have shown appropriate message
+                
+                # No need to show success message here since register method already does that
+                
+            except Exception as e:
+                import logging
+                logging.error(f"Error during auto-registration: {e}")
+                message = "⚠️ Auto-registration failed. Please use /register command manually."
                 await event.respond(message)
-            return
+                return
         
         # Check if chat is not active (needs trial period check)
         if not chat.is_active:
@@ -76,7 +100,17 @@ class EventHandler:
         group_name = event.chat.title
         chat_service = ChatService()
         success, message = await chat_service.register_chat_id(chat_id, group_name, user)
-        await event.respond(message)
+        
+        # Add a menu button to the response message for successful registration
+        if success:
+            # Create menu button
+            buttons = [
+                [Button.inline("របាយការណ៍", "menu")]
+            ]
+            await event.respond(message, buttons=buttons)
+        else:
+            # For failures, just show the message without buttons
+            await event.respond(message)
 
     async def message(self, event):
         if event.message.text.startswith("/"):

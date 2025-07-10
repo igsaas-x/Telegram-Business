@@ -56,7 +56,7 @@ jobs:
         CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
       run: |
         MISSING_SECRETS=0
-        REQUIRED_SECRETS=("HOST" "USERNAME" "PASSWORD" "BOT_TOKEN" "BOT_NAME" "PHONE_NUMBER" "API_ID" "API_HASH" "PHONE_NUMBER1" "API_ID1" "API_HASH1" "ADMIN_BOT_TOKEN")
+        REQUIRED_SECRETS=("HOST" "USERNAME" "PASSWORD" "BOT_TOKEN" "BOT_NAME" "PHONE_NUMBER1" "API_ID1" "API_HASH1" "ADMIN_BOT_TOKEN")
         
         echo "Checking for required secrets..."
         for SECRET in "${REQUIRED_SECRETS[@]}"
