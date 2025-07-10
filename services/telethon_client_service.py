@@ -31,6 +31,13 @@ class TelethonClientService:
             await self.client.connect()
             await self.client.start(phone=username)  # type: ignore
             print("Account " + username + " restarted with clean session...")
+        except TimeoutError as e:
+            print(f"Connection timeout for {username}: {e}")
+            print("Will retry connection automatically...")
+            # Let Telethon handle automatic reconnection
+        except Exception as e:
+            print(f"Error starting client for {username}: {e}")
+            raise
 
         chat_service = ChatService()
 
@@ -125,6 +132,7 @@ class TelethonClientService:
             if currency and amount:
                 
                 # Check if chat exists, auto-register if not
+                chat_registered_now = False
                 if not await chat_service.chat_exists(event.chat_id):
                     try:
                         # Get chat title for registration
@@ -139,9 +147,37 @@ class TelethonClientService:
                             print(f"Failed to auto-register chat {event.chat_id}")
                             return
                             
+                        chat_registered_now = True
                         print(f"Auto-registered chat: {event.chat_id} ({chat_title})")
                     except Exception as e:
                         print(f"Error during chat auto-registration: {e}")
+                        return
+                
+                # Get chat info to check registration timestamp
+                chat = await chat_service.get_chat_by_chat_id(str(event.chat_id))
+                if not chat:
+                    return
+                
+                # If chat was just registered now, process this message
+                # Otherwise, check if message was sent after chat registration
+                if not chat_registered_now:
+                    from helper import DateUtils
+                    import pytz
+                    
+                    # Get message timestamp (Telethon provides it as UTC datetime)
+                    message_time = event.message.date
+                    if message_time.tzinfo is None:
+                        message_time = pytz.UTC.localize(message_time)
+                    
+                    # Convert chat created_at to UTC for comparison
+                    chat_created = chat.created_at
+                    if chat_created.tzinfo is None:
+                        chat_created = DateUtils.localize_datetime(chat_created)
+                    chat_created_utc = chat_created.astimezone(pytz.UTC)
+                    
+                    # Ignore messages sent before chat registration
+                    if message_time < chat_created_utc:
+                        print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
                         return
                 
                 last_income = await self.service.get_last_shift_id(event.chat_id)

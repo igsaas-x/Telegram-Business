@@ -97,7 +97,8 @@ class EventHandler:
 
     async def register(self, event, user: User | None):
         chat_id = event.chat_id
-        group_name = event.chat.title
+        # Handle both group chats (with title) and private chats (without title)
+        group_name = getattr(event.chat, 'title', f"Private Chat {chat_id}")
         chat_service = ChatService()
         success, message = await chat_service.register_chat_id(chat_id, group_name, user)
         
