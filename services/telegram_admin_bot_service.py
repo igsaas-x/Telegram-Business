@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from handlers.event_handler import EventHandler
-from models import ChatService, Chat, ServicePackage, UserService
+from models import ChatService, Chat, ServicePackage, UserService, IncomeBalanceService
 
 # Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
@@ -259,7 +259,7 @@ class TelegramAdminBot:
             class PseudoCallbackEvent:
                 def __init__(self, callback_query, callback_data):
                     self.chat_id = callback_query.message.chat_id
-                    self.data = callback_data
+                    self.data = callback_data.encode('utf-8') if isinstance(callback_data, str) else callback_data
                     self.callback_query = True
                     self.message = callback_query.message
                     
@@ -276,6 +276,8 @@ class TelegramAdminBot:
                                     button_data = button.data
                                     if isinstance(button_data, bytes):
                                         button_data = button_data.decode('utf-8')
+                                    elif not isinstance(button_data, str):
+                                        button_data = str(button_data)
                                     
                                     keyboard_row.append(
                                         InlineKeyboardButton(button.text, callback_data=button_data)
@@ -301,6 +303,8 @@ class TelegramAdminBot:
                                     button_data = button.data
                                     if isinstance(button_data, bytes):
                                         button_data = button_data.decode('utf-8')
+                                    elif not isinstance(button_data, str):
+                                        button_data = str(button_data)
                                     
                                     keyboard_row.append(
                                         InlineKeyboardButton(button.text, callback_data=button_data)
@@ -456,58 +460,162 @@ class TelegramAdminBot:
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
-                
-            # Create a pseudo-event object with the chat_id for the event_handler
-            class PseudoEvent:
-                def __init__(self, chat_id, message):
-                    self.chat_id = int(chat_id)
-                    self.message = message
-                    self.callback_query = None  # Not a callback
-                    
-                async def get_sender(self):
-                    # Return None to skip auto-registration logic
-                    return None
-                    
-                async def respond(self, text, buttons=None):
-                    if buttons:
-                        # Convert Telethon buttons to python-telegram-bot InlineKeyboardButton format
-                        keyboard = []
-                        for row in buttons:
-                            keyboard_row = []
-                            for button in row:
-                                # Extract text and data from button
-                                if hasattr(button, "text") and hasattr(button, "data"):
-                                    # Convert bytes to string if needed
-                                    button_data = button.data
-                                    if isinstance(button_data, bytes):
-                                        button_data = button_data.decode('utf-8')
-                                    
-                                    keyboard_row.append(
-                                        InlineKeyboardButton(button.text, callback_data=button_data)
-                                    )
-                            if keyboard_row:
-                                keyboard.append(keyboard_row)
-                        
-                        reply_markup = InlineKeyboardMarkup(keyboard)
-                        await update.message.reply_text(text, reply_markup=reply_markup)  # type: ignore
-                    else:
-                        await update.message.reply_text(text)  # type: ignore
-                
-                async def edit(self, text, buttons=None):
-                    # Same as respond for admin bot since we're sending new messages
-                    await self.respond(text, buttons)
             
-            # Create pseudo-event with the provided chat_id
-            pseudo_event = PseudoEvent(int(chat_id), update.message)
+            # Store the chat_id in context for use in callback queries
+            context.user_data["admin_chat_id"] = chat_id
+                
+            # Create buttons for the menu
+            keyboard = [
+                [InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")],
+                [InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")],
+                [InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")],
+                [InlineKeyboardButton("បិទ", callback_data="close_menu")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
             
-            # Call the event_handler's menu method with our pseudo-event
-            await self.event_handler.menu(pseudo_event)
-
+            await update.message.reply_text("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup)
+            
         except Exception as e:
-            await update.message.reply_text(f"Error processing menu: {str(e)}")  # type: ignore
+            await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             logger.error(f"Error in process_menu_chat_id: {e}", exc_info=True)
 
-        return ConversationHandler.END
+        return CALLBACK_QUERY_CODE
+
+    async def callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle callback queries from inline buttons"""
+        query = update.callback_query
+        
+        try:
+            # We need to answer the callback query first to stop the loading indicator
+            await query.answer()
+            
+            # Get the callback data
+            callback_data = query.data
+            
+            # First, check if we're handling direct admin bot actions
+            if callback_data in ["close_menu"]:
+                await query.edit_message_text("Menu closed.")
+                return ConversationHandler.END
+                
+            # Get chat_id from context or use message chat_id as fallback
+            if context and context.user_data and "admin_chat_id" in context.user_data:
+                chat_id = context.user_data["admin_chat_id"]
+            else:
+                # No stored chat ID from admin bot menu flow
+                # This might be a global callback handler case
+                await query.edit_message_text("Session expired. Please run /menu again.")
+                return ConversationHandler.END
+                
+            # Prepare callback handlers for different report types
+            if callback_data == "daily_summary":
+                result = await self._handle_report(chat_id, "daily", query)
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
+            elif callback_data == "weekly_summary":
+                result = await self._handle_report(chat_id, "weekly", query) 
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
+            elif callback_data == "monthly_summary":
+                result = await self._handle_report(chat_id, "monthly", query)
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
+            elif callback_data == "menu":
+                # Return to main menu - recreate the menu buttons
+                keyboard = [
+                    [InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")],
+                    [InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")],
+                    [InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")],
+                    [InlineKeyboardButton("បិទ", callback_data="close_menu")],
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup)
+                return CALLBACK_QUERY_CODE
+                
+            # If we get here, it's an unknown callback
+            await query.edit_message_text(f"Unhandled callback: {callback_data}")
+            return CALLBACK_QUERY_CODE
+            
+        except Exception as e:
+            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
+            try:
+                await query.message.reply_text(f"Error processing button action: {str(e)}")
+            except:
+                pass
+            return ConversationHandler.END
+
+    async def _handle_report(self, chat_id: str, report_type: str, query):
+        """Handle generating a specific report type"""
+        try:
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            if not chat:
+                await query.edit_message_text(f"Chat {chat_id} not found.")
+                return False
+                
+            # Create return to menu button
+            keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if report_type == "daily":
+                # Call report generation logic or reuse from event_handler
+                report = await self._generate_report(chat_id, "daily")
+                await query.edit_message_text(report, reply_markup=reply_markup)
+            elif report_type == "weekly":
+                report = await self._generate_report(chat_id, "weekly")
+                await query.edit_message_text(report, reply_markup=reply_markup)
+            elif report_type == "monthly":
+                report = await self._generate_report(chat_id, "monthly")
+                await query.edit_message_text(report, reply_markup=reply_markup)
+                
+            return True
+        except Exception as e:
+            logger.error(f"Error in _handle_report: {e}", exc_info=True)
+            await query.edit_message_text(f"Error generating {report_type} report: {str(e)}")
+            return False
+            
+    async def _generate_report(self, chat_id: str, report_type: str) -> str:
+        """Generate report text by calling appropriate service methods"""
+        from datetime import datetime, timedelta
+        from models import IncomeBalanceService
+        
+        income_service = IncomeBalanceService()
+        
+        # Get current time and format date ranges for report
+        now = datetime.now()
+        formatted_date = now.strftime("%Y-%m-%d")
+        
+        if report_type == "daily":
+            start_date = now.strftime("%Y-%m-%d")
+            end_date = now.strftime("%Y-%m-%d")
+            title = f"របាយការណ៍ប្រចាំថ្ងៃ ({formatted_date})"
+        elif report_type == "weekly":
+            # Get start of week (Monday)
+            start_of_week = now - timedelta(days=now.weekday())
+            start_date = start_of_week.strftime("%Y-%m-%d")
+            end_date = now.strftime("%Y-%m-%d")
+            title = f"របាយការណ៍ប្រចាំសប្តាហ៍ ({start_date} ដល់ {end_date})"
+        elif report_type == "monthly":
+            # First day of current month
+            start_of_month = now.replace(day=1)
+            start_date = start_of_month.strftime("%Y-%m-%d")
+            end_date = now.strftime("%Y-%m-%d")
+            title = f"របាយការណ៍ប្រចាំខែ ({start_date} ដល់ {end_date})"
+        else:
+            return "Invalid report type"
+            
+        # Get income data from service
+        summary = await income_service.get_income_summary_by_date_range(
+            chat_id, start_date, end_date
+        )
+        
+        # Format the report
+        if summary and "total_amount" in summary and "by_currency" in summary:
+            report = f"{title}\n\n"
+            # Add currency breakdown
+            for currency, data in summary["by_currency"].items():
+                report += f"{currency}: {data['total']:.2f}\n"
+                
+            report += f"\nចំនួនប្រតិបត្តិការ: {summary.get('count', 0)}"
+            return report
+        else:
+            return f"{title}\n\nគ្មានទិន្នន័យ"
 
     def setup(self) -> None:
         self.app = ApplicationBuilder().token(self.bot_token).build()
@@ -597,8 +705,8 @@ class TelegramAdminBot:
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
         
-        # Add a global callback query handler outside the conversation handlers
-        self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
+        # Remove the global callback query handler to avoid duplicate handling
+        # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
