@@ -508,7 +508,7 @@ class TelegramAdminBot:
                 
             # Prepare callback handlers for different report types
             if callback_data == "daily_summary":
-                result = await self._handle_report(chat_id, "daily", query)
+                result = await self._handle_daily_summary_menu(chat_id, query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
             elif callback_data == "weekly_summary":
                 result = await self._handle_report(chat_id, "weekly", query) 
@@ -528,6 +528,15 @@ class TelegramAdminBot:
                 
                 await query.edit_message_text("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup)
                 return CALLBACK_QUERY_CODE
+            elif callback_data.startswith("summary_of_"):
+                result = await self._handle_date_summary(chat_id, callback_data, query)
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
+            elif callback_data == "report_per_shift":
+                result = await self._handle_shift_report(chat_id, query)
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
+            elif callback_data == "other_dates":
+                result = await self._handle_other_dates(chat_id, query)
+                return CALLBACK_QUERY_CODE if result else ConversationHandler.END
                 
             # If we get here, it's an unknown callback
             await query.edit_message_text(f"Unhandled callback: {callback_data}")
@@ -540,6 +549,48 @@ class TelegramAdminBot:
             except:
                 pass
             return ConversationHandler.END
+
+    async def _handle_daily_summary_menu(self, chat_id: str, query):
+        """Handle daily summary by showing date selection menu like normal bot"""
+        try:
+            from helper import DateUtils
+            from datetime import timedelta
+            
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            if not chat:
+                await query.edit_message_text(f"Chat {chat_id} not found.")
+                return False
+                
+            today = DateUtils.now()
+            keyboard = []
+
+            # Check if shift is enabled for this chat
+            shift_enabled = await self.chat_service.is_shift_enabled(int(chat_id))
+            if shift_enabled:
+                keyboard.append([InlineKeyboardButton("ប្រចាំវេន​ថ្ងៃ​នេះ", callback_data="report_per_shift")])
+                # Only show current date for shift-enabled chats
+                label = today.strftime("ថ្ងៃ​នេះ")
+                callback_value = today.strftime("%Y-%m-%d")
+                keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_of_{callback_value}")])
+            else:
+                # Show 3 days for non-shift chats
+                for i in range(2, -1, -1):
+                    day = today - timedelta(days=i)
+                    label = day.strftime("%b %d")
+                    callback_value = day.strftime("%Y-%m-%d")
+                    keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_of_{callback_value}")])
+
+            keyboard.append([InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")])
+            keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("ឆែករបាយការណ៍ថ្ងៃ:", reply_markup=reply_markup)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _handle_daily_summary_menu: {e}", exc_info=True)
+            await query.edit_message_text(f"Error showing daily menu: {str(e)}")
+            return False
 
     async def _handle_report(self, chat_id: str, report_type: str, query):
         """Handle generating a specific report type"""
@@ -570,6 +621,72 @@ class TelegramAdminBot:
             await query.edit_message_text(f"Error generating {report_type} report: {str(e)}")
             return False
             
+    async def _handle_date_summary(self, chat_id: str, callback_data: str, query):
+        """Handle date summary like normal bot"""
+        try:
+            from datetime import datetime, timedelta
+            from models import IncomeService
+            from helper import total_summary_report
+            
+            date_str = callback_data.replace("summary_of_", "")
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d")
+            
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_date_and_chat_id(
+                chat_id=int(chat_id),
+                start_date=selected_date,
+                end_date=selected_date + timedelta(days=1),
+            )
+
+            # Create return to daily menu button
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if not incomes:
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
+            else:
+                period_text = f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}"
+                formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
+                message = total_summary_report(incomes, formatted_title)
+
+            await query.edit_message_text(message, reply_markup=reply_markup)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _handle_date_summary: {e}", exc_info=True)
+            await query.edit_message_text(f"Error generating date summary: {str(e)}")
+            return False
+
+    async def _handle_shift_report(self, chat_id: str, query):
+        """Handle shift report - placeholder for now"""
+        try:
+            # For now, just show a placeholder message
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text("Shift report functionality not implemented yet.", reply_markup=reply_markup)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _handle_shift_report: {e}", exc_info=True)
+            await query.edit_message_text(f"Error: {str(e)}")
+            return False
+
+    async def _handle_other_dates(self, chat_id: str, query):
+        """Handle other dates - placeholder for now"""
+        try:
+            # For now, just show a placeholder message
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text("Other dates functionality not implemented yet.", reply_markup=reply_markup)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _handle_other_dates: {e}", exc_info=True)
+            await query.edit_message_text(f"Error: {str(e)}")
+            return False
+
     async def _generate_report(self, chat_id: str, report_type: str) -> str:
         """Generate report text by calling appropriate service methods"""
         from datetime import timedelta
