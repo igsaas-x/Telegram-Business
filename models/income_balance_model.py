@@ -46,7 +46,7 @@ class IncomeBalance(BaseModel):
     message = Column(Text, nullable=False)
     shift = Column(Integer, nullable=True, default=1)
     shift_closed = Column(Boolean, nullable=True, default=False)
-    trx_id = Column(String(50), nullable=False)
+    trx_id = Column(String(50), nullable=True)
 
 
 class IncomeService:
@@ -88,7 +88,7 @@ class IncomeService:
             original_amount: float,
             message_id: int,
             message: str,
-            trx_id: str,
+            trx_id: str | None,
             shift: int,
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
@@ -137,7 +137,9 @@ class IncomeService:
                     is not None
             )
 
-    async def get_income_by_trx_id(self, trx_id: str) -> bool:
+    async def get_income_by_trx_id(self, trx_id: str | None) -> bool:
+        if trx_id is None:
+            return False
         with self._get_db() as db:
             return (
                     db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()

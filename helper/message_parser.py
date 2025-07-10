@@ -113,4 +113,9 @@ def extract_trx_id(message_text: str) -> str | None:
     if match:
         return match.group(1)
     
+    # Pattern 7: Reference ID format "Ref.ID: 123456"
+    match = re.search(r'Ref\.ID:\s*([0-9]+)', message_text)
+    if match:
+        return match.group(1)
+    
     return None

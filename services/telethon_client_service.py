@@ -111,7 +111,7 @@ class TelethonClientService:
 
             currency, amount = extract_amount_and_currency(event.message.text)
             message_id: int = event.message.id
-            trx_id: str = extract_trx_id(event.message.text) or ""
+            trx_id: str | None = extract_trx_id(event.message.text)
 
             # Check for duplicate based on message_id first
             if await self.service.get_income_by_message_id(message_id):

@@ -42,10 +42,12 @@ class TestMessageParser(unittest.TestCase):
                 self.assertEqual(amount, expected_amount)
 
     def test_acleda_eng_format(self):
-        """Test specific Khmer money amount patterns"""
+        """Test specific ACLEDA bank message patterns"""
         test_cases = [
             ("Received 1.38 USD from 015 738 813 Mom Soman, 09-Jul-2025 03:08PM. Ref.ID: 51903055598, at MIK YEK NEA.",
-             '$', 1.38)
+             '$', 1.38),
+            ("Received 5,500 KHR from 010 574 279 Pen Chamnab, 10-Jul-2025 07:50AM. Ref.ID: 51910666401, at MIK YEK NEA.",
+             '៛', 5500)
         ]
 
         for message, expected_currency, expected_amount in test_cases:
@@ -120,6 +122,7 @@ Hash: 74f576d0""", '$', 16.0)
             ("លេខប្រតិបត្តិការ: 175205247086840", "175205247086840"),
             ("Transaction completed, Txn Hash: b117ffd9", "b117ffd9"),
             ("TXN HASH: A1B2C3D4", "A1B2C3D4"),  # case sensitive
+            ("Received 5,500 KHR from 010 574 279 Pen Chamnab, 10-Jul-2025 07:50AM. Ref.ID: 51910666401, at MIK YEK NEA.", "51910666401"),
         ]
 
         for message, expected_trx_id in test_cases:
@@ -161,6 +164,7 @@ Hash: 74f576d0""", '$', 16.0)
             ("123", None, None, None),  # Number only
             ("50 USD extra text", '$', 50, None),  # Valid amount, no trx_id
             ("Invalid amount: $ abc", None, None, None),  # Invalid amount
+            ("Received 100 KHR from someone", '៛', 100, None),  # Valid amount, no transaction ID
         ]
 
         for message, expected_currency, expected_amount, expected_trx_id in edge_cases:
