@@ -158,27 +158,25 @@ class TelethonClientService:
                 if not chat:
                     return
                 
-                # If chat was just registered now, process this message
-                # Otherwise, check if message was sent after chat registration
-                if not chat_registered_now:
-                    from helper import DateUtils
-                    import pytz
-                    
-                    # Get message timestamp (Telethon provides it as UTC datetime)
-                    message_time = event.message.date
-                    if message_time.tzinfo is None:
-                        message_time = pytz.UTC.localize(message_time)
-                    
-                    # Convert chat created_at to UTC for comparison
-                    chat_created = chat.created_at
-                    if chat_created.tzinfo is None:
-                        chat_created = DateUtils.localize_datetime(chat_created)
-                    chat_created_utc = chat_created.astimezone(pytz.UTC)
-                    
-                    # Ignore messages sent before chat registration
-                    if message_time < chat_created_utc:
-                        print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
-                        return
+                # Check if message was sent after chat registration (applies to all messages)
+                from helper import DateUtils
+                import pytz
+                
+                # Get message timestamp (Telethon provides it as UTC datetime)
+                message_time = event.message.date
+                if message_time.tzinfo is None:
+                    message_time = pytz.UTC.localize(message_time)
+                
+                # Convert chat created_at to UTC for comparison
+                chat_created = chat.created_at
+                if chat_created.tzinfo is None:
+                    chat_created = DateUtils.localize_datetime(chat_created)
+                chat_created_utc = chat_created.astimezone(pytz.UTC)
+                
+                # Ignore messages sent before chat registration
+                if message_time < chat_created_utc:
+                    print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
+                    return
                 
                 last_income = await self.service.get_last_shift_id(event.chat_id)
                 shift_number: int = last_income.shift if last_income else 1  # type: ignore
