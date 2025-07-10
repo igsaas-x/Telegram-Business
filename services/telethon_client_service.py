@@ -104,8 +104,9 @@ class TelethonClientService:
 
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
-            chat_ids = await chat_service.get_all_chat_ids()
-            if event.chat_id not in chat_ids:
+            # Check if this is a private chat (not a group)
+            if event.is_private:
+                await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
                 return
 
             currency, amount = extract_amount_and_currency(event.message.text)
@@ -122,6 +123,27 @@ class TelethonClientService:
 
             # Only require currency and amount, trx_id is optional
             if currency and amount:
+                
+                # Check if chat exists, auto-register if not
+                if not await chat_service.chat_exists(event.chat_id):
+                    try:
+                        # Get chat title for registration
+                        chat_entity = await self.client.get_entity(event.chat_id)
+                        chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
+                        
+                        # Register the chat without a specific user (user=None)
+                        success, _ = await chat_service.register_chat_id(event.chat_id, chat_title, None)
+                        
+                        if not success:
+                            # If registration failed, skip this message
+                            print(f"Failed to auto-register chat {event.chat_id}")
+                            return
+                            
+                        print(f"Auto-registered chat: {event.chat_id} ({chat_title})")
+                    except Exception as e:
+                        print(f"Error during chat auto-registration: {e}")
+                        return
+                
                 last_income = await self.service.get_last_shift_id(event.chat_id)
                 shift_number: int = last_income.shift if last_income else 1  # type: ignore
                 await self.service.insert_income(

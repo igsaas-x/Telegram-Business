@@ -112,6 +112,21 @@ class ChatService:
         finally:
             session.close()
 
+    async def chat_exists(self, chat_id: int) -> bool:
+        """
+        Check if a chat with the given chat_id exists.
+        Much more efficient than fetching all chat IDs and checking if it's in the list.
+        """
+        session = self.Session()
+        try:
+            exists = session.query(session.query(Chat).filter_by(chat_id=str(chat_id)).exists()).scalar()
+            return bool(exists)
+        except Exception as e:
+            print(f"Error checking if chat exists: {e}")
+            return False
+        finally:
+            session.close()
+
     async def is_shift_enabled(self, chat_id: str) -> bool:
         try:
             chat = await self.get_chat_by_chat_id(chat_id)
