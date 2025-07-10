@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from handlers.event_handler import EventHandler
-from models import ChatService, Chat, ServicePackage, UserService, IncomeBalanceService
+from models import ChatService, Chat, ServicePackage, UserService
 
 # Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
@@ -573,9 +573,9 @@ class TelegramAdminBot:
     async def _generate_report(self, chat_id: str, report_type: str) -> str:
         """Generate report text by calling appropriate service methods"""
         from datetime import datetime, timedelta
-        from models import IncomeBalanceService
+        from models import IncomeService
         
-        income_service = IncomeBalanceService()
+        income_service = IncomeService()
         
         # Get current time and format date ranges for report
         now = datetime.now()
