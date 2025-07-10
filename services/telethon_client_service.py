@@ -125,7 +125,7 @@ class TelethonClientService:
                 return
 
             # Check for duplicate based on trx_id only if trx_id exists
-            if trx_id and await self.service.get_income_by_trx_id(trx_id):
+            if trx_id and await self.service.get_income_by_trx_id(trx_id, str(event.chat_id)):
                 return
 
             # Only require currency and amount, trx_id is optional

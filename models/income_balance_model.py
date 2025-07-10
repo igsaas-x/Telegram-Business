@@ -137,12 +137,14 @@ class IncomeService:
                     is not None
             )
 
-    async def get_income_by_trx_id(self, trx_id: str | None) -> bool:
+    async def get_income_by_trx_id(self, trx_id: str | None, chat_id: str) -> bool:
         if trx_id is None:
             return False
         with self._get_db() as db:
             return (
-                    db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()
+                    db.query(IncomeBalance)
+                    .filter(IncomeBalance.trx_id == trx_id, IncomeBalance.chat_id == chat_id)
+                    .first()
                     is not None
             )
 
