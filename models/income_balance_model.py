@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional, Generator, Any
 
@@ -195,7 +195,7 @@ class IncomeService:
         # Convert string dates to datetime objects
         start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
         # Add one day to end_date to include the entire end day
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + DateUtils.timedelta(days=1)
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
         
         # Get all income records in the date range
         with self._get_db() as db:

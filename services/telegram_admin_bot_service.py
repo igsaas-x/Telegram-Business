@@ -572,50 +572,49 @@ class TelegramAdminBot:
             
     async def _generate_report(self, chat_id: str, report_type: str) -> str:
         """Generate report text by calling appropriate service methods"""
-        from datetime import datetime, timedelta
+        from datetime import timedelta
         from models import IncomeService
+        from helper import total_summary_report, DateUtils
         
         income_service = IncomeService()
         
-        # Get current time and format date ranges for report
-        now = datetime.now()
-        formatted_date = now.strftime("%Y-%m-%d")
+        # Get current time using DateUtils for consistency
+        now = DateUtils.now()
         
         if report_type == "daily":
-            start_date = now.strftime("%Y-%m-%d")
-            end_date = now.strftime("%Y-%m-%d")
-            title = f"របាយការណ៍ប្រចាំថ្ងៃ ({formatted_date})"
+            start_date = now
+            end_date = now + timedelta(days=1)
+            title = f"ថ្ងៃទី {now.strftime('%d %b %Y')}"
         elif report_type == "weekly":
             # Get start of week (Monday)
             start_of_week = now - timedelta(days=now.weekday())
-            start_date = start_of_week.strftime("%Y-%m-%d")
-            end_date = now.strftime("%Y-%m-%d")
-            title = f"របាយការណ៍ប្រចាំសប្តាហ៍ ({start_date} ដល់ {end_date})"
+            start_date = start_of_week
+            end_date = now + timedelta(days=1)
+            title = f"{start_of_week.strftime('%d')} - {now.strftime('%d %b %Y')}"
         elif report_type == "monthly":
             # First day of current month
             start_of_month = now.replace(day=1)
-            start_date = start_of_month.strftime("%Y-%m-%d")
-            end_date = now.strftime("%Y-%m-%d")
-            title = f"របាយការណ៍ប្រចាំខែ ({start_date} ដល់ {end_date})"
+            start_date = start_of_month
+            end_date = now + timedelta(days=1)
+            title = f"{start_of_month.strftime('%d')} - {now.strftime('%d %b %Y')}"
         else:
             return "Invalid report type"
             
-        # Get income data from service
-        summary = await income_service.get_income_summary_by_date_range(
-            chat_id, start_date, end_date
+        # Get income data using the same method as normal bot
+        incomes = await income_service.get_income_by_date_and_chat_id(
+            chat_id=int(chat_id),
+            start_date=start_date,
+            end_date=end_date,
         )
         
-        # Format the report
-        if summary and "total_amount" in summary and "by_currency" in summary:
-            report = f"{title}\n\n"
-            # Add currency breakdown
-            for currency, data in summary["by_currency"].items():
-                report += f"{currency}: {data['total']:.2f}\n"
-                
-            report += f"\nចំនួនប្រតិបត្តិការ: {summary.get('count', 0)}"
-            return report
-        else:
-            return f"{title}\n\nគ្មានទិន្នន័យ"
+        # If no data found, return no data message
+        if not incomes:
+            return f"គ្មានប្រតិបត្តិការសម្រាប់ {title} ទេ។"
+        
+        # Use the same formatting as normal bot
+        period_text = title
+        formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
+        return total_summary_report(incomes, formatted_title)
 
     def setup(self) -> None:
         self.app = ApplicationBuilder().token(self.bot_token).build()
