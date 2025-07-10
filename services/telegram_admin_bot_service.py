@@ -25,6 +25,7 @@ PACKAGE_SELECTION_CODE = 1004
 USER_CONFIRMATION_CODE = 1005
 ENABLE_SHIFT_COMMAND_CODE = 1006
 MENU_COMMAND_CODE = 1007
+CALLBACK_QUERY_CODE = 1008
 
 
 class TelegramAdminBot:
@@ -243,6 +244,88 @@ class TelegramAdminBot:
                 )
             return ConversationHandler.END
 
+    async def callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle callback queries from inline buttons"""
+        query = update.callback_query
+        
+        try:
+            # We need to answer the callback query first to stop the loading indicator
+            await query.answer()
+            
+            # Extract the callback data (similar to what Telethon would get)
+            callback_data = query.data
+            
+            # Create a pseudo event for the callback similar to Telethon's events.CallbackQuery
+            class PseudoCallbackEvent:
+                def __init__(self, callback_query, callback_data):
+                    self.chat_id = callback_query.message.chat_id
+                    self.data = callback_data
+                    self.callback_query = True
+                    self.message = callback_query.message
+                    
+                async def edit(self, text, buttons=None):
+                    if buttons:
+                        # Convert Telethon buttons to python-telegram-bot InlineKeyboardButton format
+                        keyboard = []
+                        for row in buttons:
+                            keyboard_row = []
+                            for button in row:
+                                # Extract text and data from button
+                                if hasattr(button, "text") and hasattr(button, "data"):
+                                    # Convert bytes to string if needed
+                                    button_data = button.data
+                                    if isinstance(button_data, bytes):
+                                        button_data = button_data.decode('utf-8')
+                                    
+                                    keyboard_row.append(
+                                        InlineKeyboardButton(button.text, callback_data=button_data)
+                                    )
+                            if keyboard_row:
+                                keyboard.append(keyboard_row)
+                        
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await query.edit_message_text(text, reply_markup=reply_markup)
+                    else:
+                        await query.edit_message_text(text)
+                        
+                async def respond(self, text, buttons=None):
+                    """For cases where a new message needs to be sent instead of editing"""
+                    if buttons:
+                        # Convert Telethon buttons to python-telegram-bot format
+                        keyboard = []
+                        for row in buttons:
+                            keyboard_row = []
+                            for button in row:
+                                if hasattr(button, "text") and hasattr(button, "data"):
+                                    # Convert bytes to string if needed
+                                    button_data = button.data
+                                    if isinstance(button_data, bytes):
+                                        button_data = button_data.decode('utf-8')
+                                    
+                                    keyboard_row.append(
+                                        InlineKeyboardButton(button.text, callback_data=button_data)
+                                    )
+                            if keyboard_row:
+                                keyboard.append(keyboard_row)
+                        
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await query.message.reply_text(text, reply_markup=reply_markup)
+                    else:
+                        await query.message.reply_text(text)
+            
+            # Create pseudo event
+            pseudo_event = PseudoCallbackEvent(query, callback_data)
+            
+            # Call the event_handler's callback method
+            await self.event_handler.callback(pseudo_event)
+            
+            return CALLBACK_QUERY_CODE
+            
+        except Exception as e:
+            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
+            await query.message.reply_text(f"Error processing button action: {str(e)}")
+            return ConversationHandler.END
+
     async def _get_chat_with_validation(
         self,
         update: Update,
@@ -394,8 +477,13 @@ class TelegramAdminBot:
                             for button in row:
                                 # Extract text and data from button
                                 if hasattr(button, "text") and hasattr(button, "data"):
+                                    # Convert bytes to string if needed
+                                    button_data = button.data
+                                    if isinstance(button_data, bytes):
+                                        button_data = button_data.decode('utf-8')
+                                    
                                     keyboard_row.append(
-                                        InlineKeyboardButton(button.text, callback_data=button.data)
+                                        InlineKeyboardButton(button.text, callback_data=button_data)
                                     )
                             if keyboard_row:
                                 keyboard.append(keyboard_row)
@@ -493,6 +581,9 @@ class TelegramAdminBot:
                 MENU_COMMAND_CODE: [
                     MessageHandler(filters.TEXT & filters.REPLY, self.process_menu_chat_id)
                 ],
+                CALLBACK_QUERY_CODE: [
+                    CallbackQueryHandler(self.callback_query_handler)
+                ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
@@ -505,6 +596,9 @@ class TelegramAdminBot:
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
+        
+        # Add a global callback query handler outside the conversation handlers
+        self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
