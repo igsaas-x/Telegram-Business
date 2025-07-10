@@ -12,6 +12,7 @@ from telegram.ext import (
     filters,
 )
 
+from handlers.event_handler import EventHandler
 from models import ChatService, Chat, ServicePackage, UserService
 
 # Get logger (logging configured in main or telegram_bot_service)
@@ -23,6 +24,7 @@ PACKAGE_COMMAND_CODE = 1003
 PACKAGE_SELECTION_CODE = 1004
 USER_CONFIRMATION_CODE = 1005
 ENABLE_SHIFT_COMMAND_CODE = 1006
+MENU_COMMAND_CODE = 1007
 
 
 class TelegramAdminBot:
@@ -31,6 +33,7 @@ class TelegramAdminBot:
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
+        self.event_handler = EventHandler()
         self.default_question = (
             "Please provide the chat ID by replying to this message."
         )
@@ -355,6 +358,69 @@ class TelegramAdminBot:
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
+    async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(self.default_question)  # type: ignore
+        return MENU_COMMAND_CODE
+        
+    async def process_menu_chat_id(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        if not update.message:
+            return ConversationHandler.END
+
+        try:
+            chat_id: str = update.message.text.strip()  # type: ignore
+            chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
+                
+            # Create a pseudo-event object with the chat_id for the event_handler
+            class PseudoEvent:
+                def __init__(self, chat_id, message):
+                    self.chat_id = int(chat_id)
+                    self.message = message
+                    self.callback_query = None  # Not a callback
+                    
+                async def get_sender(self):
+                    # Return None to skip auto-registration logic
+                    return None
+                    
+                async def respond(self, text, buttons=None):
+                    if buttons:
+                        # Convert Telethon buttons to python-telegram-bot InlineKeyboardButton format
+                        keyboard = []
+                        for row in buttons:
+                            keyboard_row = []
+                            for button in row:
+                                # Extract text and data from button
+                                if hasattr(button, "text") and hasattr(button, "data"):
+                                    keyboard_row.append(
+                                        InlineKeyboardButton(button.text, callback_data=button.data)
+                                    )
+                            if keyboard_row:
+                                keyboard.append(keyboard_row)
+                        
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await update.message.reply_text(text, reply_markup=reply_markup)  # type: ignore
+                    else:
+                        await update.message.reply_text(text)  # type: ignore
+                
+                async def edit(self, text, buttons=None):
+                    # Same as respond for admin bot since we're sending new messages
+                    await self.respond(text, buttons)
+            
+            # Create pseudo-event with the provided chat_id
+            pseudo_event = PseudoEvent(int(chat_id), update.message)
+            
+            # Call the event_handler's menu method with our pseudo-event
+            await self.event_handler.menu(pseudo_event)
+
+        except Exception as e:
+            await update.message.reply_text(f"Error processing menu: {str(e)}")  # type: ignore
+            logger.error(f"Error in process_menu_chat_id: {e}", exc_info=True)
+
+        return ConversationHandler.END
+
     def setup(self) -> None:
         self.app = ApplicationBuilder().token(self.bot_token).build()
 
@@ -421,10 +487,24 @@ class TelegramAdminBot:
             per_message=False
         )
 
+        menu_handler = ConversationHandler(
+            entry_points=[CommandHandler("menu", self.menu)],
+            states={
+                MENU_COMMAND_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_menu_chat_id)
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_chat=True,
+            per_user=True,
+            per_message=False
+        )
+
         self.app.add_handler(activate_command_handler)
         self.app.add_handler(deactivate_command_handler)
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
+        self.app.add_handler(menu_handler)
         logger.info("TelegramAdminBot handlers set up")
 
     async def start_polling(self) -> None:
