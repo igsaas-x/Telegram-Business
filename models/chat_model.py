@@ -11,7 +11,7 @@ class Chat(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(String(255), unique=True, nullable=False)
     group_name = Column(String(255), nullable=False)
-    is_active = Column(Boolean, nullable=True, default=False)
+    is_active = Column(Boolean, nullable=True, default=True)
     enable_shift = Column(Boolean, nullable=True, default=False)
     created_at = Column(DateTime, default=DateUtils.now, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

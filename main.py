@@ -45,7 +45,6 @@ async def shutdown(loop: asyncio.AbstractEventLoop) -> None:
 async def main(loader: CredentialLoader) -> None:
     try:
         telegramBotService = TelegramBotService()
-        telethonClientService = TelethonClientService()
         telethonClientService1 = TelethonClientService()
         adminBot = TelegramAdminBot(loader.admin_bot_token)
 
@@ -59,11 +58,6 @@ async def main(loader: CredentialLoader) -> None:
         # Start all services
         service_tasks = [
             asyncio.create_task(telegramBotService.start(loader.bot_token)),
-            asyncio.create_task(
-                telethonClientService.start(
-                    loader.phone_number, loader.api_id, loader.api_hash
-                )
-            ),
             asyncio.create_task(
                 telethonClientService1.start(
                     loader.phone_number1, loader.api_id1, loader.api_hash1

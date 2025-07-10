@@ -108,4 +108,9 @@ def extract_trx_id(message_text: str) -> str | None:
     if match:
         return match.group(1)
     
+    # Pattern 6: QRPay "Transaction Hash: XXXXXXXX" format
+    match = re.search(r'Transaction Hash:\s*([a-f0-9]+)', message_text, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    
     return None
