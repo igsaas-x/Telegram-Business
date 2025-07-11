@@ -324,6 +324,7 @@ class BusinessEventHandler:
 
         try:
             recent_dates = await self.shift_service.get_recent_dates_with_shifts(chat_id, 3)
+            force_log(f"Found recent dates: {recent_dates}")
 
             if not recent_dates:
                 message = """
