@@ -116,21 +116,24 @@ class AutosumBusinessBot:
                 self.data = query.data.encode('utf-8')
                 self.query = query
                 self.parent = parent
+                self.chat = query.message.chat
                 
             async def edit(self, message, buttons=None):
                 keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
                 await self.query.edit_message_text(message, reply_markup=keyboard)
+                
+            async def respond(self, message, buttons=None):
+                # For callback events, we should edit instead of respond
+                await self.edit(message, buttons)
+                
+            async def get_sender(self):
+                return query.from_user
 
         mock_event = MockCallbackEvent(query, self)
         
         try:
-            if query.data == "back_to_menu":
-                # Return to main business menu
-                await self.business_menu(update, context)
-                return BUSINESS_MENU_CODE
-            else:
-                await self.event_handler.handle_business_callback(mock_event)
-                return BUSINESS_CALLBACK_CODE
+            await self.event_handler.handle_business_callback(mock_event)
+            return BUSINESS_CALLBACK_CODE
         except Exception as e:
             logger.error(f"Error handling business callback: {e}")
             await query.edit_message_text("❌ Error processing request. Please try again.")

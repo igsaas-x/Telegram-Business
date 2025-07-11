@@ -72,16 +72,17 @@ class BusinessEventHandler:
             ]
 
         message = f"""
-🏢 ផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
-
-💼 ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុអាជីវកម្ម
-📊 តាមដានចំណូលនិងការវិភាគ
-
 🔧 សកម្មភាពរហ័ស:
-ជ្រើសរើសជម្រើសខាងក្រោមដើម្បីគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
+ជ្រើសរើសជម្រើសខាងក្រោមដើម្បីគ្រប់គ្រងអាជីវកម្មរបស់អ្នក
         """
 
-        await event.respond(message, buttons=buttons)
+        # Check if this is a callback query (edit existing message) or new message (respond)
+        if hasattr(event, 'data') and hasattr(event, 'edit'):
+            # This is a callback query, edit the existing message
+            await event.edit(message, buttons=buttons)
+        else:
+            # This is a regular message, respond with new message
+            await event.respond(message, buttons=buttons)
 
     async def register_business(self, event, user: User):
         """Register chat for business services with special configuration"""
