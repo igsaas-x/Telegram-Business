@@ -54,28 +54,24 @@ jobs:
         CHECK_API_ID1: ${{ secrets.API_ID1 != '' && 'true' || 'false' }}
         CHECK_API_HASH1: ${{ secrets.API_HASH1 != '' && 'true' || 'false' }}
         CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
-        AUTOSUM_BUSINESS_BOT_TOKEN: ${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_AUTOSUM_BUSINESS_BOT_TOKEN: ${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN != '' && 'true' || 'false' }}
       run: |
         MISSING_SECRETS=0
-        REQUIRED_SECRETS=("HOST" "USERNAME" "PASSWORD" "BOT_TOKEN" "BOT_NAME" "PHONE_NUMBER1" "API_ID1" "API_HASH1" "ADMIN_BOT_TOKEN" "AUTOSUM_BUSINESS_BOT_TOKEN")
+        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_BOT_TOKEN" "CHECK_BOT_NAME" "CHECK_PHONE_NUMBER1" "CHECK_API_ID1" "CHECK_API_HASH1" "CHECK_ADMIN_BOT_TOKEN" "CHECK_AUTOSUM_BUSINESS_BOT_TOKEN")
         
         echo "Checking for required secrets..."
         for SECRET in "${REQUIRED_SECRETS[@]}"
         do
-          CHECK_VAR="CHECK_${SECRET}"
-          if [ "${!CHECK_VAR}" != "true" ]; then
-            echo "::error::Required secret '$SECRET' is not set."
-            MISSING_SECRETS=$((MISSING_SECRETS+1))
+          if [ -z "${!SECRET}" ] || [ "${!SECRET}" = "false" ]; then
+            echo "❌ Missing or empty secret: $SECRET"
+            MISSING_SECRETS=1
           else
-            echo "Secret '$SECRET' is properly set."
+            echo "✅ Found secret: $SECRET"
           fi
         done
-        
-        if [ $MISSING_SECRETS -gt 0 ]; then
-          echo "::error::$MISSING_SECRETS required secret(s) are missing. Deployment will fail."
+        if [ $MISSING_SECRETS -eq 1 ]; then
+          echo "Aborting due to missing secrets."
           exit 1
-        else
-          echo "All required secrets are properly configured."
         fi
 
   deploy:
