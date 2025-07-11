@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
 from sqlalchemy.orm import relationship, joinedload
 
@@ -5,6 +7,8 @@ from config.database_config import Base, SessionLocal
 from helper import DateUtils
 from models.income_balance_model import IncomeService
 from models.user_model import User, ServicePackage
+
+logger = logging.getLogger(__name__)
 
 
 class Chat(Base):
@@ -31,7 +35,7 @@ class ChatService:
                 last_shift = await self.income_service.get_last_shift_id(chat_id)
                 return last_shift.shift if last_shift else None  # type: ignore
         except Exception as e:
-            print(f"Error checking unlimited package: {e}")
+            logger.error(f"Error checking unlimited package: {e}")
 
     async def register_chat_id(self, chat_id, group_name, user: User | None):
         session = self.Session()
@@ -46,7 +50,7 @@ class ChatService:
             return True, f"Chat ID {chat_id} registered successfully."
         except Exception as e:
             session.rollback()
-            print(f"Error registering chat ID: {e}")
+            logger.error(f"Error registering chat ID: {e}")
             return False, f"Error registering chat ID: {e}"
         finally:
             session.close()
@@ -61,7 +65,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            print(f"Error updating chat enable_shift: {e}")
+            logger.error(f"Error updating chat enable_shift: {e}")
             return False
         finally:
             session.close()
@@ -74,7 +78,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            print(f"Error updating chat status: {e}")
+            logger.error(f"Error updating chat status: {e}")
             return False
         finally:
             session.close()
@@ -87,7 +91,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            print(f"Error updating chat user_id: {e}")
+            logger.error(f"Error updating chat user_id: {e}")
             return False
         finally:
             session.close()
@@ -98,7 +102,7 @@ class ChatService:
             chat = session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first()
             return chat
         except Exception as e:
-            print(f"Error fetching chat by chat ID: {e}")
+            logger.error(f"Error fetching chat by chat ID: {e}")
             return None
         finally:
             session.close()
@@ -109,7 +113,7 @@ class ChatService:
             chats = session.query(Chat.chat_id).all()
             return [int(c[0]) for c in chats]
         except Exception as e:
-            print(f"Error fetching chat IDs: {e}")
+            logger.error(f"Error fetching chat IDs: {e}")
             return []
         finally:
             session.close()
@@ -124,7 +128,7 @@ class ChatService:
             exists = session.query(Chat).filter_by(chat_id=chat_id).first() is not None
             return bool(exists)
         except Exception as e:
-            print(f"Error checking if chat exists: {e}")
+            logger.error(f"Error checking if chat exists: {e}")
             return False
         finally:
             session.close()
@@ -134,7 +138,7 @@ class ChatService:
             chat = await self.get_chat_by_chat_id(chat_id)
             return chat.enable_shift if chat else False
         except Exception as e:
-            print(f"Error checking shift enabled: {e}")
+            logger.error(f"Error checking shift enabled: {e}")
             return False
 
     async def migrate_chat_id(self, old_chat_id: int, new_chat_id: int) -> bool:
@@ -151,15 +155,15 @@ class ChatService:
             session.commit()
             
             if chat_result > 0 or income_result > 0:
-                print(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
-                print(f"Updated {chat_result} chat records and {income_result} income_balance records")
+                logger.info(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
+                logger.info(f"Updated {chat_result} chat records and {income_result} income_balance records")
                 return True
             else:
-                print(f"No records found with chat_id {old_chat_id}")
+                logger.warning(f"No records found with chat_id {old_chat_id}")
                 return False
         except Exception as e:
             session.rollback()
-            print(f"Error migrating chat_id: {e}")
+            logger.error(f"Error migrating chat_id: {e}")
             return False
         finally:
             session.close()

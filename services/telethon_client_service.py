@@ -1,3 +1,4 @@
+import logging
 import os
 
 from telethon import TelegramClient, events
@@ -5,6 +6,8 @@ from telethon.errors import PersistentTimestampInvalidError
 
 from helper import extract_amount_and_currency, extract_trx_id
 from models import ChatService, IncomeService
+
+logger = logging.getLogger(__name__)
 
 
 class TelethonClientService:
@@ -20,9 +23,9 @@ class TelethonClientService:
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
             await self.client.start(phone=username)  # type: ignore
-            print("Account " + username + " started...")
+            logger.info(f"Account {username} started...")
         except PersistentTimestampInvalidError:
-            print(f"Session corrupted for {username}, removing session file...")
+            logger.warning(f"Session corrupted for {username}, removing session file...")
             if os.path.exists(session_file):
                 os.remove(session_file)
             
@@ -30,13 +33,13 @@ class TelethonClientService:
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
             await self.client.start(phone=username)  # type: ignore
-            print("Account " + username + " restarted with clean session...")
+            logger.info(f"Account {username} restarted with clean session...")
         except TimeoutError as e:
-            print(f"Connection timeout for {username}: {e}")
-            print("Will retry connection automatically...")
+            logger.warning(f"Connection timeout for {username}: {e}")
+            logger.info("Will retry connection automatically...")
             # Let Telethon handle automatic reconnection
         except Exception as e:
-            print(f"Error starting client for {username}: {e}")
+            logger.error(f"Error starting client for {username}: {e}")
             raise
 
         chat_service = ChatService()
@@ -144,13 +147,13 @@ class TelethonClientService:
                         
                         if not success:
                             # If registration failed, skip this message
-                            print(f"Failed to auto-register chat {event.chat_id}, {err_message}")
+                            logger.error(f"Failed to auto-register chat {event.chat_id}, {err_message}")
                             return
                             
                         chat_registered_now = True
-                        print(f"Auto-registered chat: {event.chat_id} ({chat_title})")
+                        logger.info(f"Auto-registered chat: {event.chat_id} ({chat_title})")
                     except Exception as e:
-                        print(f"Error during chat auto-registration: {e}")
+                        logger.error(f"Error during chat auto-registration: {e}")
                         return
                 
                 # Get chat info to check registration timestamp
@@ -175,7 +178,7 @@ class TelethonClientService:
                 
                 # Ignore messages sent before chat registration
                 if message_time < chat_created_utc:
-                    print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
+                    logger.debug(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
                     return
                 
                 # Let the income service handle shift creation automatically
