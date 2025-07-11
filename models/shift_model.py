@@ -96,7 +96,7 @@ class ShiftService:
                 return shift
             return None
 
-    async def get_shifts_by_date_range(self, chat_id: str, start_date: date, end_date: date) -> list[type[Shift]]:
+    async def get_shifts_by_date_range(self, chat_id: str, start_date: date, end_date: date) -> list[Shift]:
         """Get all shifts for a chat within a date range"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -105,16 +105,15 @@ class ShiftService:
                 Shift.shift_date <= end_date
             ).order_by(Shift.shift_date, Shift.number).all()
 
-    async def get_shift_for_chat_and_date(self, chat_id: str, shift_date: date, shift_number: int) -> Optional[Shift]:
-        """Get a specific shift by chat, date, and number"""
+    async def get_shifts_by_date(self, chat_id: str, shift_date: date) -> list[Shift]:
+        """Get all shifts for a specific date"""
         with self._get_db() as db:
             return db.query(Shift).filter(
                 Shift.chat_id == chat_id,
-                Shift.shift_date == shift_date,
-                Shift.number == shift_number
-            ).first()
+                Shift.shift_date == shift_date
+            ).order_by(Shift.number).all()
 
-    async def get_recent_closed_shifts(self, chat_id: str, limit: int = 3) -> list[Shift]:
+    async def get_recent_closed_shifts(self, chat_id: str, limit: int = 1) -> list[Shift]:
         """Get recent closed shifts for a chat"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -156,3 +155,12 @@ class ShiftService:
                 'transaction_count': transaction_count,
                 'currencies': currencies
             }
+
+    async def get_recent_dates_with_shifts(self, chat_id: str, days: int = 3) -> list[date]:
+        """Get last N dates that have shifts"""
+        with self._get_db() as db:
+            dates = db.query(Shift.shift_date).filter(
+                Shift.chat_id == chat_id
+            ).distinct().order_by(Shift.shift_date.desc()).limit(days).all()
+            
+            return [d[0] for d in dates]

@@ -178,7 +178,7 @@ class TelethonClientService:
                     print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
                     return
                 
-                # Insert income record
+                # Let the income service handle shift creation automatically
                 await self.service.insert_income(
                     str(event.chat_id),  # Convert to string
                     amount,
@@ -187,6 +187,7 @@ class TelethonClientService:
                     message_id,
                     event.message.text,
                     trx_id,
+                    # Don't pass shift_id - let auto-creation handle it
                 )
 
         await self.client.run_until_disconnected()  # type: ignore

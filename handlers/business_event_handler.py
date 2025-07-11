@@ -1,6 +1,7 @@
 import logging
+from datetime import datetime
 
-from models import ChatService, IncomeService, UserService
+from models import ChatService, IncomeService, UserService, ShiftService
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
@@ -16,6 +17,7 @@ class BusinessEventHandler:
         self.command_handler = CommandHandler()
         self.chat_service = ChatService()
         self.income_service = IncomeService()
+        self.shift_service = ShiftService()
 
     async def menu(self, event):
         """Business-specific menu handler"""
@@ -50,13 +52,26 @@ class BusinessEventHandler:
                 await event.respond(message)
                 return
 
-        # Create menu buttons
-        buttons = [
-            [("📊 របាយការណ៍", "reports")],
-            [("📞 ជំនួយ", "support")]
-        ]
+        # Create menu buttons based on shift status
+        chat_id = str(event.chat_id)
+        current_shift = await self.shift_service.get_current_shift(chat_id)
+        
+        if current_shift:
+            buttons = [
+                [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
+                [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
+                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("🛑 បិទវេន", "close_shift")],
+                [("❌ បិទ", "close_menu")]
+            ]
+        else:
+            buttons = [
+                [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
+                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("❌ បិទ", "close_menu")]
+            ]
 
-        message = """
+        message = f"""
 🏢 ផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
 
 💼 ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុអាជីវកម្ម
@@ -103,32 +118,342 @@ class BusinessEventHandler:
         """Handle business-specific callback queries"""
         data = event.data.decode('utf-8')
         
-        if data == "reports":
-            await self.show_reports(event)
+        if data == "current_shift_report":
+            await self.show_current_shift_report(event)
+        elif data == "previous_shift_report":
+            await self.show_previous_shift_report(event)
+        elif data == "other_days_report":
+            await self.show_other_days_report(event)
+        elif data == "close_shift":
+            await self.close_current_shift(event)
+        elif data == "close_menu":
+            await self.close_menu(event)
         elif data == "back_to_menu":
             await self.menu(event)
-        elif data == "support":
-            await self.show_support(event)
+        elif data.startswith("shift_"):
+            await self.show_specific_shift_report(event, data)
+        elif data.startswith("date_"):
+            await self.show_date_shifts(event, data)
         else:
             # Fallback to regular command handler
             await self.command_handler.handle_callback_query(event)
 
-    async def show_reports(self, event):
-        """Show business reports"""
-        message = """
-📊 របាយការណ៍អាជីវកម្ម
-
-📈 ការវិភាគដែលមាន:
-• របាយការណ៍ប្រចាំថ្ងៃ
-• របាយការណ៍ប្រចាំសប្តាហ៍ 
-• របាយការណ៍ប្រចាំខែ
-• ការវិភាគនិន្នាការ
-
-💡 ប្រើម៉ឺនុយធម្មតាដើម្បីចូលប្រើរបាយការណ៍លម្អិត។
-        """
+    async def show_current_shift_report(self, event):
+        """Show current shift report"""
+        chat_id = str(event.chat_id)
         
-        buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        try:
+            current_shift = await self.shift_service.get_current_shift(chat_id)
+            
+            if not current_shift:
+                message = """
+📊 របាយការណ៍វេនបច្ចុប្បន្ន
+
+🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
+
+💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
+                """
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
+                
+                # Calculate duration
+                now = datetime.now()
+                duration = now - current_shift.start_time
+                hours = int(duration.total_seconds() // 3600)
+                minutes = int((duration.total_seconds() % 3600) // 60)
+                
+                # Currency breakdown
+                currency_text = ""
+                for currency, data in shift_summary['currencies'].items():
+                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                
+                message = f"""
+📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+
+🟢 ស្ថានភាព: សកម្ម
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+
+💰 សង្ខេបចំណូល:
+• សរុប: ${shift_summary['total_amount']:,.2f}
+• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
+
+💱 ការចែករូបិយប័ណ្ណ:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+                """
+                
+                buttons = [
+                    [("🛑 បិទវេន", "close_shift")],
+                    [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                ]
+                
+        except Exception as e:
+            logger.error(f"Error showing current shift report: {e}")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
         await event.edit(message, buttons=buttons)
+
+    async def show_previous_shift_report(self, event):
+        """Show previous shift report (last closed shift)"""
+        chat_id = str(event.chat_id)
+        
+        try:
+            previous_shifts = await self.shift_service.get_recent_closed_shifts(chat_id, 1)
+            
+            if not previous_shifts:
+                message = """
+📈 របាយការណ៍វេនមុន
+
+🔴 គ្មានវេនដែលបានបិទ។
+
+💡 វេនមុននឹងបង្ហាញនៅទីនេះបន្ទាប់ពីអ្នកបិទវេន។
+                """
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                shift = previous_shifts[0]
+                shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                
+                # Calculate duration
+                duration = shift.end_time - shift.start_time
+                hours = int(duration.total_seconds() // 3600)
+                minutes = int((duration.total_seconds() % 3600) // 60)
+                
+                # Currency breakdown
+                currency_text = ""
+                for currency, data in shift_summary['currencies'].items():
+                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                
+                message = f"""
+📈 របាយការណ៍វេនមុន #{shift.number}
+
+🔴 ស្ថានភាព: បានបិទ
+⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %H:%M')}
+⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+
+💰 សង្ខេបចំណូល:
+• សរុប: ${shift_summary['total_amount']:,.2f}
+• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
+
+💱 ការចែករូបិយប័ណ្ណ:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+                """
+                
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+                
+        except Exception as e:
+            logger.error(f"Error showing previous shift report: {e}")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
+        await event.edit(message, buttons=buttons)
+
+    async def show_other_days_report(self, event):
+        """Show other days with shifts (last 3 days with data)"""
+        chat_id = str(event.chat_id)
+        
+        try:
+            recent_dates = await self.shift_service.get_recent_dates_with_shifts(chat_id, 3)
+            
+            if not recent_dates:
+                message = """
+📅 របាយការណ៍ថ្ងៃផ្សេង
+
+🔴 គ្មានទិន្នន័យសម្រាប់ថ្ងៃមុនៗ។
+
+💡 ទិន្នន័យនឹងបង្ហាញនៅទីនេះបន្ទាប់ពីមានវេនបានបិទ។
+                """
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                message = "📅 របាយការណ៍ថ្ងៃផ្សេង\n\nជ្រើសរើសថ្ងៃដែលអ្នកចង់មើល:"
+                
+                buttons = []
+                for date in recent_dates:
+                    date_str = date.strftime("%Y-%m-%d")
+                    display_date = date.strftime("%d %b %Y")
+                    buttons.append([(display_date, f"date_{date_str}")])
+                
+                buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
+                
+        except Exception as e:
+            logger.error(f"Error showing other days report: {e}")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
+        await event.edit(message, buttons=buttons)
+
+    async def show_date_shifts(self, event, data):
+        """Show shifts for a specific date"""
+        chat_id = str(event.chat_id)
+        date_str = data.replace("date_", "")
+        
+        try:
+            from datetime import datetime
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            shifts = await self.shift_service.get_shifts_by_date(chat_id, selected_date)
+            
+            if not shifts:
+                message = f"""
+📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}
+
+🔴 គ្មានវេនសម្រាប់ថ្ងៃនេះ។
+                """
+                buttons = [
+                    [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
+                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                ]
+            else:
+                message = f"📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}\n\nជ្រើសរើសវេនដែលអ្នកចង់មើល:"
+                
+                buttons = []
+                for shift in shifts:
+                    shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                    start_time = shift.start_time.strftime('%H:%M')
+                    end_time = shift.end_time.strftime('%H:%M') if shift.end_time else "សកម្ម"
+                    status = "🔴" if shift.is_closed else "🟢"
+                    
+                    button_text = f"{status} វេន #{shift.number} ({start_time}-{end_time}) ${shift_summary['total_amount']:,.0f}"
+                    buttons.append([(button_text, f"shift_{shift.id}")])
+                
+                buttons.extend([
+                    [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
+                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                ])
+                
+        except Exception as e:
+            logger.error(f"Error showing date shifts: {e}")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
+        await event.edit(message, buttons=buttons)
+
+    async def show_specific_shift_report(self, event, data):
+        """Show report for a specific shift"""
+        shift_id = int(data.replace("shift_", ""))
+        
+        try:
+            shift = await self.shift_service.get_shift_by_id(shift_id)
+            
+            if not shift:
+                message = "❌ រកមិនឃើញវេននេះទេ។"
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                
+                # Calculate duration
+                if shift.end_time:
+                    duration = shift.end_time - shift.start_time
+                    end_text = shift.end_time.strftime('%Y-%m-%d %H:%M')
+                    status = "🔴 បានបិទ"
+                else:
+                    duration = datetime.now() - shift.start_time
+                    end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
+                    status = "🟢 សកម្ម"
+                
+                hours = int(duration.total_seconds() // 3600)
+                minutes = int((duration.total_seconds() % 3600) // 60)
+                
+                # Currency breakdown
+                currency_text = ""
+                for currency, data in shift_summary['currencies'].items():
+                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                
+                message = f"""
+📊 របាយការណ៍វេន #{shift.number}
+
+{status}
+⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ បញ្ចប់: {end_text}
+⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+
+💰 សង្ខេបចំណូល:
+• សរុប: ${shift_summary['total_amount']:,.2f}
+• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
+
+💱 ការចែករូបិយប័ណ្ណ:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+                """
+                
+                buttons = [
+                    [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
+                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                ]
+                
+        except Exception as e:
+            logger.error(f"Error showing specific shift report: {e}")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
+        await event.edit(message, buttons=buttons)
+
+    async def close_current_shift(self, event):
+        """Close the current active shift"""
+        chat_id = str(event.chat_id)
+        
+        try:
+            current_shift = await self.shift_service.get_current_shift(chat_id)
+            
+            if not current_shift:
+                message = """
+⚠️ គ្មានវេនសកម្ម
+
+គ្មានវេនសកម្មដែលត្រូវបិទទេ។
+
+💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
+                """
+                
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                # Close the shift
+                closed_shift = await self.shift_service.close_shift(current_shift.id)
+                
+                if closed_shift:
+                    # Get final summary
+                    shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id)
+                    duration = closed_shift.end_time - closed_shift.start_time
+                    hours = int(duration.total_seconds() // 3600)
+                    minutes = int((duration.total_seconds() % 3600) // 60)
+                    
+                    message = f"""
+✅ វេនត្រូវបានបិទដោយជោគជ័យ!
+
+📊 សង្ខេបវេន #{closed_shift.number}:
+⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
+⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+
+💰 លទ្ធផលចុងក្រោយ:
+• សរុបចំណូល: ${shift_summary['total_amount']:,.2f}
+• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
+
+🎉 ការងារល្អ!
+                    """
+                    
+                    buttons = [
+                        [("📈 មើលវេនទាំងអស់", "other_days_report")],
+                        [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                    ]
+                else:
+                    message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
+                    buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+                    
+        except Exception as e:
+            logger.error(f"Error closing shift: {e}")
+            message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+        
+        await event.edit(message, buttons=buttons)
+
+    async def close_menu(self, event):
+        """Close the menu (delete message)"""
+        try:
+            await event.query.delete_message()
+        except Exception as e:
+            logger.error(f"Error deleting message: {e}")
+            # Fallback to editing the message
+            await event.edit("Menu closed.", buttons=None)
 
     async def show_support(self, event):
         """Show support information"""
