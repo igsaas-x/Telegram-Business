@@ -147,6 +147,7 @@ class AutosumBusinessBot:
 📋 ពាក្យបញ្ជាដែលមាន:
 • `/start` - សារស្វាគមន៍និងការណែនាំ
 • `/menu` - ចូលទៅផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
+• `/shift` - បើកវេនថ្មី (ចាប់ផ្តើមតាមដានប្រតិបត្តិការ)
 • `/help` - បង្ហាញសារជំនួយនេះ
 • `/support` - ទាក់ទងការគាំទ្រអាជីវកម្ម
 
@@ -201,6 +202,57 @@ class AutosumBusinessBot:
         
         await update.message.reply_text(support_message)
 
+    async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Enable shift command - starts a new shift"""
+        chat_id = str(update.effective_chat.id)
+        
+        try:
+            # Check if chat is registered
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            if not chat:
+                message = """
+⚠️ មិនទាន់ចុះឈ្មោះ
+
+សូមប្រើ /menu ដើម្បីចុះឈ្មោះជជែករបស់អ្នកសម្រាប់សេវាអាជីវកម្មជាមុនសិន។
+                """
+                await update.message.reply_text(message)
+                return
+            
+            # Check if there's already an active shift
+            current_shift = await self.event_handler.shift_service.get_current_shift(chat_id)
+            
+            if current_shift:
+                message = f"""
+⚠️ មានវេនសកម្មរួចហើយ
+
+វេន #{current_shift.number} កំពុងដំណើរការ
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+
+💡 ប្រសិនបើអ្នកចង់បិទវេនបច្ចុប្បន្ន សូមប្រើ /menu ហើយជ្រើសរើស "បិទវេន"
+                """
+                await update.message.reply_text(message)
+                return
+            
+            # Create new shift
+            new_shift = await self.event_handler.shift_service.create_shift(chat_id)
+            
+            message = f"""
+✅ វេនថ្មីត្រូវបានបើកដោយជោគជ័យ!
+
+📊 វេន #{new_shift.number}
+⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+🟢 ស្ថានភាព: សកម្ម
+
+💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
+🔧 ប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
+            """
+            
+            await update.message.reply_text(message)
+            
+        except Exception as e:
+            logger.error(f"Error enabling shift: {e}")
+            await update.message.reply_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
+
     def setup(self):
         """Setup the business bot with specialized handlers"""
         if not self.bot_token:
@@ -212,6 +264,7 @@ class AutosumBusinessBot:
         self.app.add_handler(CommandHandler("start", self.business_start))
         self.app.add_handler(CommandHandler("help", self.business_help))
         self.app.add_handler(CommandHandler("support", self.business_support))
+        self.app.add_handler(CommandHandler("shift", self.enable_shift))
 
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(

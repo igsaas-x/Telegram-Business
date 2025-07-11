@@ -72,8 +72,7 @@ class BusinessEventHandler:
             ]
 
         message = f"""
-🔧 សកម្មភាពរហ័ស:
-ជ្រើសរើសជម្រើសខាងក្រោមដើម្បីគ្រប់គ្រងអាជីវកម្មរបស់អ្នក
+ជ្រើសរើសជម្រើសខាងក្រោម
         """
 
         # Check if this is a callback query (edit existing message) or new message (respond)
