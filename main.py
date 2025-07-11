@@ -18,11 +18,8 @@ load_environment()
 # Configure logging first, before any services are imported
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("telegram_bot.log"),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("telegram_bot.log"), logging.StreamHandler()],
 )
 
 tasks: Set[asyncio.Task] = set()
@@ -67,7 +64,7 @@ async def main(loader: CredentialLoader) -> None:
             ),
             asyncio.create_task(adminBot.start_polling()),
         ]
-        
+
         # Add business bot only if token is provided
         if loader.autosum_business_bot_token:
             service_tasks.append(asyncio.create_task(businessBot.start_polling()))

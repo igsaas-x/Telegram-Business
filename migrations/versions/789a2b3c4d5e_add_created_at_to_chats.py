@@ -20,13 +20,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column(
-        "chats",
-        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
-    )
+    # Check if column already exists
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = inspector.get_columns("chats")
+    column_names = [c["name"] for c in columns]
 
-    # Set created_at for existing chats to current timestamp
-    op.execute("UPDATE chats SET created_at = NOW() WHERE created_at IS NULL")
+    # Only add the column if it doesn't exist
+    if "created_at" not in column_names:
+        op.add_column(
+            "chats",
+            sa.Column(
+                "created_at", sa.DateTime, nullable=False, server_default=sa.func.now()
+            ),
+        )
+
+        # Set created_at for existing chats to current timestamp
+        op.execute("UPDATE chats SET created_at = NOW() WHERE created_at IS NULL")
 
 
 def downgrade() -> None:

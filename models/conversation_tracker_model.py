@@ -3,11 +3,10 @@ from enum import Enum
 from typing import Optional, Union
 
 from sqlalchemy import String, Column, Integer, DateTime, Boolean, BigInteger
-from sqlalchemy.orm import Session
 
-from config.database_config import SessionLocal
 from helper.dateutils import DateUtils
 from models.base_model import BaseModel
+from config import get_db
 
 
 class QuestionType(Enum):
@@ -33,19 +32,8 @@ class BotQuestion(BaseModel):
 
 
 class ConversationService:
-    def __init__(self, db_session: Optional[Session] = None):
-        self._db = db_session or SessionLocal()
-
-    @contextmanager
-    def session_scope(self):
-        try:
-            yield self._db
-            self._db.commit()
-        except Exception:
-            self._db.rollback()
-            raise
-        finally:
-            self._db.close()
+    def __init__(self):
+        self._session_factory = get_db
 
     async def save_question(
         self,
@@ -54,7 +42,7 @@ class ConversationService:
         question_type: Union[QuestionType, str],
         context_data: Optional[str] = None,
     ) -> BotQuestion:
-        with self.session_scope() as session:
+        with self._session_factory() as session:
             question_type_value = (
                 question_type.value
                 if isinstance(question_type, QuestionType)
@@ -72,7 +60,7 @@ class ConversationService:
     async def mark_as_replied(
         self, chat_id: int, message_id: int
     ) -> type[BotQuestion] | None:
-        with self.session_scope() as session:
+        with self._session_factory() as session:
             question = (
                 session.query(BotQuestion)
                 .filter(
@@ -91,9 +79,10 @@ class ConversationService:
     async def get_pending_question(
         self, chat_id: int, question_type: Optional[QuestionType] = None
     ) -> Optional[BotQuestion]:
-        query = self._db.query(BotQuestion).filter(
-            BotQuestion.chat_id == chat_id, BotQuestion.is_replied == False  # type: ignore
-        )
+        with self._session_factory() as session:
+            query = session.query(BotQuestion).filter(
+                BotQuestion.chat_id == chat_id, BotQuestion.is_replied == False  # type: ignore
+            )
 
         if question_type:
             query = query.filter(BotQuestion.question_type == question_type.value)
@@ -103,10 +92,11 @@ class ConversationService:
     async def get_question_by_message_id(
         self, chat_id: int, message_id: int
     ) -> Optional[BotQuestion]:
-        return (
-            self._db.query(BotQuestion)
-            .filter(
-                BotQuestion.chat_id == chat_id, BotQuestion.message_id == message_id
+        with self._session_factory() as session:
+            return (
+                session.query(BotQuestion)
+                .filter(
+                    BotQuestion.chat_id == chat_id, BotQuestion.message_id == message_id
+                )
+                .first()
             )
-            .first()
-        )
