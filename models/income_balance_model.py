@@ -68,7 +68,7 @@ class IncomeService:
         finally:
             db.close()
 
-    async def _ensure_active_shift(self, chat_id: str) -> int:
+    async def _ensure_active_shift(self, chat_id: int) -> int:
         """Ensure there's an active shift for the chat, create one if needed"""
         from models.shift_model import ShiftService
         
@@ -92,7 +92,7 @@ class IncomeService:
                 return income.first()
             return None
 
-    async def get_last_shift_id(self, chat_id: str) -> type[IncomeBalance] | None:
+    async def get_last_shift_id(self, chat_id: int) -> type[IncomeBalance] | None:
         with self._get_db() as db:
             last_income = (
                 db.query(IncomeBalance)
@@ -149,7 +149,7 @@ class IncomeService:
         with self._get_db() as db:
             return db.query(IncomeBalance).filter(IncomeBalance.id == income_id).first()
 
-    async def get_income_by_chat_id(self, chat_id: str) -> list[type[IncomeBalance]]:
+    async def get_income_by_chat_id(self, chat_id: int) -> list[type[IncomeBalance]]:
         with self._get_db() as db:
             return (
                 db.query(IncomeBalance).filter(IncomeBalance.chat_id == chat_id).all()
@@ -164,7 +164,7 @@ class IncomeService:
                     is not None
             )
 
-    async def get_income_by_trx_id(self, trx_id: str | None, chat_id: str) -> bool:
+    async def get_income_by_trx_id(self, trx_id: str | None, chat_id: int) -> bool:
         if trx_id is None:
             return False
         with self._get_db() as db:
@@ -227,7 +227,7 @@ class IncomeService:
             )
 
     async def get_income_summary_by_date_range(
-            self, chat_id: str, start_date: str, end_date: str
+            self, chat_id: int, start_date: str, end_date: str
     ) -> dict:
         """
         Get income summary statistics for a date range
@@ -276,7 +276,7 @@ class IncomeService:
 
         return summary
 
-    async def get_today_income(self, chat_id: str) -> list[IncomeBalance]:
+    async def get_today_income(self, chat_id: int) -> list[IncomeBalance]:
         """Get all income records for today"""
         today = DateUtils.today()
         tomorrow = today + timedelta(days=1)
@@ -292,7 +292,7 @@ class IncomeService:
                 .all()
             )
 
-    async def get_weekly_income(self, chat_id: str) -> list[IncomeBalance]:
+    async def get_weekly_income(self, chat_id: int) -> list[IncomeBalance]:
         """Get all income records for this week"""
         today = DateUtils.today()
         week_start = today - timedelta(days=today.weekday())
@@ -307,7 +307,7 @@ class IncomeService:
                 .all()
             )
 
-    async def get_monthly_income(self, chat_id: str) -> list[IncomeBalance]:
+    async def get_monthly_income(self, chat_id: int) -> list[IncomeBalance]:
         """Get all income records for this month"""
         today = DateUtils.today()
         month_start = today.replace(day=1)

@@ -24,7 +24,7 @@ class ChatService:
         self.Session = SessionLocal
         self.income_service = IncomeService()
 
-    async def is_unlimited_package(self, chat_id: str) -> int | None:
+    async def is_unlimited_package(self, chat_id: int) -> int | None:
         try:
             chat = await self.get_chat_by_chat_id(chat_id)
             if chat and chat.enable_shift and chat.user.package == ServicePackage.UNLIMITED:  # type: ignore
@@ -51,7 +51,7 @@ class ChatService:
         finally:
             session.close()
 
-    async def update_chat_enable_shift(self, chat_id: str, enable_shift: bool):
+    async def update_chat_enable_shift(self, chat_id: int, enable_shift: bool):
         session = self.Session()
         try:
             session.query(Chat).filter_by(chat_id=chat_id).update(
@@ -66,7 +66,7 @@ class ChatService:
         finally:
             session.close()
 
-    async def update_chat_status(self, chat_id: str, status: bool):
+    async def update_chat_status(self, chat_id: int, status: bool):
         session = self.Session()
         try:
             session.query(Chat).filter_by(chat_id=chat_id).update({"is_active": status})
@@ -79,7 +79,7 @@ class ChatService:
         finally:
             session.close()
 
-    async def update_chat_user_id(self, chat_id: str, user_id: int):
+    async def update_chat_user_id(self, chat_id: int, user_id: int):
         session = self.Session()
         try:
             session.query(Chat).filter_by(chat_id=chat_id).update({"user_id": user_id})
@@ -92,7 +92,7 @@ class ChatService:
         finally:
             session.close()
 
-    async def get_chat_by_chat_id(self, chat_id: str) -> Chat | None:
+    async def get_chat_by_chat_id(self, chat_id: int) -> Chat | None:
         session = self.Session()
         try:
             chat = session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first()
@@ -129,7 +129,7 @@ class ChatService:
         finally:
             session.close()
 
-    async def is_shift_enabled(self, chat_id: str) -> bool:
+    async def is_shift_enabled(self, chat_id: int) -> bool:
         try:
             chat = await self.get_chat_by_chat_id(chat_id)
             return chat.enable_shift if chat else False
@@ -137,7 +137,7 @@ class ChatService:
             print(f"Error checking shift enabled: {e}")
             return False
 
-    async def migrate_chat_id(self, old_chat_id: str, new_chat_id: str) -> bool:
+    async def migrate_chat_id(self, old_chat_id: int, new_chat_id: int) -> bool:
         """Migrate chat_id from old to new (for group migrations)"""
         session = self.Session()
         try:

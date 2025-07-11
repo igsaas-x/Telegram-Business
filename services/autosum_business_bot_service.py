@@ -209,7 +209,7 @@ class AutosumBusinessBot:
 
     async def register_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Register chat command - registers chat and asks about shift enablement"""
-        chat_id = str(update.effective_chat.id)
+        chat_id = int(update.effective_chat.id)
         
         try:
             # Check if chat is already registered
@@ -292,7 +292,7 @@ class AutosumBusinessBot:
 
     async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Enable shift command - starts a new shift"""
-        chat_id = str(update.effective_chat.id)
+        chat_id = int(update.effective_chat.id)
         
         try:
             # Check if chat is registered
@@ -346,7 +346,7 @@ class AutosumBusinessBot:
         query = update.callback_query
         await query.answer()
         
-        chat_id = str(query.message.chat_id)
+        chat_id = query.message.chat_id
         
         try:
             # Simple database update

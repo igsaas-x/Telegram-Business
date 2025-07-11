@@ -4,11 +4,11 @@ from typing import Optional, Generator, Any
 
 from sqlalchemy import (
     Boolean,
-    String,
     Column,
     Integer,
     DateTime,
     Date,
+    BigInteger,
     func,
 )
 from sqlalchemy.orm import Session, relationship
@@ -22,7 +22,7 @@ class Shift(BaseModel):
     __tablename__ = "shifts"
 
     id = Column(Integer, primary_key=True)
-    chat_id = Column(String(255), nullable=False)
+    chat_id = Column(BigInteger, nullable=False)
     shift_date = Column(Date, nullable=False)
     number = Column(Integer, nullable=False)  # 1, 2, 3... for each day
     start_time = Column(DateTime, nullable=False)
@@ -45,7 +45,7 @@ class ShiftService:
         finally:
             db.close()
 
-    async def create_shift(self, chat_id: str) -> Shift:
+    async def create_shift(self, chat_id: int) -> Shift:
         """Create a new shift starting now"""
         current_time = DateUtils.now()
         shift_date = current_time.date()  # Use current date for tracking
@@ -69,7 +69,7 @@ class ShiftService:
             db.refresh(new_shift)
             return new_shift
 
-    async def get_current_shift(self, chat_id: str) -> Optional[Shift]:
+    async def get_current_shift(self, chat_id: int) -> Optional[Shift]:
         """Get the current open shift (regardless of date)"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -96,7 +96,7 @@ class ShiftService:
                 return shift
             return None
 
-    async def get_shifts_by_date_range(self, chat_id: str, start_date: date, end_date: date) -> list[Shift]:
+    async def get_shifts_by_date_range(self, chat_id: int, start_date: date, end_date: date) -> list[Shift]:
         """Get all shifts for a chat within a date range"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -105,7 +105,7 @@ class ShiftService:
                 Shift.shift_date <= end_date
             ).order_by(Shift.shift_date, Shift.number).all()
 
-    async def get_shifts_by_date(self, chat_id: str, shift_date: date) -> list[Shift]:
+    async def get_shifts_by_date(self, chat_id: int, shift_date: date) -> list[Shift]:
         """Get all shifts for a specific date"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -113,7 +113,7 @@ class ShiftService:
                 Shift.shift_date == shift_date
             ).order_by(Shift.number).all()
 
-    async def get_recent_closed_shifts(self, chat_id: str, limit: int = 1) -> list[Shift]:
+    async def get_recent_closed_shifts(self, chat_id: int, limit: int = 1) -> list[Shift]:
         """Get recent closed shifts for a chat"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -156,7 +156,7 @@ class ShiftService:
                 'currencies': currencies
             }
 
-    async def get_recent_dates_with_shifts(self, chat_id: str, days: int = 3) -> list[date]:
+    async def get_recent_dates_with_shifts(self, chat_id: int, days: int = 3) -> list[date]:
         """Get last N dates that have shifts"""
         with self._get_db() as db:
             dates = db.query(Shift.shift_date).filter(

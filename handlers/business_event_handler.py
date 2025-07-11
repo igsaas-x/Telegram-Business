@@ -22,7 +22,7 @@ class BusinessEventHandler:
     async def menu(self, event):
         """Business-specific menu handler"""
         # Check if chat is activated and trial status
-        chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+        chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
             # Auto-register for business bot
             try:
@@ -41,7 +41,7 @@ class BusinessEventHandler:
                 await self.register_business(event, user)
 
                 # Refresh chat information after registration
-                chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
 
                 if not chat:
                     return
@@ -53,7 +53,7 @@ class BusinessEventHandler:
                 return
 
         # Create menu buttons based on shift status
-        chat_id = str(event.chat_id)
+        chat_id = event.chat_id
         current_shift = await self.shift_service.get_current_shift(chat_id)
         
         if current_shift:
@@ -85,7 +85,7 @@ class BusinessEventHandler:
 
     async def register_business(self, event, user: User):
         """Register chat for business services with special configuration"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         chat_title = "Business Chat"
 
         # Try to get chat title
@@ -140,7 +140,7 @@ class BusinessEventHandler:
 
     async def show_current_shift_report(self, event):
         """Show current shift report"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
@@ -198,7 +198,7 @@ class BusinessEventHandler:
 
     async def show_previous_shift_report(self, event):
         """Show previous shift report (last closed shift)"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         
         try:
             previous_shifts = await self.shift_service.get_recent_closed_shifts(chat_id, 1)
@@ -254,7 +254,7 @@ class BusinessEventHandler:
 
     async def show_other_days_report(self, event):
         """Show other days with shifts (last 3 days with data)"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         
         try:
             recent_dates = await self.shift_service.get_recent_dates_with_shifts(chat_id, 3)
@@ -288,7 +288,7 @@ class BusinessEventHandler:
 
     async def show_date_shifts(self, event, data):
         """Show shifts for a specific date"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         date_str = data.replace("date_", "")
         
         try:
@@ -393,7 +393,7 @@ class BusinessEventHandler:
 
     async def close_current_shift(self, event):
         """Close the current active shift"""
-        chat_id = str(event.chat_id)
+        chat_id = int(event.chat_id)
         
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
