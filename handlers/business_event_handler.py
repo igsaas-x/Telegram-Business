@@ -3,8 +3,11 @@ import datetime
 import logging
 
 from helper import DateUtils
-from models import ChatService, IncomeService, UserService, ShiftService
+from models.chat_model import ChatService
+from models.income_balance_model import IncomeService
+from models.shift_model import ShiftService
 from models.user_model import User
+from models.user_model import UserService
 from .client_command_handler import CommandHandler
 
 
