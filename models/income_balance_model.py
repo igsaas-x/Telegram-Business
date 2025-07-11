@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional, Generator, Any
 
@@ -48,12 +48,12 @@ class IncomeBalance(BaseModel):
     # New shift reference
     shift_id = Column(Integer, ForeignKey('shifts.id'), nullable=True)
     shift = relationship("Shift", back_populates="income_records")
-    
+
     # DEPRECATED: Keep for backward compatibility during migration
     old_shift = Column(Integer, nullable=True, default=1)
     old_shift_closed = Column(Boolean, nullable=True, default=False)
-    
-    trx_id = Column(String(50), nullable=False)
+
+    trx_id = Column(String(50), nullable=True)
 
 
 class IncomeService:
@@ -95,7 +95,7 @@ class IncomeService:
             original_amount: float,
             message_id: int,
             message: str,
-            trx_id: str,
+            trx_id: str | None,
             shift_id: int = None,
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
@@ -144,10 +144,14 @@ class IncomeService:
                     is not None
             )
 
-    async def get_income_by_trx_id(self, trx_id: str) -> bool:
+    async def get_income_by_trx_id(self, trx_id: str | None, chat_id: str) -> bool:
+        if trx_id is None:
+            return False
         with self._get_db() as db:
             return (
-                    db.query(IncomeBalance).filter(IncomeBalance.trx_id == trx_id).first()
+                    db.query(IncomeBalance)
+                    .filter(IncomeBalance.trx_id == trx_id, IncomeBalance.chat_id == chat_id)
+                    .first()
                     is not None
             )
 
@@ -201,3 +205,53 @@ class IncomeService:
                 )
                 .all()
             )
+
+    async def get_income_summary_by_date_range(
+            self, chat_id: str, start_date: str, end_date: str
+    ) -> dict:
+        """
+        Get income summary statistics for a date range
+        Returns a dictionary with total, count, and breakdown by currency
+        """
+        # Convert string dates to datetime objects
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+        # Add one day to end_date to include the entire end day
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+
+        # Get all income records in the date range
+        with self._get_db() as db:
+            incomes = (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= start_datetime,
+                    IncomeBalance.income_date < end_datetime
+                )
+                .all()
+            )
+
+        # Prepare the summary structure
+        summary = {
+            "total_amount": 0.0,
+            "count": len(incomes),
+            "by_currency": {}
+        }
+
+        # Calculate totals
+        for income in incomes:
+            currency = income.currency
+            amount = income.amount
+
+            # Initialize currency entry if it doesn't exist
+            if currency not in summary["by_currency"]:
+                summary["by_currency"][currency] = {
+                    "total": 0.0,
+                    "count": 0
+                }
+
+            # Add to totals
+            summary["by_currency"][currency]["total"] += amount
+            summary["by_currency"][currency]["count"] += 1
+            summary["total_amount"] += amount
+
+        return summary
