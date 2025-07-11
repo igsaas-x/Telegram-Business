@@ -127,7 +127,7 @@ class BusinessEventHandler:
 💡 ប្រើម៉ឺនុយធម្មតាដើម្បីចូលប្រើរបាយការណ៍លម្អិត។
         """
         
-        buttons = [[(\"🔙 ត្រឡប់ទៅមីនុយ\", \"back_to_menu\")]]
+        buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
         await event.edit(message, buttons=buttons)
 
     async def show_support(self, event):
@@ -154,5 +154,5 @@ class BusinessEventHandler:
 🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
         """
 
-        buttons = [[(\"🔙 ត្រឡប់ទៅមីនុយ\", \"back_to_menu\")]]
+        buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
         await event.edit(message, buttons=buttons)
