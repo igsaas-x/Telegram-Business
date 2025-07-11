@@ -26,7 +26,8 @@ class CommandHandler:
                     Button.inline(
                         f"បិទបញ្ជីសម្រាប់វេន ({shift_number})",
                         "close_shift",
-                    )
+                    ),
+                    Button.inline("ត្រឡប់ក្រោយ", "close")
                 ]
             )
         await event.client.send_message(event.chat_id, message, buttons=buttons)
@@ -108,7 +109,9 @@ class CommandHandler:
             await event.client.send_message(
                 event.chat_id,
                 f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។",
-                buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")]
+                buttons=[
+                    [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("ត្រឡប់ក្រោយ", "close")]
+                ]
             )
             return
 
@@ -119,7 +122,9 @@ class CommandHandler:
         await event.client.send_message(
             event.chat_id,
             message,
-            buttons=[Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift")],
+            buttons=[
+                [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("ត្រឡប់ក្រោយ", "close")]
+            ],
         )
 
     async def close_shift(self, event):
@@ -130,15 +135,27 @@ class CommandHandler:
             f"បានបិទបញ្ជីសម្រាប់វេន្តនេះ ត្រឹមម៉ោង {current_time}",
         )
 
+    async def close(self, event):
+        await self.handle_daily_summary(event)
+
     async def handle_daily_summary(self, event):
         today = DateUtils.now()
         buttons = []
 
-        for i in range(2, -1, -1):
-            day = today - timedelta(days=i)
-            label = day.strftime("%b %d")
-            callback_value = day.strftime("%Y-%m-%d")
+        shift_enabled = await self.chat_service.is_shift_enabled(event.chat_id)
+        if shift_enabled:
+            buttons.append([Button.inline("ប្រចាំវេន​ថ្ងៃ​នេះ", "report_per_shift")])
+            # Only show current date for shift-enabled chats
+            label = today.strftime("ថ្ងៃ​នេះ")
+            callback_value = today.strftime("%Y-%m-%d")
             buttons.append([Button.inline(label, f"summary_of_{callback_value}")])
+        else:
+            # Show 3 days for non-shift chats
+            for i in range(2, -1, -1):
+                day = today - timedelta(days=i)
+                label = day.strftime("%b %d")
+                callback_value = day.strftime("%Y-%m-%d")
+                buttons.append([Button.inline(label, f"summary_of_{callback_value}")])
 
         buttons.append([Button.inline("ថ្ងៃផ្សេងទៀត", "other_dates")])
         buttons.append([Button.inline("ត្រឡប់ក្រោយ", "menu")])

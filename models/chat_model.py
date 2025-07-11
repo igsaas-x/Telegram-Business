@@ -1,7 +1,8 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
+from helper import DateUtils
 from models import User, IncomeService, ServicePackage
 
 
@@ -10,8 +11,9 @@ class Chat(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(String(255), unique=True, nullable=False)
     group_name = Column(String(255), nullable=False)
-    is_active = Column(Boolean, nullable=True, default=False)
+    is_active = Column(Boolean, nullable=True, default=True)
     enable_shift = Column(Boolean, nullable=True, default=False)
+    created_at = Column(DateTime, default=DateUtils.now, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     user = relationship("User", back_populates="chats")
 
@@ -107,5 +109,55 @@ class ChatService:
         except Exception as e:
             print(f"Error fetching chat IDs: {e}")
             return []
+        finally:
+            session.close()
+
+    async def chat_exists(self, chat_id: int) -> bool:
+        """
+        Check if a chat with the given chat_id exists.
+        Much more efficient than fetching all chat IDs and checking if it's in the list.
+        """
+        session = self.Session()
+        try:
+            exists = session.query(session.query(Chat).filter_by(chat_id=str(chat_id)).exists()).scalar()
+            return bool(exists)
+        except Exception as e:
+            print(f"Error checking if chat exists: {e}")
+            return False
+        finally:
+            session.close()
+
+    async def is_shift_enabled(self, chat_id: str) -> bool:
+        try:
+            chat = await self.get_chat_by_chat_id(chat_id)
+            return chat.enable_shift if chat else False
+        except Exception as e:
+            print(f"Error checking shift enabled: {e}")
+            return False
+
+    async def migrate_chat_id(self, old_chat_id: str, new_chat_id: str) -> bool:
+        """Migrate chat_id from old to new (for group migrations)"""
+        session = self.Session()
+        try:
+            # Update the chat_id in the chats table
+            chat_result = session.query(Chat).filter_by(chat_id=old_chat_id).update({"chat_id": new_chat_id})
+            
+            # Also update the chat_id in the income_balance table
+            from models.income_balance_model import IncomeBalance
+            income_result = session.query(IncomeBalance).filter_by(chat_id=old_chat_id).update({"chat_id": new_chat_id})
+            
+            session.commit()
+            
+            if chat_result > 0 or income_result > 0:
+                print(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
+                print(f"Updated {chat_result} chat records and {income_result} income_balance records")
+                return True
+            else:
+                print(f"No records found with chat_id {old_chat_id}")
+                return False
+        except Exception as e:
+            session.rollback()
+            print(f"Error migrating chat_id: {e}")
+            return False
         finally:
             session.close()
