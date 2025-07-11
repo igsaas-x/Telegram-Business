@@ -3,7 +3,8 @@ from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
 from helper import DateUtils
-from models import User, IncomeService, ServicePackage
+from models.income_balance_model import IncomeService
+from models.user_model import User, ServicePackage
 
 
 class Chat(Base):
