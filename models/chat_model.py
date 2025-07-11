@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
@@ -7,6 +8,14 @@ from config.database_config import Base, SessionLocal
 from helper import DateUtils
 from models.income_balance_model import IncomeService
 from models.user_model import User, ServicePackage
+
+
+def force_log(message):
+    """Write logs to telegram_bot.log since normal logging doesn't work"""
+    with open("telegram_bot.log", "a") as f:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"{timestamp} - ChatService - ERROR - {message}\n")
+        f.flush()
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +44,7 @@ class ChatService:
                 last_shift = await self.income_service.get_last_shift_id(chat_id)
                 return last_shift.shift if last_shift else None  # type: ignore
         except Exception as e:
-            logger.error(f"Error checking unlimited package: {e}")
+            force_log(f"Error checking unlimited package: {e}")
 
     async def register_chat_id(self, chat_id, group_name, user: User | None):
         session = self.Session()
@@ -50,7 +59,7 @@ class ChatService:
             return True, f"Chat ID {chat_id} registered successfully."
         except Exception as e:
             session.rollback()
-            logger.error(f"Error registering chat ID: {e}")
+            force_log(f"Error registering chat ID: {e}")
             return False, f"Error registering chat ID: {e}"
         finally:
             session.close()
@@ -68,7 +77,7 @@ class ChatService:
                     if not current_shift:
                         await shift_service.create_shift(chat_id)
                 except Exception as shift_error:
-                    logger.error(f"Error creating shift: {shift_error}")
+                    force_log(f"Error creating shift: {shift_error}")
                     raise shift_error
             
             # Update the chat setting after shift creation succeeds
@@ -79,7 +88,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating chat enable_shift: {e}")
+            force_log(f"Error updating chat enable_shift: {e}")
             return False
         finally:
             session.close()
@@ -92,7 +101,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating chat status: {e}")
+            force_log(f"Error updating chat status: {e}")
             return False
         finally:
             session.close()
@@ -105,7 +114,7 @@ class ChatService:
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating chat user_id: {e}")
+            force_log(f"Error updating chat user_id: {e}")
             return False
         finally:
             session.close()
@@ -116,7 +125,7 @@ class ChatService:
             chat = session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first()
             return chat
         except Exception as e:
-            logger.error(f"Error fetching chat by chat ID: {e}")
+            force_log(f"Error fetching chat by chat ID: {e}")
             return None
         finally:
             session.close()
@@ -127,7 +136,7 @@ class ChatService:
             chats = session.query(Chat.chat_id).all()
             return [int(c[0]) for c in chats]
         except Exception as e:
-            logger.error(f"Error fetching chat IDs: {e}")
+            force_log(f"Error fetching chat IDs: {e}")
             return []
         finally:
             session.close()
@@ -142,7 +151,7 @@ class ChatService:
             exists = session.query(Chat).filter_by(chat_id=chat_id).first() is not None
             return bool(exists)
         except Exception as e:
-            logger.error(f"Error checking if chat exists: {e}")
+            force_log(f"Error checking if chat exists: {e}")
             return False
         finally:
             session.close()
@@ -152,7 +161,7 @@ class ChatService:
             chat = await self.get_chat_by_chat_id(chat_id)
             return chat.enable_shift if chat else False
         except Exception as e:
-            logger.error(f"Error checking shift enabled: {e}")
+            force_log(f"Error checking shift enabled: {e}")
             return False
 
     async def migrate_chat_id(self, old_chat_id: int, new_chat_id: int) -> bool:
@@ -177,7 +186,7 @@ class ChatService:
                 return False
         except Exception as e:
             session.rollback()
-            logger.error(f"Error migrating chat_id: {e}")
+            force_log(f"Error migrating chat_id: {e}")
             return False
         finally:
             session.close()

@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from helper import DateUtils
@@ -7,6 +8,14 @@ from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
 from .client_command_handler import CommandHandler
+
+
+def force_log(message):
+    """Write logs to telegram_bot.log since normal logging doesn't work"""
+    with open("telegram_bot.log", "a") as f:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"{timestamp} - BusinessEventHandler - ERROR - {message}\n")
+        f.flush()
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +33,7 @@ class BusinessEventHandler:
 
     async def menu(self, event):
         """Business-specific menu handler"""
-        logger.info(f"BusinessEventHandler.menu called for chat_id: {event.chat_id}")
+        force_log(f"BusinessEventHandler.menu called for chat_id: {event.chat_id}")
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
@@ -51,7 +60,7 @@ class BusinessEventHandler:
                     return
 
             except Exception as e:
-                logger.error(f"Error during business auto-registration: {e}")
+                force_log(f"Error during business auto-registration: {e}")
                 message = "⚠️ Business auto-registration failed. Please contact support."
                 await event.respond(message)
                 return
@@ -121,7 +130,7 @@ class BusinessEventHandler:
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
         data = event.data.decode('utf-8')
-        logger.info(f"handle_business_callback received data: {data}")
+        force_log(f"handle_business_callback received data: {data}")
 
         if data == "current_shift_report":
             await self.show_current_shift_report(event)
@@ -146,11 +155,11 @@ class BusinessEventHandler:
     async def show_current_shift_report(self, event):
         """Show current shift report"""
         chat_id = int(event.chat_id)
-        logger.info(f"show_current_shift_report called for chat_id: {chat_id}")
+        force_log(f"show_current_shift_report called for chat_id: {chat_id}")
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
-            logger.info(f"Current shift for chat_id {chat_id}: {current_shift}")
+            force_log(f"Current shift for chat_id {chat_id}: {current_shift}")
 
             if not current_shift:
                 message = """
@@ -207,7 +216,7 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
                     except Exception as e:
-                        logger.error(f"Error in duration calculation: {e}")
+                        force_log(f"Error in duration calculation: {e}")
                         # Fallback to simple calculation
                         from datetime import datetime
                         now = datetime.now()
@@ -245,7 +254,7 @@ class BusinessEventHandler:
                 ]
 
         except Exception as e:
-            logger.error(f"Error showing current shift report: {e}")
+            force_log(f"Error showing current shift report: {e}")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -303,7 +312,7 @@ class BusinessEventHandler:
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
-            logger.error(f"Error showing previous shift report: {e}")
+            force_log(f"Error showing previous shift report: {e}")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -337,7 +346,7 @@ class BusinessEventHandler:
                 buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
 
         except Exception as e:
-            logger.error(f"Error showing other days report: {e}")
+            force_log(f"Error showing other days report: {e}")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -382,7 +391,7 @@ class BusinessEventHandler:
                 ])
 
         except Exception as e:
-            logger.error(f"Error showing date shifts: {e}")
+            force_log(f"Error showing date shifts: {e}")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -445,7 +454,7 @@ class BusinessEventHandler:
                 ]
 
         except Exception as e:
-            logger.error(f"Error showing specific shift report: {e}")
+            force_log(f"Error showing specific shift report: {e}")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -454,7 +463,7 @@ class BusinessEventHandler:
     async def close_current_shift(self, event):
         """Close the current active shift or create new shift if none exists"""
         chat_id = int(event.chat_id)
-        logger.info(f"close_current_shift called for chat_id: {chat_id}")
+        force_log(f"close_current_shift called for chat_id: {chat_id}")
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
@@ -509,7 +518,7 @@ class BusinessEventHandler:
                     buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
-            logger.error(f"Error closing shift: {e}")
+            force_log(f"Error closing shift: {e}")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -520,7 +529,7 @@ class BusinessEventHandler:
         try:
             await event.query.delete_message()
         except Exception as e:
-            logger.error(f"Error deleting message: {e}")
+            force_log(f"Error deleting message: {e}")
             # Fallback to editing the message
             await event.edit("Menu closed.", buttons=None)
 
