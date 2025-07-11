@@ -132,8 +132,16 @@ class AutosumBusinessBot:
         mock_event = MockCallbackEvent(query, self)
         
         try:
-            await self.event_handler.handle_business_callback(mock_event)
-            return BUSINESS_CALLBACK_CODE
+            # Handle registration flow callbacks
+            if query.data == "register_enable_shift":
+                await self.handle_register_enable_shift(query)
+                return BUSINESS_CALLBACK_CODE
+            elif query.data == "register_skip_shift":
+                await self.handle_register_skip_shift(query)
+                return BUSINESS_CALLBACK_CODE
+            else:
+                await self.event_handler.handle_business_callback(mock_event)
+                return BUSINESS_CALLBACK_CODE
         except Exception as e:
             logger.error(f"Error handling business callback: {e}")
             await query.edit_message_text("❌ Error processing request. Please try again.")
@@ -146,8 +154,8 @@ class AutosumBusinessBot:
 
 📋 ពាក្យបញ្ជាដែលមាន:
 • `/start` - សារស្វាគមន៍និងការណែនាំ
+• `/register` - ចុះឈ្មោះជជែកសម្រាប់សេវាអាជីវកម្ម
 • `/menu` - ចូលទៅផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
-• `/shift` - បើកវេនថ្មី (ចាប់ផ្តើមតាមដានប្រតិបត្តិការ)
 • `/help` - បង្ហាញសារជំនួយនេះ
 • `/support` - ទាក់ទងការគាំទ្រអាជីវកម្ម
 
@@ -202,6 +210,81 @@ class AutosumBusinessBot:
         
         await update.message.reply_text(support_message)
 
+    async def register_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Register chat command - registers chat and asks about shift enablement"""
+        chat_id = str(update.effective_chat.id)
+        
+        try:
+            # Check if chat is already registered
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            if chat:
+                message = """
+✅ ជជែករបស់អ្នកបានចុះឈ្មោះរួចហើយ
+
+🏢 ស្ថានភាព: ចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម
+📊 អ្នកអាចប្រើ /menu ដើម្បីចូលប្រើលក្ខណៈពិសេសទាំងអស់។
+
+💡 ប្រើ /shift ដើម្បីបើកវេនថ្មី ឬ /menu ដើម្បីគ្រប់គ្រងអាជីវកម្ម។
+                """
+                await update.message.reply_text(message)
+                return
+
+            # Get user information for registration
+            user = update.effective_user
+            if not user or not hasattr(user, 'id') or user.id is None:
+                message = """
+⚠️ ការចុះឈ្មោះបរាជ័យ
+
+អ្នកត្រូវតែជាអ្នកប្រើប្រាស់ដែលមិនមែនអនាមិកដើម្បីចុះឈ្មោះជជែកនេះសម្រាប់សេវាអាជីវកម្ម។
+                """
+                await update.message.reply_text(message)
+                return
+
+            # Create user if needed
+            user_service = UserService()
+            db_user = await user_service.create_user(user)
+
+            # Get chat title
+            chat_title = "Business Chat"
+            try:
+                if hasattr(update.effective_chat, 'title') and update.effective_chat.title:
+                    chat_title = update.effective_chat.title
+            except:
+                pass
+
+            # Register the chat
+            success, reg_message = await self.chat_service.register_chat_id(
+                chat_id, f"[BUSINESS] {chat_title}", db_user
+            )
+
+            if success:
+                # Registration successful, now ask about shift
+                message = f"""
+✅ ការចុះឈ្មោះជជែកបានជោគជ័យ!
+
+🏢 ជជែក: {chat_title}
+📊 ប្រភេទ: សេវាអាជីវកម្ម
+👤 ចុះឈ្មោះដោយ: {user.first_name}
+
+🔧 តើអ្នកចង់បើកវេនដើម្បីចាប់ផ្តើមតាមដានប្រតិបត្តិការឥឡូវនេះទេ?
+                """
+                
+                # Create buttons for shift choice
+                buttons = [
+                    [("✅ បាទ/ចាស បើកវេន", "register_enable_shift")],
+                    [("❌ ទេ មិនបើកវេនទេ", "register_skip_shift")],
+                    [("🏠 ទៅមីនុយ", "back_to_menu")]
+                ]
+                
+                keyboard = self._convert_buttons_to_keyboard(buttons)
+                await update.message.reply_text(message, reply_markup=keyboard)
+            else:
+                await update.message.reply_text(f"❌ ការចុះឈ្មោះបរាជ័យ: {reg_message}")
+                
+        except Exception as e:
+            logger.error(f"Error registering chat: {e}")
+            await update.message.reply_text("❌ មានបញ្ហាក្នុងការចុះឈ្មោះ។ សូមសាកល្បងម្តងទៀត។")
+
     async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Enable shift command - starts a new shift"""
         chat_id = str(update.effective_chat.id)
@@ -253,6 +336,66 @@ class AutosumBusinessBot:
             logger.error(f"Error enabling shift: {e}")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
 
+    async def handle_register_enable_shift(self, query):
+        """Handle register flow - enable shift option"""
+        chat_id = str(query.message.chat_id)
+        
+        try:
+            # Check if there's already an active shift
+            current_shift = await self.event_handler.shift_service.get_current_shift(chat_id)
+            
+            if current_shift:
+                message = f"""
+⚠️ មានវេនសកម្មរួចហើយ
+
+វេន #{current_shift.number} កំពុងដំណើរការ
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+
+💡 អ្នកអាចប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
+                """
+            else:
+                # Create new shift
+                new_shift = await self.event_handler.shift_service.create_shift(chat_id)
+                
+                message = f"""
+✅ វេនត្រូវបានបើកដោយជោគជ័យ!
+
+📊 វេន #{new_shift.number}
+⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+🟢 ស្ថានភាព: សកម្ម
+
+🎉 ការចុះឈ្មោះនិងការបើកវេនបានបញ្ចប់ដោយជោគជ័យ!
+💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
+🔧 ប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
+                """
+            
+            buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
+            keyboard = self._convert_buttons_to_keyboard(buttons)
+            await query.edit_message_text(message, reply_markup=keyboard)
+            
+        except Exception as e:
+            logger.error(f"Error enabling shift in register flow: {e}")
+            await query.edit_message_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
+
+    async def handle_register_skip_shift(self, query):
+        """Handle register flow - skip shift option"""
+        message = """
+✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!
+
+🏢 ជជែករបស់អ្នកបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្មរួចហើយ។
+📊 អ្នកអាចប្រើ /menu ដើម្បីចូលប្រើលក្ខណៈពិសេសទាំងអស់។
+
+💡 នៅពេលដែលអ្នកចង់ចាប់ផ្តើមតាមដានប្រតិបត្តិការ:
+• ប្រើ /shift ដើម្បីបើកវេនថ្មី
+• ប្រើ /menu ដើម្បីគ្រប់គ្រងអាជីវកម្ម
+
+🎉 ស្វាគមន៍មកកាន់ Autosum Business!
+        """
+        
+        buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
+        keyboard = self._convert_buttons_to_keyboard(buttons)
+        await query.edit_message_text(message, reply_markup=keyboard)
+
     def setup(self):
         """Setup the business bot with specialized handlers"""
         if not self.bot_token:
@@ -264,6 +407,7 @@ class AutosumBusinessBot:
         self.app.add_handler(CommandHandler("start", self.business_start))
         self.app.add_handler(CommandHandler("help", self.business_help))
         self.app.add_handler(CommandHandler("support", self.business_support))
+        self.app.add_handler(CommandHandler("register", self.register_chat))
         self.app.add_handler(CommandHandler("shift", self.enable_shift))
 
         # Business menu conversation handler

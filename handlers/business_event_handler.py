@@ -61,7 +61,7 @@ class BusinessEventHandler:
                 [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
-                [("🛑 បិទវេន", "close_shift")],
+                [("🛑 បិទបញ្ជី", "close_shift")],
                 [("❌ បិទ", "close_menu")]
             ]
         else:
@@ -160,8 +160,9 @@ class BusinessEventHandler:
                 # Calculate duration
                 now = datetime.now()
                 duration = now - current_shift.start_time
-                hours = int(duration.total_seconds() // 3600)
-                minutes = int((duration.total_seconds() % 3600) // 60)
+                total_seconds = abs(duration.total_seconds())
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
                 
                 # Currency breakdown
                 currency_text = ""
@@ -184,7 +185,7 @@ class BusinessEventHandler:
                 """
                 
                 buttons = [
-                    [("🛑 បិទវេន", "close_shift")],
+                    [("🛑 បិទបញ្ជី", "close_shift")],
                     [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
                 ]
                 
@@ -217,8 +218,9 @@ class BusinessEventHandler:
                 
                 # Calculate duration
                 duration = shift.end_time - shift.start_time
-                hours = int(duration.total_seconds() // 3600)
-                minutes = int((duration.total_seconds() % 3600) // 60)
+                total_seconds = abs(duration.total_seconds())
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
                 
                 # Currency breakdown
                 currency_text = ""
@@ -352,8 +354,9 @@ class BusinessEventHandler:
                     end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
                     status = "🟢 សកម្ម"
                 
-                hours = int(duration.total_seconds() // 3600)
-                minutes = int((duration.total_seconds() % 3600) // 60)
+                total_seconds = abs(duration.total_seconds())
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
                 
                 # Currency breakdown
                 currency_text = ""
@@ -413,8 +416,9 @@ class BusinessEventHandler:
                     # Get final summary
                     shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id)
                     duration = closed_shift.end_time - closed_shift.start_time
-                    hours = int(duration.total_seconds() // 3600)
-                    minutes = int((duration.total_seconds() % 3600) // 60)
+                    total_seconds = abs(duration.total_seconds())
+                    hours = int(total_seconds // 3600)
+                    minutes = int((total_seconds % 3600) // 60)
                     
                     message = f"""
 ✅ វេនត្រូវបានបិទដោយជោគជ័យ!
