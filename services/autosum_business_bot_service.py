@@ -352,8 +352,10 @@ class AutosumBusinessBot:
             # Simple database update
             await self.chat_service.update_chat_enable_shift(chat_id, True)
             
-            # Simple response
-            await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=None)
+            # Simple response with menu button
+            buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
+            keyboard = self._convert_buttons_to_keyboard(buttons)
+            await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=keyboard)
             
         except Exception as e:
             logger.error(f"Error: {e}")
@@ -364,7 +366,45 @@ class AutosumBusinessBot:
         query = update.callback_query
         await query.answer()
         
-        await query.edit_message_text("✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!", reply_markup=None)
+        buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
+        keyboard = self._convert_buttons_to_keyboard(buttons)
+        await query.edit_message_text("✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!", reply_markup=keyboard)
+
+    async def handle_back_to_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle back to menu button"""
+        query = update.callback_query
+        await query.answer()
+        
+        # Create a mock event to call the menu handler
+        class MockEvent:
+            def __init__(self, update, parent):
+                self.chat_id = update.callback_query.message.chat_id
+                self.chat = update.callback_query.message.chat
+                self.parent = parent
+                
+            async def edit(self, message, buttons=None):
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
+                await query.edit_message_text(message, reply_markup=keyboard)
+                
+            async def respond(self, message, buttons=None):
+                await self.edit(message, buttons)
+                
+            async def get_sender(self):
+                return query.from_user
+
+        mock_event = MockEvent(update, self)
+        await self.event_handler.menu(mock_event)
+
+    async def handle_close_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle close menu button"""
+        query = update.callback_query
+        await query.answer()
+        
+        try:
+            await query.delete_message()
+        except Exception as e:
+            # Fallback to editing the message if delete fails
+            await query.edit_message_text("បានបិទ", reply_markup=None)
 
     def setup(self):
         """Setup the business bot with specialized handlers"""
@@ -383,6 +423,8 @@ class AutosumBusinessBot:
         # Add separate callback handlers for registration flow
         self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
         self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_back_to_menu, pattern="^back_to_menu$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_close_menu, pattern="^close_menu$"))
 
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(
