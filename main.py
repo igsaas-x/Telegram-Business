@@ -7,7 +7,6 @@ from alembic import command
 from alembic.config import Config
 
 from config import load_environment
-from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
 from services import TelegramBotService, TelethonClientService
 from services.autosum_business_bot_service import AutosumBusinessBot
@@ -54,7 +53,7 @@ async def main(loader: CredentialLoader) -> None:
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-        create_db_tables()
+        # create_db_tables()
 
         loop = asyncio.get_running_loop()
         handle_signals(loop)
