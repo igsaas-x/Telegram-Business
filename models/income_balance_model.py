@@ -38,7 +38,7 @@ class IncomeBalance(BaseModel):
 
     id = Column(Integer, primary_key=True)
     amount = Column(Float, nullable=False)
-    chat_id = Column(String(255), nullable=False)
+    chat_id = Column(BigInteger, nullable=False)
     currency = Column(String(16), nullable=False)
     original_amount = Column(Float, nullable=False)
     income_date = Column(DateTime, default=lambda: DateUtils.now, nullable=False)
@@ -82,7 +82,7 @@ class IncomeService:
 
     async def insert_income(
             self,
-            chat_id: str,
+            chat_id: int,
             amount: float,
             currency: str,
             original_amount: float,
