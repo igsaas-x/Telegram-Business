@@ -116,9 +116,10 @@ class BusinessEventHandler:
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
         data = event.data.decode('utf-8')
-        logger.info(f"handle_business_callback received data: {data}")
+        logger.error(f"CRITICAL DEBUG: handle_business_callback received data: {data}")
 
         if data == "current_shift_report":
+            logger.error(f"CRITICAL DEBUG: Calling show_current_shift_report")
             await self.show_current_shift_report(event)
         elif data == "previous_shift_report":
             await self.show_previous_shift_report(event)
@@ -141,9 +142,11 @@ class BusinessEventHandler:
     async def show_current_shift_report(self, event):
         """Show current shift report"""
         chat_id = int(event.chat_id)
+        logger.error(f"CRITICAL DEBUG: show_current_shift_report called for chat_id: {chat_id}")
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
+            logger.info(f"Current shift for chat_id {chat_id}: {current_shift}")
 
             if not current_shift:
                 message = """
@@ -157,13 +160,33 @@ class BusinessEventHandler:
             else:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
 
-                # Calculate duration
-                from helper import DateUtils
-                now = DateUtils.now()
-                duration = now - current_shift.start_time
-                total_seconds = abs(duration.total_seconds())
-                hours = int(total_seconds // 3600)
-                minutes = int((total_seconds % 3600) // 60)
+                # Calculate duration - simplified approach first
+                try:
+                    from helper import DateUtils
+                    now = DateUtils.now()
+                    logger.error(f"DEBUG: Now: {now}, Start time: {current_shift.start_time}")
+                    duration = now - current_shift.start_time
+                    logger.error(f"DEBUG: Duration: {duration}")
+                    total_seconds = abs(duration.total_seconds())
+                    hours = int(total_seconds // 3600)
+                    minutes = int((total_seconds % 3600) // 60)
+                    logger.error(f"DEBUG: Hours: {hours}, Minutes: {minutes}")
+                except Exception as e:
+                    logger.error(f"DEBUG: Error in duration calculation: {e}")
+                    # Fallback to simple calculation
+                    from datetime import datetime
+                    now = datetime.now()
+                    # Make sure both times are timezone-aware or both naive
+                    if current_shift.start_time.tzinfo is not None and now.tzinfo is None:
+                        # Convert now to naive datetime to match start_time timezone awareness
+                        now = current_shift.start_time.replace(tzinfo=None) + (datetime.now() - datetime.now())
+                    elif current_shift.start_time.tzinfo is None and now.tzinfo is not None:
+                        now = now.replace(tzinfo=None)
+                    
+                    duration = now - current_shift.start_time
+                    total_seconds = abs(duration.total_seconds())
+                    hours = int(total_seconds // 3600)
+                    minutes = int((total_seconds % 3600) // 60)
 
                 # Currency breakdown
                 currency_text = ""
@@ -177,11 +200,7 @@ class BusinessEventHandler:
 ⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
 ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
-💰 សង្ខេបចំណូល:
-• សរុប: ${shift_summary['total_amount']:,.2f}
-• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
-
-💱 ការចែករូបិយប័ណ្ណ:
+💰 សង្ខេបចំណូលសរុប:
 {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
                 """
 

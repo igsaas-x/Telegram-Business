@@ -180,7 +180,7 @@ class TelethonClientService:
                 
                 # Let the income service handle shift creation automatically
                 await self.service.insert_income(
-                    str(event.chat_id),  # Convert to string
+                    event.chat_id,  # Convert to string
                     amount,
                     currency,
                     amount,

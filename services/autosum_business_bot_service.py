@@ -107,7 +107,7 @@ class AutosumBusinessBot:
     async def handle_business_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle business-specific callback queries"""
         query = update.callback_query
-        logger.info(f"Received callback query: {query.data}")
+        logger.error(f"CRITICAL: handle_business_callback received: {query.data}")
         await query.answer()
         
         # Create a mock event for the business handler
@@ -409,7 +409,7 @@ class AutosumBusinessBot:
     async def handle_fallback_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle any callbacks not caught by other handlers"""
         query = update.callback_query
-        logger.warning(f"Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}")
+        logger.error(f"CRITICAL: Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}")
         await query.answer()
         
         # Try to handle as business callback if it looks like a business operation
@@ -434,12 +434,6 @@ class AutosumBusinessBot:
         self.app.add_handler(CommandHandler("register", self.register_chat))
         self.app.add_handler(CommandHandler("shift", self.enable_shift))
         
-        # Add separate callback handlers for registration flow
-        self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
-        self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
-        self.app.add_handler(CallbackQueryHandler(self.handle_back_to_menu, pattern="^back_to_menu$"))
-        self.app.add_handler(CallbackQueryHandler(self.handle_close_menu, pattern="^close_menu$"))
-
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.business_menu)],
@@ -456,6 +450,10 @@ class AutosumBusinessBot:
         )
 
         self.app.add_handler(business_menu_handler)
+        
+        # Add separate callback handlers for registration flow
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
         
         # Add fallback callback handler for any unhandled callbacks
         self.app.add_handler(CallbackQueryHandler(self.handle_fallback_callback))
