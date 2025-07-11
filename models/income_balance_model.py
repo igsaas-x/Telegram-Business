@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Optional, Generator, Any
 
 from sqlalchemy import (
-    Boolean,
     Float,
     String,
     Column,
@@ -49,9 +48,6 @@ class IncomeBalance(BaseModel):
     shift_id = Column(Integer, ForeignKey('shifts.id'), nullable=True)
     shift = relationship("Shift", back_populates="income_records")
 
-    # DEPRECATED: Keep for backward compatibility during migration
-    old_shift = Column(Integer, nullable=True, default=1)
-    old_shift_closed = Column(Boolean, nullable=True, default=False)
 
     trx_id = Column(String(50), nullable=True)
 
@@ -209,22 +205,6 @@ class IncomeService:
                 .all()
             )
 
-    # DEPRECATED: Legacy method for backward compatibility
-    async def get_income_chat_id_and_shift(
-            self, chat_id: int, shift: int
-    ) -> list[type[IncomeBalance]]:
-        current_date = DateUtils.today()
-        with self._get_db() as db:
-            return (
-                db.query(IncomeBalance)
-                .filter(
-                    IncomeBalance.chat_id == chat_id,
-                    IncomeBalance.old_shift == shift,
-                    IncomeBalance.old_shift_closed.is_(False),
-                    func.date(IncomeBalance.income_date) == func.date(current_date),
-                )
-                .all()
-            )
 
     async def get_income_summary_by_date_range(
             self, chat_id: int, start_date: str, end_date: str
