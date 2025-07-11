@@ -62,22 +62,22 @@ class BusinessEventHandler:
         buttons = []
 
         if current_shift:
-            buttons.append([("📊 This Shift", "this_shift")])
+            buttons.append([("📊 វេននេះ", "this_shift")])
 
         buttons.extend([
-            [("📈 Previous Shifts", "previous_shifts")],
-            [("🔄 Shift Management", "shift_management")],
-            [("⚙️ Business Settings", "business_settings")],
-            [("📞 Support", "support")]
+            [("📈 វេនមុន", "previous_shifts")],
+            [("🔄 គ្រប់គ្រងវេន", "shift_management")],
+            [("⚙️ ការកំណត់អាជីវកម្ម", "business_settings")],
+            [("📞 ជំនួយ", "support")]
         ])
 
         message = f"""
-🏢 **Business Dashboard**
+🏢 ផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
 
 {shift_summary}
 
-🔧 **Quick Actions:**
-Choose an option below to manage your shift operations.
+🔧 សកម្មភាពរហ័ស:
+ជ្រើសរើសជម្រើសខាងក្រោមដើម្បីគ្រប់គ្រងប្រតិបត្តិការវេនរបស់អ្នក។
         """
 
         await event.respond(message, buttons=buttons)
@@ -103,13 +103,13 @@ Choose an option below to manage your shift operations.
             await self.chat_service.update_chat_enable_shift(chat_id, True)
 
             response = f"""
-✅ **Business Registration Successful!**
+✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
 
-🏢 Your chat has been registered for business services.
-📊 Advanced analytics and shift management are now enabled.
-💼 You can access business features through the menu.
+🏢 ជជែករបស់អ្នកត្រូវបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម។
+📊 ការវិភាគកម្រិតខ្ពស់និងការគ្រប់គ្រងវេនឥឡូវនេះត្រូវបានបើក។
+💼 អ្នកអាចចូលប្រើលក្ខណៈពិសេសអាជីវកម្មតាមរយៈម៉ឺនុយ។
 
-Type /menu to get started with your business dashboard.
+វាយ /menu ដើម្បីចាប់ផ្តើមជាមួយនឹងផ្ទាំងគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
             """
         else:
             response = f"❌ Business registration failed: {message}"
@@ -121,11 +121,11 @@ Type /menu to get started with your business dashboard.
         try:
             if not current_shift:
                 return """
-📊 **Shift Status:**
-🔴 No active shift
+📊 ស្ថានភាពវេន:
+🔴 គ្មានវេនសកម្ម
 
-💡 **Tip:** Start a new shift to begin tracking revenue.
-Use Shift Management to start a new shift.
+💡 គន្លឹះ: ចាប់ផ្តើមវេនថ្មីដើម្បីចាប់ផ្តើមតាមដានចំណូល។
+ប្រើការគ្រប់គ្រងវេនដើម្បីចាប់ផ្តើមវេនថ្មី។
                 """
 
             # Get income data for current shift
@@ -139,12 +139,12 @@ Use Shift Management to start a new shift.
             minutes = int((duration.total_seconds() % 3600) // 60)
 
             summary_parts = [
-                f"📊 **Current Shift:** #{current_shift.number}",
-                f"🟢 **Status:** Active",
-                f"⏰ **Started:** {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}",
-                f"⏱️ **Duration:** {hours}h {minutes}m",
-                f"💰 **Revenue:** ${shift_summary['total_amount']:,.2f}",
-                f"📝 **Transactions:** {shift_summary['transaction_count']}"
+                f"📊 វេនបច្ចុប្បន្ន: #{current_shift.number}",
+                f"🟢 ស្ថានភាព: សកម្ម",
+                f"⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}",
+                f"⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី",
+                f"💰 ចំណូល: ${shift_summary['total_amount']:,.2f}",
+                f"📝 ប្រតិបត្តិការ: {shift_summary['transaction_count']}"
             ]
 
             return "\n".join(summary_parts)
@@ -187,11 +187,11 @@ Use Shift Management to start a new shift.
 
             if not current_shift:
                 message = """
-📊 **Current Shift**
+📊 វេនបច្ចុប្បន្ន
 
-🔴 No active shift running.
+🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
 
-💡 **Tip:** Start a new shift to begin tracking revenue.
+💡 គន្លឹះ: ចាប់ផ្តើមវេនថ្មីដើម្បីចាប់ផ្តើមតាមដានចំណូល។
                 """
             else:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
@@ -209,28 +209,34 @@ Use Shift Management to start a new shift.
                     currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} transactions)\n"
 
                 message = f"""
-📊 **Current Shift #{current_shift.number}**
+📊 វេនបច្ចុប្បន្ន #{current_shift.number}
 
-🟢 **Status:** Active
-⏰ **Started:** {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-⏱️ **Duration:** {hours}h {minutes}m
+🟢 ស្ថានភាព: សកម្ម
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
-💰 **Revenue Summary:**
-• Total: ${shift_summary['total_amount']:,.2f}
-• Transactions: {shift_summary['transaction_count']}
+💰 សង្ខេបចំណូល:
+• សរុប: ${shift_summary['total_amount']:,.2f}
+• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
 
-💱 **Currency Breakdown:**
-{currency_text if currency_text else '• No transactions yet'}
+💱 ការចែករូបិយប័ណ្ណ:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
 
-⏰ **End Time:** Current (shift is active)
+⏰ ម៉ោងបញ្ចប់: បច្ចុប្បន្ន (វេនកំពុងសកម្ម)
                 """
 
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            if current_shift:
+                buttons = [
+                    [("🛑 បិទវេនបច្ចុប្បន្ន", "close_shift")],
+                    [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                ]
+            else:
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
             logger.error(f"Error showing current shift: {e}")
             message = "❌ Unable to load current shift data. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 
@@ -249,9 +255,9 @@ Use Shift Management to start a new shift.
 
 💡 **Tip:** Previous shifts will appear here after you close them.
                 """
-                buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                message = "📈 **Previous Shifts (Recent 3)**\n\n"
+                message = "📈 វេនមុន (ចំណួរចុងក្រោយ 3)\n\n"
 
                 buttons = []
                 for shift in recent_shifts:
@@ -261,44 +267,44 @@ Use Shift Management to start a new shift.
                     minutes = int((duration.total_seconds() % 3600) // 60)
 
                     shift_text = f"""
-📊 **Shift #{shift.number}**
-⏰ {shift.start_time.strftime('%m/%d %H:%M')} - {shift.end_time.strftime('%m/%d %H:%M')} ({hours}h {minutes}m)
-💰 ${shift_summary['total_amount']:,.2f} ({shift_summary['transaction_count']} transactions)
+📊 វេន #{shift.number}
+⏰ {shift.start_time.strftime('%m/%d %H:%M')} - {shift.end_time.strftime('%m/%d %H:%M')} ({hours}ម៉ោង {minutes}នាទី)
+💰 ${shift_summary['total_amount']:,.2f} ({shift_summary['transaction_count']} ប្រតិបត្តិការ)
                     """
                     message += shift_text
 
                     # Add button for each shift
                     buttons.append([(f"Shift #{shift.number} Details", f"shift_{shift.id}")])
 
-                buttons.append([("📅 Other Days", "other_days")])
+                buttons.append([("📅 ថ្ងៃផ្សេងទៀត", "other_days")])
                 buttons.append([("🔙 Back to Menu", "back_to_menu")])
 
         except Exception as e:
             logger.error(f"Error showing previous shifts: {e}")
             message = "❌ Unable to load previous shifts. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 
     async def show_analytics(self, event):
         """Show business analytics"""
         message = """
-📈 **Business Analytics**
+📈 ការវិភាគអាជីវកម្ម
 
-🔍 **Advanced analytics features coming soon:**
-• Revenue trends and forecasting
-• Customer transaction patterns
-• Peak hour analysis
-• Monthly/quarterly reports
-• Performance comparisons
+🔍 លក្ខណៈពិសេសការវិភាគកម្រិតខ្ពស់កំពុងមកដល់ថ្ងៃខាងមុខ:
+• និន្នាការចំណូលនិងការក្រធាធង
+• រូបមន្តប្រតិបត្តិការអតិថិជន
+• ការវិភាគម៉ោងច្រើន
+• របាយការណ៍ប្រចាំខែនិងរយៈពេល 3 ខែ
+• ការប្រាប់ព្រាប់ការអនុវត្ត
 
-💼 **Currently Available:**
-• Daily revenue tracking
-• Transaction monitoring
-• Shift management
-• Basic summaries
+💼 មានបច្ចុប្បន្ន:
+• តាមដានចំណូលប្រចាំថ្ងៃ
+• ការតាមដានប្រតិបត្តិការ
+• ការគ្រប់គ្រងវេន
+• សង្ខេបមូលដ្ឋាន
 
-📞 Contact support for custom analytics requests.
+📞 ទាក់ទងការគាំទ្រសម្រាប់សំណើរការវិភាគផ្ទាល់ខ្លួន។
         """
 
         buttons = [[("🔙 Back to Menu", "back_to_menu")]]
@@ -318,39 +324,39 @@ Use Shift Management to start a new shift.
                 minutes = int((duration.total_seconds() % 3600) // 60)
 
                 message = f"""
-🔄 **Shift Management**
+🔄 ការគ្រប់គ្រងវេន
 
-🟢 **Current Shift:** #{current_shift.number}
-⏰ **Started:** {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-⏱️ **Duration:** {hours}h {minutes}m
+🟢 វេនបច្ចុប្បន្ន: #{current_shift.number}
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
-⚙️ **Available Actions:**
-• Close current shift
-• View shift details
-• Monitor shift performance
+⚙️ សកម្មភាពដែលមាន:
+• បិទវេនបច្ចុប្បន្ន
+• មើលសម្របសម្រួលវេន
+• តាមដានការអនុវត្តវេន
                 """
 
                 buttons = [
-                    [("🛑 Close Current Shift", "close_shift")],
-                    [("📊 View This Shift", "this_shift")],
+                    [("🛑 បិទវេនបច្ចុប្បន្ន", "close_shift")],
+                    [("📊 មើលវេននេះ", "this_shift")],
                     [("🔙 Back to Menu", "back_to_menu")]
                 ]
             else:
                 message = """
-🔄 **Shift Management**
+🔄 ការគ្រប់គ្រងវេន
 
-🔴 **Status:** No active shift
+🔴 ស្ថានភាព: គ្មានវេនសកម្ម
 
-⚙️ **Available Actions:**
-• Start a new shift
-• View previous shifts
-• Manage shift settings
+⚙️ សកម្មភាពដែលមាន:
+• ចាប់ផ្តើមវេនថ្មី
+• មើលវេនមុន
+• គ្រប់គ្រងការកំណត់វេន
 
-💡 **Tip:** Start a shift to begin tracking revenue by work periods.
+💡 គន្លឹះ: ចាប់ផ្តើមវេនដើម្បីចាប់ផ្តើមតាមដានចំណូលតាមរយៈពេលការងារ។
                 """
 
                 buttons = [
-                    [("▶️ Start New Shift", "start_shift")],
+                    [("▶️ ចាប់ផ្តើមវេនថ្មី", "start_shift")],
                     [("📈 Previous Shifts", "previous_shifts")],
                     [("🔙 Back to Menu", "back_to_menu")]
                 ]
@@ -358,7 +364,7 @@ Use Shift Management to start a new shift.
         except Exception as e:
             logger.error(f"Error showing shift management: {e}")
             message = "❌ Unable to load shift management. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 
@@ -370,7 +376,7 @@ Use Shift Management to start a new shift.
 
             if not shift:
                 message = "❌ Shift not found."
-                buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
 
@@ -417,7 +423,7 @@ Use Shift Management to start a new shift.
         except Exception as e:
             logger.error(f"Error showing specific shift: {e}")
             message = "❌ Unable to load shift details. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 
@@ -431,7 +437,7 @@ Use Shift Management to start a new shift.
 
             if current_shift:
                 message = f"""
-⚠️ **Cannot Start New Shift**
+⚠️ **Cannot ចាប់ផ្តើមវេនថ្មី**
 
 There is already an active shift running:
 📊 Shift #{current_shift.number}
@@ -441,7 +447,7 @@ There is already an active shift running:
                 """
 
                 buttons = [
-                    [("🛑 Close Current Shift", "close_shift")],
+                    [("🛑 បិទវេនបច្ចុប្បន្ន", "close_shift")],
                     [("🔙 Back to Menu", "back_to_menu")]
                 ]
             else:
@@ -460,14 +466,14 @@ Use Shift Management to close this shift when done.
                 """
 
                 buttons = [
-                    [("📊 View This Shift", "this_shift")],
+                    [("📊 មើលវេននេះ", "this_shift")],
                     [("🔙 Back to Menu", "back_to_menu")]
                 ]
 
         except Exception as e:
             logger.error(f"Error starting new shift: {e}")
             message = "❌ Unable to start new shift. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 
@@ -488,7 +494,7 @@ There is no active shift to close.
                 """
 
                 buttons = [
-                    [("▶️ Start New Shift", "start_shift")],
+                    [("▶️ ចាប់ផ្តើមវេនថ្មី", "start_shift")],
                     [("🔙 Back to Menu", "back_to_menu")]
                 ]
             else:
@@ -518,18 +524,18 @@ There is no active shift to close.
                     """
 
                     buttons = [
-                        [("▶️ Start New Shift", "start_shift")],
+                        [("▶️ ចាប់ផ្តើមវេនថ្មី", "start_shift")],
                         [("📈 View All Shifts", "previous_shifts")],
                         [("🔙 Back to Menu", "back_to_menu")]
                     ]
                 else:
                     message = "❌ Failed to close shift. Please try again."
-                    buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+                    buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
             logger.error(f"Error closing shift: {e}")
             message = "❌ Unable to close shift. Please try again."
-            buttons = [[("🔙 Back to Menu", "back_to_menu")]]
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons)
 

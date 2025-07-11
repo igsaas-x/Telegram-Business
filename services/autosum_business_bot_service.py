@@ -36,28 +36,44 @@ class AutosumBusinessBot:
         self.event_handler = BusinessEventHandler()
         logger.info("AutosumBusinessBot initialized with token")
 
+    def _convert_buttons_to_keyboard(self, buttons):
+        """Convert tuple buttons to InlineKeyboardButton objects"""
+        if not buttons:
+            return None
+        
+        keyboard_buttons = []
+        for row in buttons:
+            button_row = []
+            for button in row:
+                if isinstance(button, tuple) and len(button) == 2:
+                    text, callback_data = button
+                    button_row.append(InlineKeyboardButton(text, callback_data=callback_data))
+            keyboard_buttons.append(button_row)
+        
+        return InlineKeyboardMarkup(keyboard_buttons)
+
     async def business_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business bot start command with specialized welcome message"""
         welcome_message = """
-🏢 **Welcome to Autosum Business!**
+🏢 ស្វាគមន៍មកកាន់ Autosum Business!
 
-💼 **Your Business Finance Assistant**
+💼 ជំនួយការហិរញ្ញវត្ថុអាជីវកម្មរបស់អ្នក
 
-This bot provides advanced business features:
-• 📊 Real-time revenue tracking
-• 📈 Business analytics and insights
-• 🔄 Shift management for teams
-• 💰 Multi-currency support
-• 📱 Mobile-friendly dashboard
+បុតនេះផ្តល់នូវមុខងារអាជីវកម្មកម្រិតខ្ពស់:
+• 📊 តាមដានចំណូលពេលវេលាពិត
+• 📈 ការវិភាគនិងចំណេះដឹងអាជីវកម្ម
+• 🔄 ការគ្រប់គ្រងវេនសម្រាប់ក្រុម
+• 💰 ការគាំទ្ររូបិយប័ណ្ណច្រើន
+• 📱 ផ្ទាំងគ្រប់គ្រងងាយស្រួលប្រើ
 
-🚀 **Getting Started:**
-1. Use /menu to access the business dashboard
-2. Register your chat for business services
-3. Start tracking your revenue automatically
+🚀 ការចាប់ផ្តើម:
+1. ប្រើ /menu ដើម្បីចូលទៅផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
+2. ចុះឈ្មោះជជែករបស់អ្នកសម្រាប់សេវាអាជីវកម្ម
+3. ចាប់ផ្តើមតាមដានចំណូលដោយស្វ័យប្រវត្តិ
 
-💡 **Pro Tip:** Enable shift tracking for detailed performance analysis.
+💡 គន្លឹះ: បើកការតាមដានវេនសម្រាប់ការវិភាគដំណើរការលម្អិត។
 
-Type /menu to begin managing your business finances!
+វាយ /menu ដើម្បីចាប់ផ្តើមគ្រប់គ្រងហិរញ្ញវត្ថុអាជីវកម្មរបស់អ្នក!
         """
         
         await update.message.reply_text(welcome_message)
@@ -66,30 +82,19 @@ Type /menu to begin managing your business finances!
         """Business-specific menu handler"""
         # Create a mock event object for the business event handler
         class MockEvent:
-            def __init__(self, update):
+            def __init__(self, update, parent):
                 self.chat_id = update.effective_chat.id
                 self.chat = update.effective_chat
+                self.parent = parent
                 
             async def respond(self, message, buttons=None):
-                if buttons:
-                    # Convert tuples to InlineKeyboardButton objects
-                    keyboard_buttons = []
-                    for row in buttons:
-                        button_row = []
-                        for button in row:
-                            if isinstance(button, tuple) and len(button) == 2:
-                                text, callback_data = button
-                                button_row.append(InlineKeyboardButton(text, callback_data=callback_data))
-                        keyboard_buttons.append(button_row)
-                    
-                    await update.message.reply_text(message, reply_markup=InlineKeyboardMarkup(keyboard_buttons))
-                else:
-                    await update.message.reply_text(message)
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
+                await update.message.reply_text(message, reply_markup=keyboard)
                     
             async def get_sender(self):
                 return update.effective_user
 
-        mock_event = MockEvent(update)
+        mock_event = MockEvent(update, self)
         
         try:
             await self.event_handler.menu(mock_event)
@@ -108,28 +113,17 @@ Type /menu to begin managing your business finances!
         
         # Create a mock event for the business handler
         class MockCallbackEvent:
-            def __init__(self, query):
+            def __init__(self, query, parent):
                 self.chat_id = query.message.chat_id
                 self.data = query.data.encode('utf-8')
                 self.query = query
+                self.parent = parent
                 
             async def edit(self, message, buttons=None):
-                if buttons:
-                    # Convert tuples to InlineKeyboardButton objects
-                    keyboard_buttons = []
-                    for row in buttons:
-                        button_row = []
-                        for button in row:
-                            if isinstance(button, tuple) and len(button) == 2:
-                                text, callback_data = button
-                                button_row.append(InlineKeyboardButton(text, callback_data=callback_data))
-                        keyboard_buttons.append(button_row)
-                    
-                    await self.query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard_buttons))
-                else:
-                    await self.query.edit_message_text(message)
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
+                await self.query.edit_message_text(message, reply_markup=keyboard)
 
-        mock_event = MockCallbackEvent(query)
+        mock_event = MockCallbackEvent(query, self)
         
         try:
             if query.data == "back_to_menu":
@@ -147,35 +141,32 @@ Type /menu to begin managing your business finances!
     async def business_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business bot help command"""
         help_message = """
-🏢 **Autosum Business Bot Help**
+🏢 ជំនួយ Autosum Business Bot
 
-📋 **Available Commands:**
-• `/start` - Welcome message and introduction
-• `/menu` - Access business dashboard
-• `/help` - Show this help message
-• `/support` - Contact business support
+📋 ពាក្យបញ្ជាដែលមាន:
+• `/start` - សារស្វាគមន៍និងការណែនាំ
+• `/menu` - ចូលទៅផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
+• `/help` - បង្ហាញសារជំនួយនេះ
+• `/support` - ទាក់ទងការគាំទ្រអាជីវកម្ម
 
-💼 **Business Features:**
-• **Revenue Tracking** - Automatic transaction monitoring
-• **Analytics** - Business insights and trends
-• **Shift Management** - Track performance by work shifts
-• **Multi-Currency** - Support for different currencies
-• **Reports** - Daily, weekly, and monthly summaries
+💼 លក្ខណៈពិសេសអាជីវកម្ម:
+• តាមដានចំណូល - ការតាមដានប្រតិបត្តិការដោយស្វ័យប្រវត្តិ
+• ការវិភាគ - ចំណេះដឹងនិងនិន្នាការអាជីវកម្ម
+• ការគ្រប់គ្រងវេន - តាមដានការអនុវត្តតាមវេនការងារ
+• រូបិយប័ណ្ណច្រើន - ការគាំទ្ររូបិយប័ណ្ណផ្សេងៗ
+• របាយការណ៍ - សកម្មភាពប្រចាំថ្ងៃ សប្តាហ៍ និងខែ
 
-🔧 **Dashboard Options:**
-• 📊 Business Summary - Overview of your performance
-• 💰 Daily Revenue - Today's transaction details
-• 📈 Analytics - Advanced business insights
-• 🔄 Shift Management - Organize by work periods
-• ⚙️ Settings - Configure bot preferences
+🔧 ជម្រើសផ្ទាំងគ្រប់គ្រង:
+• 💰 ចំណូលប្រចាំថ្ងៃ - សម្របសម្រួលប្រតិបត្តិការថ្ងៃនេះ
+• 🔄 ការគ្រប់គ្រងវេន - រៀបចំតាមរយៈពេលការងារ
 
-📞 **Need Help?**
-Use /support for technical assistance or business inquiries.
+📞 ត្រូវការជំនួយ?
+ប្រើ /support សម្រាប់ជំនួយបច្ចេកទេសឬសំណួរអាជីវកម្ម។
 
-💡 **Pro Tips:**
-• Register your chat to start tracking automatically
-• Enable shift mode for detailed team performance
-• Check daily revenue for real-time insights
+💡 គន្លឹះ:
+• ចុះឈ្មោះជជែករបស់អ្នកដើម្បីចាប់ផ្តើមតាមដានដោយស្វ័យប្រវត្តិ
+• បើករបៀបវេនសម្រាប់ការអនុវត្តក្រុមលម្អិត
+• ពិនិត្យចំណូលប្រចាំថ្ងៃសម្រាប់ចំណេះដឹងពេលវេលាពិត
         """
         
         await update.message.reply_text(help_message)
@@ -183,31 +174,31 @@ Use /support for technical assistance or business inquiries.
     async def business_support(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business support command"""
         support_message = """
-📞 **Business Support Center**
+📞 មជ្ឈមណ្ឌលការគាំទ្រអាជីវកម្ម
 
-🆘 **Quick Help:**
-• Bot not responding? Try /start to refresh
-• Missing transactions? Check chat registration
-• Need custom features? Contact our team
+🆘 ជំនួយរហ័ស:
+• បុតមិនឆ្លើយតប? សាកល្បង /start ដើម្បីផ្ទុកឡើងវិញ
+• បាត់ប្រតិបត្តិការ? ពិនិត្យការចុះឈ្មោះជជែក
+• ត្រូវការលក្ខណៈពិសេសផ្ទាល់ខ្លួន? ទាក់ទងក្រុមយើង
 
-📧 **Contact Information:**
-• **Email:** business@autosum.com
-• **Phone:** +1-XXX-XXX-XXXX
-• **Support Hours:** Mon-Fri 9AM-6PM EST
+📧 ព័ត៌មានទំនាក់ទំនង:
+• អ៊ីមែល: business@autosum.com
+• ទូរស័ព្ទ: +1-XXX-XXX-XXXX
+• ម៉ោងការគាំទ្រ: ច័ន្ទ-សុក្រ 9AM-6PM EST
 
-🚀 **Business Services:**
-• Custom reporting solutions
-• API integrations
-• Team training sessions
-• Premium analytics features
+🚀 សេវាអាជីវកម្ម:
+• ដំណោះស្រាយរបាយការណ៍ផ្ទាល់ខ្លួន
+• ការរួមបញ្ចូល API
+• សម័យប្រមុងក្រុម
+• លក្ខណៈពិសេសការវិភាគកម្រិតខ្ពស់
 
-💬 **Instant Support:**
-Reply to this message with your question, and our team will respond within 24 hours.
+💬 ការគាំទ្រភ្លាមៗ:
+ឆ្លើយតបសារនេះជាមួយនឹងសំណួររបស់អ្នក ហើយក្រុមយើងនឹងឆ្លើយតបក្នុងរយៈពេល 24 ម៉ោង។
 
-🔗 **Resources:**
-• User Guide: /help
-• Dashboard: /menu
-• Feature Requests: Contact support team
+🔗 ធនធាន:
+• មគ្គុទ្ទេសក៍អ្នកប្រើប្រាស់: /help
+• ផ្ទាំងគ្រប់គ្រង: /menu
+• សំណើលក្ខណៈពិសេស: ទាក់ទងក្រុមការគាំទ្រ
         """
         
         await update.message.reply_text(support_message)
