@@ -423,7 +423,16 @@ class BusinessEventHandler:
                     status = "🔴 បានបិទ"
                 else:
                     from helper import DateUtils
-                    duration = DateUtils.now() - shift.start_time
+                    try:
+                        now = DateUtils.now()
+                        aware_start_time = DateUtils.localize_datetime(shift.start_time)
+                        duration = now - aware_start_time
+                    except Exception as e:
+                        force_log(f"Error calculating duration for active shift: {e}")
+                        # Fallback to naive datetime calculation
+                        from datetime import datetime
+                        now = datetime.now()
+                        duration = now - shift.start_time
                     end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
                     status = "🟢 សកម្ម"
 
