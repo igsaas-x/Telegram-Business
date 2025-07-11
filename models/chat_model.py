@@ -53,14 +53,11 @@ class ChatService:
     async def update_chat_enable_shift(self, chat_id: str, enable_shift: bool):
         session = self.Session()
         try:
-            session.query(Chat).filter_by(chat_id=str(chat_id)).update(
-                {"enable_shift": enable_shift}
-            )
+            session.query(Chat).filter_by(chat_id=str(chat_id)).update({"enable_shift": enable_shift})
             session.commit()
             return True
         except Exception as e:
             session.rollback()
-            print(f"Error updating chat enable_shift: {e}")
             return False
         finally:
             session.close()

@@ -107,6 +107,7 @@ class AutosumBusinessBot:
     async def handle_business_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle business-specific callback queries"""
         query = update.callback_query
+        logger.info(f"Received callback query: {query.data}")
         await query.answer()
         
         # Create a mock event for the business handler
@@ -132,18 +133,14 @@ class AutosumBusinessBot:
         mock_event = MockCallbackEvent(query, self)
         
         try:
-            # Handle registration flow callbacks
-            if query.data == "register_enable_shift":
-                await self.handle_register_enable_shift(query)
-                return BUSINESS_CALLBACK_CODE
-            elif query.data == "register_skip_shift":
-                await self.handle_register_skip_shift(query)
-                return BUSINESS_CALLBACK_CODE
-            else:
-                await self.event_handler.handle_business_callback(mock_event)
-                return BUSINESS_CALLBACK_CODE
+            # Handle business callbacks through event handler
+            logger.info(f"Delegating callback to event handler: {query.data}")
+            await self.event_handler.handle_business_callback(mock_event)
+            return BUSINESS_CALLBACK_CODE
         except Exception as e:
             logger.error(f"Error handling business callback: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             await query.edit_message_text("❌ Error processing request. Please try again.")
             return ConversationHandler.END
 
@@ -228,8 +225,8 @@ class AutosumBusinessBot:
                 
                 # Create buttons for shift choice
                 buttons = [
-                    [("✅ បាទ/ចាស បើកវេន", "register_enable_shift")],
-                    [("❌ ទេ មិនបើកវេនទេ", "register_skip_shift")],
+                    [("✅ បើកវេន", "register_enable_shift")],
+                    [("❌ មិនបើកវេនទេ", "register_skip_shift")],
                     [("🏠 ទៅមីនុយ", "back_to_menu")]
                 ]
                 
@@ -344,65 +341,30 @@ class AutosumBusinessBot:
             logger.error(f"Error enabling shift: {e}")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
 
-    async def handle_register_enable_shift(self, query):
+    async def handle_register_enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle register flow - enable shift option"""
+        query = update.callback_query
+        await query.answer()
+        
         chat_id = str(query.message.chat_id)
         
         try:
-            # Check if there's already an active shift
-            current_shift = await self.event_handler.shift_service.get_current_shift(chat_id)
+            # Simple database update
+            await self.chat_service.update_chat_enable_shift(chat_id, True)
             
-            if current_shift:
-                message = f"""
-⚠️ មានវេនសកម្មរួចហើយ
-
-វេន #{current_shift.number} កំពុងដំណើរការ
-⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-
-💡 អ្នកអាចប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
-                """
-            else:
-                # Create new shift
-                new_shift = await self.event_handler.shift_service.create_shift(chat_id)
-                
-                message = f"""
-✅ វេនត្រូវបានបើកដោយជោគជ័យ!
-
-📊 វេន #{new_shift.number}
-⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-🟢 ស្ថានភាព: សកម្ម
-
-🎉 ការចុះឈ្មោះនិងការបើកវេនបានបញ្ចប់ដោយជោគជ័យ!
-💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
-🔧 ប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
-                """
-            
-            buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
-            keyboard = self._convert_buttons_to_keyboard(buttons)
-            await query.edit_message_text(message, reply_markup=keyboard)
+            # Simple response
+            await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=None)
             
         except Exception as e:
-            logger.error(f"Error enabling shift in register flow: {e}")
-            await query.edit_message_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
+            logger.error(f"Error: {e}")
+            await query.edit_message_text("❌ Error", reply_markup=None)
 
-    async def handle_register_skip_shift(self, query):
+    async def handle_register_skip_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle register flow - skip shift option"""
-        message = """
-✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!
-
-🏢 ជជែករបស់អ្នកបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្មរួចហើយ។
-📊 អ្នកអាចប្រើ /menu ដើម្បីចូលប្រើលក្ខណៈពិសេសទាំងអស់។
-
-💡 នៅពេលដែលអ្នកចង់ចាប់ផ្តើមតាមដានប្រតិបត្តិការ:
-• ប្រើ /shift ដើម្បីបើកវេនថ្មី
-• ប្រើ /menu ដើម្បីគ្រប់គ្រងអាជីវកម្ម
-
-🎉 ស្វាគមន៍មកកាន់ Autosum Business!
-        """
+        query = update.callback_query
+        await query.answer()
         
-        buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
-        keyboard = self._convert_buttons_to_keyboard(buttons)
-        await query.edit_message_text(message, reply_markup=keyboard)
+        await query.edit_message_text("✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!", reply_markup=None)
 
     def setup(self):
         """Setup the business bot with specialized handlers"""
@@ -417,6 +379,10 @@ class AutosumBusinessBot:
         self.app.add_handler(CommandHandler("support", self.business_support))
         self.app.add_handler(CommandHandler("register", self.register_chat))
         self.app.add_handler(CommandHandler("shift", self.enable_shift))
+        
+        # Add separate callback handlers for registration flow
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
 
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(
