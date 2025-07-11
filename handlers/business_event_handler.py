@@ -180,9 +180,43 @@ class BusinessEventHandler:
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
+                
+                # Handle case where shift exists but has no transactions yet
+                if shift_summary['transaction_count'] == 0:
+                    # Calculate duration for empty shift
+                    try:
+                        now = DateUtils.now()
+                        aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
+                        duration = now - aware_start_time
+                        total_seconds = abs(duration.total_seconds())
+                        hours = int(total_seconds // 3600)
+                        minutes = int((total_seconds % 3600) // 60)
+                    except Exception as e:
+                        from datetime import datetime
+                        now = datetime.now()
+                        duration = now - current_shift.start_time
+                        total_seconds = abs(duration.total_seconds())
+                        hours = int(total_seconds // 3600)
+                        minutes = int((total_seconds % 3600) // 60)
 
-                # Calculate duration - simplified approach first
-                force_log(f"ENTERING DURATION CALCULATION BLOCK")
+                    message = f"""
+📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+🟢 កំពុងបន្ត
+
+💰 សង្ខេបចំណូលសរុប:
+• មិនទាន់មានប្រតិបត្តិការទេ
+                    """
+
+                    buttons = [
+                        [("🛑 បិទបញ្ជី", "close_shift")],
+                        [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                    ]
+                else:
+                    # Calculate duration - simplified approach first
+                    force_log(f"ENTERING DURATION CALCULATION BLOCK")
                 try:
                     now = DateUtils.now()
                     force_log(f"Now: {now}, Start time: {current_shift.start_time}")
