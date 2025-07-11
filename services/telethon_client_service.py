@@ -124,9 +124,11 @@ class TelethonClientService:
 
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
+            force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
             try:
                 # Check if this is a private chat (not a group)
                 if event.is_private:
+                    force_log(f"Private chat detected, sending auto-response")
                     await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
                     return
 
@@ -148,7 +150,9 @@ class TelethonClientService:
                     return
 
                 # Only require currency and amount, trx_id is optional
+                force_log(f"Checking if message has valid currency and amount: currency={currency}, amount={amount}")
                 if currency and amount:
+                    force_log(f"Valid currency and amount found, processing income...")
                     
                     # Check if chat exists, auto-register if not
                     chat_registered_now = False
@@ -172,49 +176,52 @@ class TelethonClientService:
                             logger.error(f"Error during chat auto-registration: {e}")
                             return
 
-                # Get chat info to check registration timestamp
-                chat = await chat_service.get_chat_by_chat_id(event.chat_id)
-                if not chat:
-                    return
+                    # Get chat info to check registration timestamp
+                    force_log(f"Getting chat info for chat_id: {event.chat_id}")
+                    chat = await chat_service.get_chat_by_chat_id(event.chat_id)
+                    if not chat:
+                        force_log(f"Chat {event.chat_id} not found in database!")
+                        return
 
-                # Check if message was sent after chat registration (applies to all messages)
-                from helper import DateUtils
-                import pytz
+                    # Check if message was sent after chat registration (applies to all messages)
+                    from helper import DateUtils
+                    import pytz
 
-                # Get message timestamp (Telethon provides it as UTC datetime)
-                message_time = event.message.date
-                if message_time.tzinfo is None:
-                    message_time = pytz.UTC.localize(message_time)
+                    force_log(f"Checking message timestamp vs chat registration timestamp")
+                    # Get message timestamp (Telethon provides it as UTC datetime)
+                    message_time = event.message.date
+                    if message_time.tzinfo is None:
+                        message_time = pytz.UTC.localize(message_time)
 
-                # Convert chat created_at to UTC for comparison
-                chat_created = chat.created_at
-                if chat_created.tzinfo is None:
-                    chat_created = DateUtils.localize_datetime(chat_created)
-                chat_created_utc = chat_created.astimezone(pytz.UTC)
+                    # Convert chat created_at to UTC for comparison
+                    chat_created = chat.created_at
+                    if chat_created.tzinfo is None:
+                        chat_created = DateUtils.localize_datetime(chat_created)
+                    chat_created_utc = chat_created.astimezone(pytz.UTC)
 
-                # Ignore messages sent before chat registration
-                if message_time < chat_created_utc:
-                    logger.debug(
-                        f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
-                    return
+                    force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
+                    # Ignore messages sent before chat registration
+                    if message_time < chat_created_utc:
+                        force_log(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
+                        return
 
-                # Let the income service handle shift creation automatically
-                force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
-                try:
-                    await self.service.insert_income(
-                        event.chat_id,  # Convert to string
-                        amount,
-                        currency,
-                        amount,
-                        message_id,
-                        event.message.text,
-                        trx_id,
-                        # Don't pass shift_id - let auto-creation handle it
-                    )
-                    force_log(f"Successfully saved income record for message {message_id}")
-                except Exception as income_error:
-                    force_log(f"ERROR saving income: {income_error}")
-                    raise income_error
+                    # Let the income service handle shift creation automatically
+                    force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
+                    try:
+                        await self.service.insert_income(
+                            event.chat_id,  # Convert to string
+                            amount,
+                            currency,
+                            amount,
+                            message_id,
+                            event.message.text,
+                            trx_id,
+                            # Don't pass shift_id - let auto-creation handle it
+                        )
+                        force_log(f"Successfully saved income record for message {message_id}")
+                    except Exception as income_error:
+                        force_log(f"ERROR saving income: {income_error}")
+                        raise income_error
                 else:
                     force_log(f"Message doesn't contain valid currency/amount: {event.message.text[:100]}...")
             except Exception as e:
