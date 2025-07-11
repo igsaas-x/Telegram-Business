@@ -15,11 +15,17 @@ from services.telegram_admin_bot_service import TelegramAdminBot
 load_environment()
 
 # Configure logging first, before any services are imported
+# Custom handler that ensures logs are written to file immediately
+class ForceFileHandler(logging.FileHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("telegram_bot.log"),
+        ForceFileHandler("telegram_bot.log"),
         logging.StreamHandler()
     ]
 )

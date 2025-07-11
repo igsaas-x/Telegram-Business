@@ -4,7 +4,6 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, B
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
-from handlers.business_event_handler import force_log
 from helper import DateUtils
 from models.income_balance_model import IncomeService
 from models.user_model import User, ServicePackage
@@ -67,11 +66,14 @@ class ChatService:
             if enable_shift:
                 from models.shift_model import ShiftService
                 shift_service = ShiftService()
-                await shift_service.create_shift(chat_id)
+                # Only create shift if none exists
+                current_shift = await shift_service.get_current_shift(chat_id)
+                if not current_shift:
+                    await shift_service.create_shift(chat_id)
             return True
         except Exception as e:
             session.rollback()
-            force_log(f"Error updating chat enable_shift: {e}")
+            logger.error(f"Error updating chat enable_shift: {e}")
             return False
         finally:
             session.close()

@@ -1,5 +1,3 @@
-# FORCE LOGGING TO WORK - bypass the broken logging system
-import datetime
 import logging
 
 from helper import DateUtils
@@ -10,17 +8,7 @@ from models.user_model import User
 from models.user_model import UserService
 from .client_command_handler import CommandHandler
 
-
-def force_log(message):
-    """Force write to a separate log file"""
-    with open("FORCE_DEBUG.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - FORCE_LOG - {message}\n")
-        f.flush()
-
-# Also try the regular logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class BusinessEventHandler:
@@ -36,8 +24,7 @@ class BusinessEventHandler:
 
     async def menu(self, event):
         """Business-specific menu handler"""
-        force_log(f"CRITICAL DEBUG: BusinessEventHandler.menu called for chat_id: {event.chat_id}")
-        logger.error(f"CRITICAL DEBUG: BusinessEventHandler.menu called for chat_id: {event.chat_id}")
+        logger.info(f"BusinessEventHandler.menu called for chat_id: {event.chat_id}")
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
@@ -133,15 +120,10 @@ class BusinessEventHandler:
 
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
-        force_log(f"CRITICAL DEBUG: handle_business_callback called")
-        logger.error(f"CRITICAL DEBUG: handle_business_callback called")
         data = event.data.decode('utf-8')
-        force_log(f"CRITICAL DEBUG: handle_business_callback received data: {data}")
-        logger.error(f"CRITICAL DEBUG: handle_business_callback received data: {data}")
+        logger.info(f"handle_business_callback received data: {data}")
 
         if data == "current_shift_report":
-            force_log(f"CRITICAL DEBUG: Calling show_current_shift_report")
-            logger.error(f"CRITICAL DEBUG: Calling show_current_shift_report")
             await self.show_current_shift_report(event)
         elif data == "previous_shift_report":
             await self.show_previous_shift_report(event)
@@ -163,10 +145,8 @@ class BusinessEventHandler:
 
     async def show_current_shift_report(self, event):
         """Show current shift report"""
-        force_log(f"CRITICAL: show_current_shift_report ENTRY for chat_id: {event.chat_id}")
         chat_id = int(event.chat_id)
-        force_log(f"CRITICAL: show_current_shift_report after chat_id conversion: {chat_id}")
-        logger.error(f"CRITICAL DEBUG: show_current_shift_report called for chat_id: {chat_id}")
+        logger.info(f"show_current_shift_report called for chat_id: {chat_id}")
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
@@ -219,27 +199,23 @@ class BusinessEventHandler:
                     ]
                 else:
                     # Calculate duration - simplified approach first
-                    force_log(f"ENTERING DURATION CALCULATION BLOCK")
-                try:
-                    now = DateUtils.now()
-                    force_log(f"Now: {now}, Start time: {current_shift.start_time}")
-                    aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
-                    duration = now - aware_start_time
-                    force_log(f"DEBUG: Duration: {duration}")
-                    total_seconds = abs(duration.total_seconds())
-                    hours = int(total_seconds // 3600)
-                    minutes = int((total_seconds % 3600) // 60)
-                    logger.error(f"DEBUG: Hours: {hours}, Minutes: {minutes}")
-                except Exception as e:
-                    force_log(f"Error in duration calculation: {e}")
-                    # Fallback to simple calculation
-                    from datetime import datetime
-                    now = datetime.now()
+                    try:
+                        now = DateUtils.now()
+                        aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
+                        duration = now - aware_start_time
+                        total_seconds = abs(duration.total_seconds())
+                        hours = int(total_seconds // 3600)
+                        minutes = int((total_seconds % 3600) // 60)
+                    except Exception as e:
+                        logger.error(f"Error in duration calculation: {e}")
+                        # Fallback to simple calculation
+                        from datetime import datetime
+                        now = datetime.now()
 
-                    duration = now - current_shift.start_time
-                    total_seconds = abs(duration.total_seconds())
-                    hours = int(total_seconds // 3600)
-                    minutes = int((total_seconds % 3600) // 60)
+                        duration = now - current_shift.start_time
+                        total_seconds = abs(duration.total_seconds())
+                        hours = int(total_seconds // 3600)
+                        minutes = int((total_seconds % 3600) // 60)
 
                 # Currency breakdown
                 currency_text = ""
