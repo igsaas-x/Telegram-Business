@@ -218,15 +218,23 @@ class AutosumBusinessBot:
             # Check if chat is already registered
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
             if chat:
-                message = """
-✅ ជជែករបស់អ្នកបានចុះឈ្មោះរួចហើយ
+                message = f"""
+✅ អ្នកបានចុះឈ្មោះដោយជោគជ័យហើយ
 
-🏢 ស្ថានភាព: ចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម
-📊 អ្នកអាចប្រើ /menu ដើម្បីចូលប្រើលក្ខណៈពិសេសទាំងអស់។
+🆔 Chat ID: {chat_id}
 
-💡 ប្រើ /shift ដើម្បីបើកវេនថ្មី ឬ /menu ដើម្បីគ្រប់គ្រងអាជីវកម្ម។
+តើអ្នកចង់ប្រើវេនទេ?
                 """
-                await update.message.reply_text(message)
+                
+                # Create buttons for shift choice
+                buttons = [
+                    [("✅ បាទ/ចាស បើកវេន", "register_enable_shift")],
+                    [("❌ ទេ មិនបើកវេនទេ", "register_skip_shift")],
+                    [("🏠 ទៅមីនុយ", "back_to_menu")]
+                ]
+                
+                keyboard = self._convert_buttons_to_keyboard(buttons)
+                await update.message.reply_text(message, reply_markup=keyboard)
                 return
 
             # Get user information for registration
