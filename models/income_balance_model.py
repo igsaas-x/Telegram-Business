@@ -100,7 +100,7 @@ class IncomeService:
     ) -> IncomeBalance:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
-        current_date = DateUtils.today()
+        current_date = DateUtils.now()
 
         with self._get_db() as db:
             try:

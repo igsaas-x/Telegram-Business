@@ -100,7 +100,7 @@ class ShiftService:
                 return shift
             return None
 
-    async def get_shifts_by_date_range(self, chat_id: str, start_date: date, end_date: date) -> list[Shift]:
+    async def get_shifts_by_date_range(self, chat_id: str, start_date: date, end_date: date) -> list[type[Shift]]:
         """Get all shifts for a chat within a date range"""
         with self._get_db() as db:
             return db.query(Shift).filter(
