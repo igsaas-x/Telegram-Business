@@ -1,10 +1,22 @@
+# FORCE LOGGING TO WORK - bypass the broken logging system
+import datetime
 import logging
 
 from models import ChatService, IncomeService, UserService, ShiftService
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
+
+def force_log(message):
+    """Force write to a separate log file"""
+    with open("FORCE_DEBUG.log", "a") as f:
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"{timestamp} - FORCE_LOG - {message}\n")
+        f.flush()
+
+# Also try the regular logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class BusinessEventHandler:
@@ -20,6 +32,8 @@ class BusinessEventHandler:
 
     async def menu(self, event):
         """Business-specific menu handler"""
+        force_log(f"CRITICAL DEBUG: BusinessEventHandler.menu called for chat_id: {event.chat_id}")
+        logger.error(f"CRITICAL DEBUG: BusinessEventHandler.menu called for chat_id: {event.chat_id}")
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
@@ -115,10 +129,14 @@ class BusinessEventHandler:
 
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
+        force_log(f"CRITICAL DEBUG: handle_business_callback called")
+        logger.error(f"CRITICAL DEBUG: handle_business_callback called")
         data = event.data.decode('utf-8')
+        force_log(f"CRITICAL DEBUG: handle_business_callback received data: {data}")
         logger.error(f"CRITICAL DEBUG: handle_business_callback received data: {data}")
 
         if data == "current_shift_report":
+            force_log(f"CRITICAL DEBUG: Calling show_current_shift_report")
             logger.error(f"CRITICAL DEBUG: Calling show_current_shift_report")
             await self.show_current_shift_report(event)
         elif data == "previous_shift_report":
@@ -162,9 +180,10 @@ class BusinessEventHandler:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
 
                 # Calculate duration - simplified approach first
+                logger.error(f"ENTERING DURATION CALCULATION BLOCK")
                 try:
                     now = DateUtils.now()
-                    logger.error(f"DEBUG: Now: {now}, Start time: {current_shift.start_time}")
+                    logger.error(f"Now: {now}, Start time: {current_shift.start_time}")
                     duration = now - current_shift.start_time
                     logger.error(f"DEBUG: Duration: {duration}")
                     total_seconds = abs(duration.total_seconds())

@@ -25,6 +25,8 @@ logging.basicConfig(
     ]
 )
 
+logger = logging.getLogger(__name__)
+
 tasks: Set[asyncio.Task] = set()
 
 
@@ -70,7 +72,10 @@ async def main(loader: CredentialLoader) -> None:
         
         # Add business bot only if token is provided
         if loader.autosum_business_bot_token:
+            logger.info("Starting business bot...")
             service_tasks.append(asyncio.create_task(businessBot.start_polling()))
+        else:
+            logger.warning("Business bot token not provided, skipping business bot")
 
         tasks.update(service_tasks)
         await asyncio.gather(*service_tasks)

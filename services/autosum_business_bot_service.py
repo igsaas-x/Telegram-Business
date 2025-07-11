@@ -78,6 +78,9 @@ class AutosumBusinessBot:
 
     async def business_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Business-specific menu handler"""
+        from handlers.business_event_handler import force_log
+        force_log(f"CRITICAL: AutosumBusinessBot.business_menu called for chat_id: {update.effective_chat.id}")
+        logger.error(f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}")
         # Create a mock event object for the business event handler
         class MockEvent:
             def __init__(self, update, parent):
@@ -106,7 +109,9 @@ class AutosumBusinessBot:
 
     async def handle_business_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle business-specific callback queries"""
+        from handlers.business_event_handler import force_log
         query = update.callback_query
+        force_log(f"CRITICAL: AutosumBusinessBot.handle_business_callback received: {query.data}")
         logger.error(f"CRITICAL: handle_business_callback received: {query.data}")
         await query.answer()
         
