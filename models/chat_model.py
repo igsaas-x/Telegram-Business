@@ -63,6 +63,11 @@ class ChatService:
                 {"enable_shift": enable_shift}
             )
             session.commit()
+            # Create a shift if enabling shift
+            if enable_shift:
+                from models.shift_model import ShiftService
+                shift_service = ShiftService()
+                await shift_service.create_shift(chat_id)
             return True
         except Exception as e:
             session.rollback()
