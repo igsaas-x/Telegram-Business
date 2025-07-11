@@ -1,3 +1,4 @@
+import datetime as dt
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from enum import Enum
@@ -19,6 +20,14 @@ from sqlalchemy.orm import Session, relationship
 from config.database_config import SessionLocal
 from helper import DateUtils
 from models.base_model import BaseModel
+
+
+def force_log(message):
+    """Write logs to telegram_bot.log since normal logging doesn't work"""
+    with open("telegram_bot.log", "a") as f:
+        timestamp = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"{timestamp} - IncomeService - INFO - {message}\n")
+        f.flush()
 
 
 class CurrencyEnum(Enum):
@@ -66,17 +75,25 @@ class IncomeService:
 
     async def _ensure_active_shift(self, chat_id: int) -> int:
         """Ensure there's an active shift for the chat, create one if needed"""
-        from models.shift_model import ShiftService
-        
-        shift_service = ShiftService()
-        current_shift = await shift_service.get_current_shift(chat_id)
-        
-        if current_shift:
-            return current_shift.id
-        else:
-            # No active shift found, create a new one
-            new_shift = await shift_service.create_shift(chat_id)
-            return new_shift.id
+        force_log(f"_ensure_active_shift called for chat_id: {chat_id}")
+        try:
+            from models.shift_model import ShiftService
+            
+            shift_service = ShiftService()
+            current_shift = await shift_service.get_current_shift(chat_id)
+            
+            if current_shift:
+                force_log(f"Found existing shift {current_shift.id} for chat {chat_id}")
+                return current_shift.id
+            else:
+                # No active shift found, create a new one
+                force_log(f"No active shift found, creating new one for chat {chat_id}")
+                new_shift = await shift_service.create_shift(chat_id)
+                force_log(f"Created new shift {new_shift.id} for chat {chat_id}")
+                return new_shift.id
+        except Exception as e:
+            force_log(f"ERROR in _ensure_active_shift: {e}")
+            raise e
 
 
     async def update_shift(self, income_id: int, shift: int):
@@ -109,37 +126,47 @@ class IncomeService:
             trx_id: str | None,
             shift_id: int = None,
     ) -> IncomeBalance:
-        from_symbol = CurrencyEnum.from_symbol(currency)
-        currency_code = from_symbol if from_symbol else currency
-        current_date = DateUtils.now()
+        force_log(f"insert_income called: chat_id={chat_id}, amount={amount}, currency={currency}, shift_id={shift_id}")
+        try:
+            from_symbol = CurrencyEnum.from_symbol(currency)
+            currency_code = from_symbol if from_symbol else currency
+            current_date = DateUtils.now()
 
-        # Ensure shift exists - auto-create if needed
-        if shift_id is None:
-            shift_id = await self._ensure_active_shift(chat_id)
+            # Ensure shift exists - auto-create if needed
+            if shift_id is None:
+                force_log(f"No shift_id provided, ensuring active shift for chat {chat_id}")
+                shift_id = await self._ensure_active_shift(chat_id)
+                force_log(f"Using shift_id: {shift_id}")
 
 
-        with self._get_db() as db:
-            try:
-                new_income = IncomeBalance(
-                    chat_id=chat_id,
-                    amount=amount,
-                    currency=currency_code,
-                    income_date=current_date,
-                    original_amount=original_amount,
-                    message_id=message_id,
-                    message=message,
-                    trx_id=trx_id,
-                    shift_id=shift_id,
-                )
+            with self._get_db() as db:
+                try:
+                    force_log(f"Creating IncomeBalance record with shift_id={shift_id}")
+                    new_income = IncomeBalance(
+                        chat_id=chat_id,
+                        amount=amount,
+                        currency=currency_code,
+                        income_date=current_date,
+                        original_amount=original_amount,
+                        message_id=message_id,
+                        message=message,
+                        trx_id=trx_id,
+                        shift_id=shift_id,
+                    )
 
-                db.add(new_income)
-                db.commit()
-                db.refresh(new_income)
-                return new_income
+                    db.add(new_income)
+                    db.commit()
+                    db.refresh(new_income)
+                    force_log(f"Successfully saved IncomeBalance record with id={new_income.id}")
+                    return new_income
 
-            except Exception as e:
-                db.rollback()
-                raise e
+                except Exception as e:
+                    force_log(f"ERROR in database operation: {e}")
+                    db.rollback()
+                    raise e
+        except Exception as e:
+            force_log(f"ERROR in insert_income: {e}")
+            raise e
 
     async def get_income(self, income_id: int) -> Optional[IncomeBalance]:
         with self._get_db() as db:
