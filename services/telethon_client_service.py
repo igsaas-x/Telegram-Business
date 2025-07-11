@@ -178,17 +178,16 @@ class TelethonClientService:
                     print(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
                     return
                 
-                last_income = await self.service.get_last_shift_id(event.chat_id)
-                shift_number: int = last_income.shift if last_income else 1  # type: ignore
+                # Let the income service handle shift creation automatically
                 await self.service.insert_income(
-                    event.chat_id,
+                    str(event.chat_id),  # Convert to string
                     amount,
                     currency,
                     amount,
                     message_id,
                     event.message.text,
                     trx_id,
-                    shift_number,
+                    # Don't pass shift_id - let auto-creation handle it
                 )
 
         await self.client.run_until_disconnected()  # type: ignore

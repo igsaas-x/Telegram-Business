@@ -26,6 +26,7 @@ class CredentialLoader:
         self.api_hash1: str = ""
         self.phone_number1: str = ""
         self.admin_bot_token: str = ""
+        self.autosum_business_bot_token: str = ""
 
     def load_credentials(self) -> dict:
         print("Loading credentials...")
@@ -40,6 +41,7 @@ class CredentialLoader:
         self.api_hash1 = os.getenv("API_HASH1") or ""
         self.phone_number1 = os.getenv("PHONE_NUMBER1") or ""
         self.admin_bot_token = os.getenv("ADMIN_BOT_TOKEN") or ""
+        self.autosum_business_bot_token = os.getenv("AUTOSUM_BUSINESS_BOT_TOKEN") or ""
 
         for var in self.REQUIRED_ENV_VARS:
             if not getattr(self, var.lower()):

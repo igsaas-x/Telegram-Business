@@ -68,6 +68,20 @@ class IncomeService:
         finally:
             db.close()
 
+    async def _ensure_active_shift(self, chat_id: str) -> int:
+        """Ensure there's an active shift for the chat, create one if needed"""
+        from models.shift_model import ShiftService
+        
+        shift_service = ShiftService()
+        current_shift = await shift_service.get_current_shift(chat_id)
+        
+        if current_shift:
+            return current_shift.id
+        else:
+            # No active shift found, create a new one
+            new_shift = await shift_service.create_shift(chat_id)
+            return new_shift.id
+
     async def update_shift(self, income_id: int, shift: int):
         with self._get_db() as db:
             income = db.query(IncomeBalance).filter(IncomeBalance.id == income_id)
@@ -101,6 +115,10 @@ class IncomeService:
         from_symbol = CurrencyEnum.from_symbol(currency)
         currency_code = from_symbol if from_symbol else currency
         current_date = DateUtils.now()
+
+        # Ensure shift exists - auto-create if needed
+        if shift_id is None:
+            shift_id = await self._ensure_active_shift(chat_id)
 
         with self._get_db() as db:
             try:
@@ -255,3 +273,49 @@ class IncomeService:
             summary["total_amount"] += amount
 
         return summary
+
+    async def get_today_income(self, chat_id: str) -> list[IncomeBalance]:
+        """Get all income records for today"""
+        today = DateUtils.today()
+        tomorrow = today + timedelta(days=1)
+        
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= today,
+                    IncomeBalance.income_date < tomorrow
+                )
+                .all()
+            )
+
+    async def get_weekly_income(self, chat_id: str) -> list[IncomeBalance]:
+        """Get all income records for this week"""
+        today = DateUtils.today()
+        week_start = today - timedelta(days=today.weekday())
+        
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= week_start
+                )
+                .all()
+            )
+
+    async def get_monthly_income(self, chat_id: str) -> list[IncomeBalance]:
+        """Get all income records for this month"""
+        today = DateUtils.today()
+        month_start = today.replace(day=1)
+        
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= month_start
+                )
+                .all()
+            )

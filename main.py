@@ -10,6 +10,7 @@ from config import load_environment
 from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
 from services import TelegramBotService, TelethonClientService
+from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
 
 load_environment()
@@ -47,6 +48,7 @@ async def main(loader: CredentialLoader) -> None:
         telegramBotService = TelegramBotService()
         telethonClientService1 = TelethonClientService()
         adminBot = TelegramAdminBot(loader.admin_bot_token)
+        businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -65,6 +67,10 @@ async def main(loader: CredentialLoader) -> None:
             ),
             asyncio.create_task(adminBot.start_polling()),
         ]
+        
+        # Add business bot only if token is provided
+        if loader.autosum_business_bot_token:
+            service_tasks.append(asyncio.create_task(businessBot.start_polling()))
 
         tasks.update(service_tasks)
         await asyncio.gather(*service_tasks)

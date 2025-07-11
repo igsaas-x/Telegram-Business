@@ -46,20 +46,19 @@ class ShiftService:
             db.close()
 
     async def create_shift(self, chat_id: str) -> Shift:
-        """Create a new shift for today"""
-        today = DateUtils.today().date()
+        """Create a new shift starting now"""
         current_time = DateUtils.now()
+        shift_date = current_time.date()  # Use current date for tracking
         
         with self._get_db() as db:
-            # Get the highest shift number for today
+            # Get the highest shift number for this chat (global counter)
             last_shift_number = db.query(func.max(Shift.number)).filter(
-                Shift.chat_id == chat_id,
-                Shift.shift_date == today
+                Shift.chat_id == chat_id
             ).scalar() or 0
             
             new_shift = Shift(
                 chat_id=chat_id,
-                shift_date=today,
+                shift_date=shift_date,
                 number=last_shift_number + 1,
                 start_time=current_time,
                 is_closed=False
@@ -71,15 +70,12 @@ class ShiftService:
             return new_shift
 
     async def get_current_shift(self, chat_id: str) -> Optional[Shift]:
-        """Get the current open shift for today"""
-        today = DateUtils.today().date()
-        
+        """Get the current open shift (regardless of date)"""
         with self._get_db() as db:
             return db.query(Shift).filter(
                 Shift.chat_id == chat_id,
-                Shift.shift_date == today,
                 Shift.is_closed == False
-            ).order_by(Shift.number.desc()).first()
+            ).order_by(Shift.start_time.desc()).first()
 
     async def get_shift_by_id(self, shift_id: int) -> Optional[Shift]:
         """Get shift by ID"""
@@ -117,3 +113,46 @@ class ShiftService:
                 Shift.shift_date == shift_date,
                 Shift.number == shift_number
             ).first()
+
+    async def get_recent_closed_shifts(self, chat_id: str, limit: int = 3) -> list[Shift]:
+        """Get recent closed shifts for a chat"""
+        with self._get_db() as db:
+            return db.query(Shift).filter(
+                Shift.chat_id == chat_id,
+                Shift.is_closed == True
+            ).order_by(Shift.end_time.desc()).limit(limit).all()
+
+    async def get_shift_income_summary(self, shift_id: int) -> dict:
+        """Get income summary for a specific shift"""
+        with self._get_db() as db:
+            from models.income_balance_model import IncomeBalance
+            
+            # Get all income records for this shift
+            income_records = db.query(IncomeBalance).filter(
+                IncomeBalance.shift_id == shift_id
+            ).all()
+            
+            if not income_records:
+                return {
+                    'total_amount': 0.0,
+                    'transaction_count': 0,
+                    'currencies': {}
+                }
+            
+            total_amount = sum(record.amount for record in income_records)
+            transaction_count = len(income_records)
+            
+            # Group by currency
+            currencies = {}
+            for record in income_records:
+                currency = record.currency or 'USD'
+                if currency not in currencies:
+                    currencies[currency] = {'amount': 0.0, 'count': 0}
+                currencies[currency]['amount'] += record.amount
+                currencies[currency]['count'] += 1
+            
+            return {
+                'total_amount': total_amount,
+                'transaction_count': transaction_count,
+                'currencies': currencies
+            }
