@@ -406,6 +406,20 @@ class AutosumBusinessBot:
             # Fallback to editing the message if delete fails
             await query.edit_message_text("បានបិទ", reply_markup=None)
 
+    async def handle_fallback_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle any callbacks not caught by other handlers"""
+        query = update.callback_query
+        logger.warning(f"Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}")
+        await query.answer()
+        
+        # Try to handle as business callback if it looks like a business operation
+        if query.data in ["close_shift", "current_shift_report", "previous_shift_report", "other_days_report", "back_to_menu", "close_menu"]:
+            logger.info(f"Routing fallback callback {query.data} to business handler")
+            return await self.handle_business_callback(update, context)
+        
+        # Unknown callback
+        await query.edit_message_text("❌ Unknown action. Please try again.", reply_markup=None)
+
     def setup(self):
         """Setup the business bot with specialized handlers"""
         if not self.bot_token:
@@ -442,6 +456,9 @@ class AutosumBusinessBot:
         )
 
         self.app.add_handler(business_menu_handler)
+        
+        # Add fallback callback handler for any unhandled callbacks
+        self.app.add_handler(CallbackQueryHandler(self.handle_fallback_callback))
 
         # Add error handler
         self.app.add_error_handler(self.error_handler)
