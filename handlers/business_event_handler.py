@@ -207,7 +207,13 @@ class BusinessEventHandler:
                 # Currency breakdown
                 currency_text = ""
                 for currency, data in shift_summary['currencies'].items():
-                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    if currency == 'USD':
+                        currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    elif currency == 'KHR':
+                        khr_amount = int(data['amount'])
+                        currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
+                    else:
+                        currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                 message = f"""
 📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
@@ -261,7 +267,13 @@ class BusinessEventHandler:
                 # Currency breakdown
                 currency_text = ""
                 for currency, data in shift_summary['currencies'].items():
-                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    if currency == 'USD':
+                        currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    elif currency == 'KHR':
+                        khr_amount = int(data['amount'])
+                        currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
+                    else:
+                        currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                 message = f"""
 📈 របាយការណ៍វេនមុន #{shift.number}
@@ -394,7 +406,13 @@ class BusinessEventHandler:
                 # Currency breakdown
                 currency_text = ""
                 for currency, data in shift_summary['currencies'].items():
-                    currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    if currency == 'USD':
+                        currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                    elif currency == 'KHR':
+                        khr_amount = int(data['amount'])
+                        currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
+                    else:
+                        currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                 message = f"""
 📊 របាយការណ៍វេន #{shift.number}
@@ -465,12 +483,6 @@ class BusinessEventHandler:
 ⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %H:%M')}
 ⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-
-💰 លទ្ធផលចុងក្រោយ:
-• សរុបចំណូល: ${shift_summary['total_amount']:,.2f}
-• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
-
-🎉 ការងារល្អ!
 
 🟢 វេនថ្មី #{new_shift.number} ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ
                     """
