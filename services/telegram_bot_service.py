@@ -27,15 +27,12 @@ class TelegramBotService:
 
         try:
             logger.info("Bot is running...")
-            print("Bot is running...")
             await self.bot.run_until_disconnected()  # type: ignore
         except asyncio.CancelledError:
             await self.bot.disconnect()  # type: ignore
             logger.info("Bot stopped by user")
-            print("Bot stopped by user")
         except Exception as e:
             logger.error(f"Bot crashed with error: {e}")
-            print(f"Bot crashed with error: {e}")
             raise
 
     def _register_event_handlers(self):
