@@ -212,9 +212,9 @@ class BusinessEventHandler:
                 message = f"""
 📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
 
-🟢 ស្ថានភាព: សកម្ម
-⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
 ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+🟢 កំពុងបន្ត
 
 💰 សង្ខេបចំណូលសរុប:
 {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}

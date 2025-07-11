@@ -17,3 +17,4 @@ anon.*
 .env.local
 telegram_bot.log
 debug_log.txt
+FORCE_DEBUG.log
