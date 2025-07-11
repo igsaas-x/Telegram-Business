@@ -48,7 +48,7 @@ class TelegramAdminBot:
                 return ConversationHandler.END
             
             identifier: str = chat.user.identifier if chat.user else "" # type: ignore
-            print(f"Identifier: {identifier}")
+            logger.debug(f"Identifier: {identifier}")
             user = await self.user_service.get_user_by_identifier(identifier)
             if not user:
                 await update.message.reply_text("User not found.")  # type: ignore
@@ -92,7 +92,7 @@ class TelegramAdminBot:
                     
             return PACKAGE_SELECTION_CODE
         except Exception as e:
-            print(f"Error in package_selection_handler: {e}")
+            logger.error(f"Error in package_selection_handler: {e}")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -137,7 +137,7 @@ class TelegramAdminBot:
             await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            print(f"Error in show_user_confirmation: {e}")
+            logger.error(f"Error in show_user_confirmation: {e}")
             await update.message.reply_text("Error displaying user information.")  # type: ignore
             return ConversationHandler.END
 
@@ -176,7 +176,7 @@ class TelegramAdminBot:
                     
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            print(f"Error in user_confirmation_handler: {e}")
+            logger.error(f"Error in user_confirmation_handler: {e}")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -237,7 +237,7 @@ class TelegramAdminBot:
                 
             return PACKAGE_COMMAND_CODE
         except Exception as e:
-            print(f"Error in package_button: {e}")
+            logger.error(f"Error in package_button: {e}")
             if query:
                 await query.edit_message_text(
                     f"Error updating user package: {str(e)}"
