@@ -356,11 +356,14 @@ class BusinessEventHandler:
         """Show shifts for a specific date"""
         chat_id = int(event.chat_id)
         date_str = data.replace("date_", "")
+        force_log(f"show_date_shifts called with data: {data}, date_str: {date_str}, chat_id: {chat_id}")
 
         try:
             from datetime import datetime
             selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            force_log(f"Parsed date: {selected_date}")
             shifts = await self.shift_service.get_shifts_by_date(chat_id, selected_date)
+            force_log(f"Found {len(shifts)} shifts for date {selected_date}")
 
             if not shifts:
                 message = f"""
@@ -377,7 +380,9 @@ class BusinessEventHandler:
 
                 buttons = []
                 for shift in shifts:
+                    force_log(f"Processing shift {shift.id}, number {shift.number}")
                     shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                    force_log(f"Got shift summary: {shift_summary}")
                     start_time = shift.start_time.strftime('%H:%M')
                     end_time = shift.end_time.strftime('%H:%M') if shift.end_time else "សកម្ម"
                     status = "🔴" if shift.is_closed else "🟢"
