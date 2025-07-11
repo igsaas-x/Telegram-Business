@@ -95,9 +95,8 @@ class CommandHandler:
         #     return
 
         income_service = IncomeService()
-        incomes = await income_service.get_income_chat_id_and_shift(
-            chat_id=event.chat_id,
-            shift=last_shift.shift,  # type: ignore
+        incomes = await income_service.get_income_by_shift_id(
+            shift_id=last_shift.shift_id,  # type: ignore
         )
 
         await income_service.update_shift(
