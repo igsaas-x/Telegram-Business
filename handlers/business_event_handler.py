@@ -235,11 +235,7 @@ class BusinessEventHandler:
 ⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %H:%M')}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
-💰 សង្ខេបចំណូល:
-• សរុប: ${shift_summary['total_amount']:,.2f}
-• ប្រតិបត្តិការ: {shift_summary['transaction_count']}
-
-💱 ការចែករូបិយប័ណ្ណ:
+💰 ចំណូលសរុប:
 {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
                 """
                 
@@ -392,27 +388,35 @@ class BusinessEventHandler:
         await event.edit(message, buttons=buttons)
 
     async def close_current_shift(self, event):
-        """Close the current active shift"""
+        """Close the current active shift or create new shift if none exists"""
         chat_id = int(event.chat_id)
         
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
             
             if not current_shift:
-                message = """
-⚠️ គ្មានវេនសកម្ម
+                # No active shift, just create a new one
+                new_shift = await self.shift_service.create_shift(chat_id)
+                
+                message = f"""
+✅ វេនថ្មីត្រូវបានបង្កើតដោយជោគជ័យ!
 
-គ្មានវេនសកម្មដែលត្រូវបិទទេ។
+📊 វេន #{new_shift.number}
+⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+🟢 ស្ថានភាព: សកម្ម
 
-💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
+💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
                 """
                 
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                # Close the shift
+                # Close the current shift and create new one
                 closed_shift = await self.shift_service.close_shift(current_shift.id)
                 
                 if closed_shift:
+                    # Automatically create a new shift after closing the current one
+                    new_shift = await self.shift_service.create_shift(chat_id)
+                    
                     # Get final summary
                     shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id)
                     duration = closed_shift.end_time - closed_shift.start_time
@@ -433,6 +437,8 @@ class BusinessEventHandler:
 • ប្រតិបត្តិការ: {shift_summary['transaction_count']}
 
 🎉 ការងារល្អ!
+
+🟢 វេនថ្មី #{new_shift.number} ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ
                     """
                     
                     buttons = [
