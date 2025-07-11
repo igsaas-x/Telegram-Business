@@ -141,6 +141,7 @@ class BusinessEventHandler:
 
     async def show_current_shift_report(self, event):
         """Show current shift report"""
+        global DateUtils
         chat_id = int(event.chat_id)
         logger.error(f"CRITICAL DEBUG: show_current_shift_report called for chat_id: {chat_id}")
 
@@ -162,7 +163,6 @@ class BusinessEventHandler:
 
                 # Calculate duration - simplified approach first
                 try:
-                    from helper import DateUtils
                     now = DateUtils.now()
                     logger.error(f"DEBUG: Now: {now}, Start time: {current_shift.start_time}")
                     duration = now - current_shift.start_time
@@ -172,16 +172,10 @@ class BusinessEventHandler:
                     minutes = int((total_seconds % 3600) // 60)
                     logger.error(f"DEBUG: Hours: {hours}, Minutes: {minutes}")
                 except Exception as e:
-                    logger.error(f"DEBUG: Error in duration calculation: {e}")
+                    logger.error(f"Error in duration calculation: {e}")
                     # Fallback to simple calculation
                     from datetime import datetime
                     now = datetime.now()
-                    # Make sure both times are timezone-aware or both naive
-                    if current_shift.start_time.tzinfo is not None and now.tzinfo is None:
-                        # Convert now to naive datetime to match start_time timezone awareness
-                        now = current_shift.start_time.replace(tzinfo=None) + (datetime.now() - datetime.now())
-                    elif current_shift.start_time.tzinfo is None and now.tzinfo is not None:
-                        now = now.replace(tzinfo=None)
                     
                     duration = now - current_shift.start_time
                     total_seconds = abs(duration.total_seconds())
