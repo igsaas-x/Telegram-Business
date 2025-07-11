@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
@@ -9,7 +9,7 @@ from models import User, IncomeService, ServicePackage
 class Chat(Base):
     __tablename__ = "chats"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String(255), unique=True, nullable=False)
+    chat_id = Column(BigInteger, unique=True, nullable=False)
     group_name = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=True, default=True)
     enable_shift = Column(Boolean, nullable=True, default=False)
@@ -36,7 +36,7 @@ class ChatService:
         session = self.Session()
         try:
             new_chat = Chat(
-                chat_id=str(chat_id),
+                chat_id=chat_id,
                 group_name=group_name,
                 user_id=user.id if user else None,
             )
@@ -53,7 +53,7 @@ class ChatService:
     async def update_chat_enable_shift(self, chat_id: str, enable_shift: bool):
         session = self.Session()
         try:
-            session.query(Chat).filter_by(chat_id=str(chat_id)).update(
+            session.query(Chat).filter_by(chat_id=chat_id).update(
                 {"enable_shift": enable_shift}
             )
             session.commit()
@@ -120,7 +120,7 @@ class ChatService:
         """
         session = self.Session()
         try:
-            exists = session.query(Chat).filter_by(chat_id=str(chat_id)).first() is not None
+            exists = session.query(Chat).filter_by(chat_id=chat_id).first() is not None
             return bool(exists)
         except Exception as e:
             print(f"Error checking if chat exists: {e}")
