@@ -45,6 +45,7 @@ class ChatService:
             return True, f"Chat ID {chat_id} registered successfully."
         except Exception as e:
             session.rollback()
+            print(f"Error registering chat ID: {e}")
             return False, f"Error registering chat ID: {e}"
         finally:
             session.close()
@@ -119,7 +120,7 @@ class ChatService:
         """
         session = self.Session()
         try:
-            exists = session.query(session.query(Chat).filter_by(chat_id=str(chat_id)).exists()).scalar()
+            exists = session.query(Chat).filter_by(chat_id=str(chat_id)).first() is not None
             return bool(exists)
         except Exception as e:
             print(f"Error checking if chat exists: {e}")

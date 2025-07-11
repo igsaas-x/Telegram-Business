@@ -140,11 +140,11 @@ class TelethonClientService:
                         chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
                         
                         # Register the chat without a specific user (user=None)
-                        success, _ = await chat_service.register_chat_id(event.chat_id, chat_title, None)
+                        success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
                         
                         if not success:
                             # If registration failed, skip this message
-                            print(f"Failed to auto-register chat {event.chat_id}")
+                            print(f"Failed to auto-register chat {event.chat_id}, {err_message}")
                             return
                             
                         chat_registered_now = True
