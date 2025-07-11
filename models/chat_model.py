@@ -58,18 +58,24 @@ class ChatService:
     async def update_chat_enable_shift(self, chat_id: int, enable_shift: bool):
         session = self.Session()
         try:
+            # Create a shift first if enabling shift
+            if enable_shift:
+                try:
+                    from models.shift_model import ShiftService
+                    shift_service = ShiftService()
+                    # Only create shift if none exists
+                    current_shift = await shift_service.get_current_shift(chat_id)
+                    if not current_shift:
+                        await shift_service.create_shift(chat_id)
+                except Exception as shift_error:
+                    logger.error(f"Error creating shift: {shift_error}")
+                    raise shift_error
+            
+            # Update the chat setting after shift creation succeeds
             session.query(Chat).filter_by(chat_id=chat_id).update(
                 {"enable_shift": enable_shift}
             )
             session.commit()
-            # Create a shift if enabling shift
-            if enable_shift:
-                from models.shift_model import ShiftService
-                shift_service = ShiftService()
-                # Only create shift if none exists
-                current_shift = await shift_service.get_current_shift(chat_id)
-                if not current_shift:
-                    await shift_service.create_shift(chat_id)
             return True
         except Exception as e:
             session.rollback()
