@@ -179,24 +179,26 @@ class IncomeService:
             )
 
     async def get_income_by_message_id(self, message_id: int) -> bool:
+        force_log(f"Searching for existing income with message_id: {message_id}")
         with self._get_db() as db:
-            return (
-                    db.query(IncomeBalance)
-                    .filter(IncomeBalance.message_id == message_id)
-                    .first()
-                    is not None
-            )
+            result = db.query(IncomeBalance).filter(IncomeBalance.message_id == message_id).first()
+            found = result is not None
+            force_log(f"Message ID {message_id} duplicate check: {'FOUND' if found else 'NOT FOUND'}")
+            return found
 
     async def get_income_by_trx_id(self, trx_id: str | None, chat_id: int) -> bool:
         if trx_id is None:
+            force_log(f"Transaction ID is None, returning False")
             return False
+        force_log(f"Searching for existing income with trx_id: {trx_id} and chat_id: {chat_id}")
         with self._get_db() as db:
-            return (
-                    db.query(IncomeBalance)
-                    .filter(IncomeBalance.trx_id == trx_id, IncomeBalance.chat_id == chat_id)
-                    .first()
-                    is not None
-            )
+            result = db.query(IncomeBalance).filter(
+                IncomeBalance.trx_id == trx_id, 
+                IncomeBalance.chat_id == chat_id
+            ).first()
+            found = result is not None
+            force_log(f"Transaction ID {trx_id} duplicate check for chat {chat_id}: {'FOUND' if found else 'NOT FOUND'}")
+            return found
 
     async def get_last_yesterday_message(
             self, date: datetime
