@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
@@ -10,7 +10,7 @@ from models.user_model import User, ServicePackage
 class Chat(Base):
     __tablename__ = "chats"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    chat_id = Column(String(255), unique=True, nullable=False)
+    chat_id = Column(BigInteger, unique=True, nullable=False)
     group_name = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=True, default=True)
     enable_shift = Column(Boolean, nullable=True, default=False)
@@ -37,7 +37,7 @@ class ChatService:
         session = self.Session()
         try:
             new_chat = Chat(
-                chat_id=str(chat_id),
+                chat_id=chat_id,
                 group_name=group_name,
                 user_id=user.id if user else None,
             )
@@ -46,6 +46,7 @@ class ChatService:
             return True, f"Chat ID {chat_id} registered successfully."
         except Exception as e:
             session.rollback()
+            print(f"Error registering chat ID: {e}")
             return False, f"Error registering chat ID: {e}"
         finally:
             session.close()
@@ -53,11 +54,14 @@ class ChatService:
     async def update_chat_enable_shift(self, chat_id: str, enable_shift: bool):
         session = self.Session()
         try:
-            session.query(Chat).filter_by(chat_id=str(chat_id)).update({"enable_shift": enable_shift})
+            session.query(Chat).filter_by(chat_id=chat_id).update(
+                {"enable_shift": enable_shift}
+            )
             session.commit()
             return True
         except Exception as e:
             session.rollback()
+            print(f"Error updating chat enable_shift: {e}")
             return False
         finally:
             session.close()
@@ -117,7 +121,7 @@ class ChatService:
         """
         session = self.Session()
         try:
-            exists = session.query(session.query(Chat).filter_by(chat_id=str(chat_id)).exists()).scalar()
+            exists = session.query(Chat).filter_by(chat_id=chat_id).first() is not None
             return bool(exists)
         except Exception as e:
             print(f"Error checking if chat exists: {e}")
