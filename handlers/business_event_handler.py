@@ -394,7 +394,7 @@ class BusinessEventHandler:
                     end_time = shift.end_time.strftime('%H:%M') if shift.end_time else "សកម្ម"
                     status = "🔴" if shift.is_closed else "🟢"
 
-                    button_text = f"{status} វេន #{shift.number} ({start_time}-{end_time}) ${shift_summary['total_amount']:,.0f}"
+                    button_text = f"{status} វេន #{shift.number} ({start_time}-{end_time})"
                     buttons.append([(button_text, f"shift_{shift.id}")])
 
                 buttons.extend([

@@ -48,17 +48,17 @@ class ShiftService:
     async def create_shift(self, chat_id: int) -> Shift:
         """Create a new shift starting now"""
         current_time = DateUtils.now()
-        shift_date = current_time.date()  # Use current date for tracking
         
         with self._get_db() as db:
-            # Get the highest shift number for this chat (global counter)
+            # Get the highest shift number for this chat for today (not global)
             last_shift_number = db.query(func.max(Shift.number)).filter(
-                Shift.chat_id == chat_id
+                Shift.chat_id == chat_id,
+                Shift.shift_date == current_time.date(),
             ).scalar() or 0
             
             new_shift = Shift(
                 chat_id=chat_id,
-                shift_date=shift_date,
+                shift_date=current_time.date(),
                 number=last_shift_number + 1,
                 start_time=current_time,
                 is_closed=False
