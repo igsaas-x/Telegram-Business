@@ -2,6 +2,7 @@
 import datetime
 import logging
 
+from helper import DateUtils
 from models import ChatService, IncomeService, UserService, ShiftService
 from models.user_model import User
 from .client_command_handler import CommandHandler
@@ -159,8 +160,9 @@ class BusinessEventHandler:
 
     async def show_current_shift_report(self, event):
         """Show current shift report"""
-        global DateUtils
+        force_log(f"CRITICAL: show_current_shift_report ENTRY for chat_id: {event.chat_id}")
         chat_id = int(event.chat_id)
+        force_log(f"CRITICAL: show_current_shift_report after chat_id conversion: {chat_id}")
         logger.error(f"CRITICAL DEBUG: show_current_shift_report called for chat_id: {chat_id}")
 
         try:
@@ -180,22 +182,23 @@ class BusinessEventHandler:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
 
                 # Calculate duration - simplified approach first
-                logger.error(f"ENTERING DURATION CALCULATION BLOCK")
+                force_log(f"ENTERING DURATION CALCULATION BLOCK")
                 try:
                     now = DateUtils.now()
-                    logger.error(f"Now: {now}, Start time: {current_shift.start_time}")
-                    duration = now - current_shift.start_time
-                    logger.error(f"DEBUG: Duration: {duration}")
+                    force_log(f"Now: {now}, Start time: {current_shift.start_time}")
+                    aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
+                    duration = now - aware_start_time
+                    force_log(f"DEBUG: Duration: {duration}")
                     total_seconds = abs(duration.total_seconds())
                     hours = int(total_seconds // 3600)
                     minutes = int((total_seconds % 3600) // 60)
                     logger.error(f"DEBUG: Hours: {hours}, Minutes: {minutes}")
                 except Exception as e:
-                    logger.error(f"Error in duration calculation: {e}")
+                    force_log(f"Error in duration calculation: {e}")
                     # Fallback to simple calculation
                     from datetime import datetime
                     now = datetime.now()
-                    
+
                     duration = now - current_shift.start_time
                     total_seconds = abs(duration.total_seconds())
                     hours = int(total_seconds // 3600)
