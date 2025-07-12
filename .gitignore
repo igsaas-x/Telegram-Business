@@ -15,6 +15,5 @@ anon.*
 
 # Environment files
 .env.local
-telegram_bot.log
+*.log
 debug_log.txt
-FORCE_DEBUG.log

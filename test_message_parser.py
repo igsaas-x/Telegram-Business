@@ -69,6 +69,27 @@ class TestMessageParser(unittest.TestCase):
                 self.assertEqual(currency, expected_currency)
                 self.assertEqual(amount, expected_amount)
 
+    def test_canadia_khmer_dollar_format(self):
+        """Test Canadia Bank Khmer dollar format"""
+        test_cases = [
+            ("លោកអ្នកបានទទួលប្រាក់ចំនួន 23.25 ដុល្លារ  ពីឈ្មោះ PANH BORA ធនាគារ Canadia Bank Plc តាមការស្កេន  KHQR ថ្ងៃទី ១២ កក្កដា ២០២៥​ ម៉ោង ០៩:០៧ល្ងាច នៅ អាហារដ្ឋានសុនិសា168, SMART-PAY:00060050180 (Hash. 6c648d8",
+             '$', 23.25),
+            ("ទទួលបាន 15.50 ដុល្លារ ពីអ្នកប្រើប្រាស់", '$', 15.5),
+            ("បង់ប្រាក់ចំនួន 100.00 ដុល្លារ", '$', 100.0),
+        ]
+
+        for message, expected_currency, expected_amount in test_cases:
+            with self.subTest(message=message):
+                currency, amount = extract_amount_and_currency(message)
+                trx_id = extract_trx_id(message)
+                self.assertEqual(currency, expected_currency)
+                self.assertEqual(amount, expected_amount)
+                
+        # Test transaction ID extraction for the full message
+        full_message = "លោកអ្នកបានទទួលប្រាក់ចំនួន 23.25 ដុល្លារ  ពីឈ្មោះ PANH BORA ធនាគារ Canadia Bank Plc តាមការស្កេន  KHQR ថ្ងៃទី ១២ កក្កដា ២០២៥​ ម៉ោង ០៩:០៧ល្ងាច នៅ អាហារដ្ឋានសុនិសា168, SMART-PAY:00060050180 (Hash. 6c648d8"
+        trx_id = extract_trx_id(full_message)
+        self.assertEqual(trx_id, "6c648d8")
+
     def test_vathanak_eng_format(self):
         """Test specific Khmer money amount patterns"""
         test_cases = [

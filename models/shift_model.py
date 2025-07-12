@@ -167,13 +167,18 @@ class ShiftService:
             
             return [d[0] for d in dates]
 
-    async def check_and_auto_close_shifts(self) -> list[Shift]:
+    async def check_and_auto_close_shifts(self) -> list[dict]:
         """Check all open shifts and auto-close them based on configuration"""
         from models.shift_configuration_model import ShiftConfigurationService
         from datetime import datetime
 
         closed_shifts = []
+        closed_shift_info = []
         config_service = ShiftConfigurationService()
+        current_time = DateUtils.now()
+        
+        # Track which chats we've processed to update their last_job_run
+        processed_chats = set()
         
         with self._get_db() as db:
             # Get all open shifts
@@ -186,8 +191,17 @@ class ShiftService:
                 if not config or not config.auto_close_enabled:
                     continue
                 
+                # Check if job already ran for this minute for this chat
+                if config.last_job_run:
+                    # If last job run is within the same minute, skip
+                    if (config.last_job_run.replace(second=0, microsecond=0) >= 
+                        current_time.replace(second=0, microsecond=0)):
+                        continue
+                
+                # Mark this chat as processed
+                processed_chats.add(shift.chat_id)
+                
                 should_close = False
-                current_time = DateUtils.now()
                 
                 # Check time-based auto close with multiple times
                 auto_close_times = config.get_auto_close_times_list()
@@ -222,6 +236,12 @@ class ShiftService:
                     shift.end_time = current_time
                     shift.is_closed = True
                     closed_shifts.append(shift)
+                    # Collect info while still in session
+                    closed_shift_info.append({
+                        'id': shift.id,
+                        'chat_id': shift.chat_id,
+                        'number': shift.number
+                    })
             
             if closed_shifts:
                 db.commit()
@@ -229,7 +249,7 @@ class ShiftService:
                     db.refresh(shift)
                 
                 # Create new shifts for each closed shift (same as manual close behavior)
-                for closed_shift in closed_shifts:
+                for i, closed_shift in enumerate(closed_shifts):
                     try:
                         # Get the highest shift number for this chat for today (same logic as create_shift)
                         last_shift_number = db.query(func.max(Shift.number)).filter(
@@ -253,7 +273,11 @@ class ShiftService:
                 # Commit the new shifts
                 db.commit()
         
-        return closed_shifts
+        # Update last_job_run for all processed chats
+        for chat_id in processed_chats:
+            await config_service.update_last_job_run(chat_id, current_time)
+        
+        return closed_shift_info
 
     async def auto_close_shift_for_chat(self, chat_id: int) -> Optional[Shift]:
         """Auto close the current shift for a specific chat based on its configuration"""

@@ -57,7 +57,7 @@ async def main(loader: CredentialLoader) -> None:
         telethonClientService1 = TelethonClientService()
         adminBot = TelegramAdminBot(loader.admin_bot_token)
         businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
-        autoCloseScheduler = AutoCloseScheduler()
+        autoCloseScheduler = AutoCloseScheduler(bot_service=businessBot)
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")

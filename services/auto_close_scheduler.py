@@ -7,8 +7,9 @@ from models.shift_model import ShiftService
 class AutoCloseScheduler:
     """Dedicated scheduler for auto-closing shifts that runs every minute"""
     
-    def __init__(self):
+    def __init__(self, bot_service=None):
         self.shift_service = ShiftService()
+        self.bot_service = bot_service
         self.is_running = False
 
     async def start_scheduler(self):
@@ -40,9 +41,15 @@ class AutoCloseScheduler:
             closed_shifts = await self.shift_service.check_and_auto_close_shifts()
             
             if closed_shifts:
-                force_log(f"Auto-closed {len(closed_shifts)} shifts: {[shift.id for shift in closed_shifts]}")
+                force_log(f"Auto-closed {len(closed_shifts)} shifts: {[shift['id'] for shift in closed_shifts]}")
+                
+                # Send shift summaries to chats
                 for shift in closed_shifts:
-                    force_log(f"Auto-closed shift {shift.id} for chat {shift.chat_id}")
+                    force_log(f"Auto-closed shift {shift['id']} for chat {shift['chat_id']}")
+                    
+                    # Send shift summary to chat if bot service is available
+                    if self.bot_service:
+                        await self._send_shift_summary(shift)
             else:
                 force_log("No shifts needed auto-closing")
                 
@@ -50,3 +57,57 @@ class AutoCloseScheduler:
             force_log(f"Error in auto-close shift check: {e}")
             import traceback
             force_log(f"Traceback: {traceback.format_exc()}")
+
+    async def _send_shift_summary(self, shift_info: dict):
+        """Send shift summary to the chat"""
+        try:
+            chat_id = shift_info['chat_id']
+            shift_id = shift_info['id']
+            shift_number = shift_info['number']
+            
+            # Get shift summary
+            summary = await self.shift_service.get_shift_income_summary(shift_id, chat_id)
+            
+            # Format the summary message
+            if summary['transaction_count'] > 0:
+                # Format currency breakdown
+                currency_details = []
+                for currency, data in summary['currencies'].items():
+                    currency_symbol = currency if currency in ['$', '៛'] else f"{currency}"
+                    currency_details.append(f"• {currency_symbol}{data['amount']:,.2f} ({data['count']} transactions)")
+                
+                currency_text = "\n".join(currency_details)
+                
+                message = f"""
+🔒 **វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ**
+
+📊 **សរុបចំណូល:**
+{currency_text}
+
+📝 **ព័ត៌មានលម្អិត:**
+• ចំនួនប្រតិបត្តិការសរុប: {summary['transaction_count']}
+• តម្លៃសរុប: {summary['total_amount']:,.2f}
+
+⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
+                """.strip()
+            else:
+                message = f"""
+🔒 **វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ**
+
+📊 **សរុបចំណូល:**
+• មិនមានប្រតិបត្តិការ
+
+⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
+                """.strip()
+            
+            # Send message
+            success = await self.bot_service.send_message(chat_id, message)
+            if success:
+                force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}")
+            else:
+                force_log(f"Failed to send shift summary for shift {shift_id} to chat {chat_id}")
+                
+        except Exception as e:
+            force_log(f"Error sending shift summary for shift {shift_info.get('id', 'unknown')}: {e}")
+            import traceback
+            force_log(f"Shift summary error traceback: {traceback.format_exc()}")

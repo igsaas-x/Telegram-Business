@@ -61,7 +61,7 @@ class BusinessEventHandler:
         chat_id = event.chat_id
 
         # Check for auto close before showing menu
-        await self.check_auto_close_shift(chat_id)
+        # await self.check_auto_close_shift(chat_id)
 
         current_shift = await self.shift_service.get_current_shift(chat_id)
 

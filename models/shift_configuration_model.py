@@ -9,6 +9,7 @@ from sqlalchemy import (
     BigInteger,
     String,
     Text,
+    DateTime,
 )
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,9 @@ class ShiftConfiguration(BaseModel):
     
     # Timezone for this chat (optional)
     timezone = Column(String(50), nullable=True, default="Asia/Phnom_Penh")
+    
+    # Last job run tracking
+    last_job_run = Column(DateTime, nullable=True)
     
     def get_auto_close_times_list(self) -> List[str]:
         """Get auto close times as a list of time strings"""
@@ -63,31 +67,11 @@ class ShiftConfigurationService:
             db.close()
 
     async def get_configuration(self, chat_id: int) -> Optional[ShiftConfiguration]:
-        """Get shift configuration for a chat"""
-        with self._get_db() as db:
-            return db.query(ShiftConfiguration).filter(
-                ShiftConfiguration.chat_id == chat_id
-            ).first()
-
-    async def get_or_create_configuration(self, chat_id: int) -> ShiftConfiguration:
-        """Get configuration or create default one if not exists"""
+        """Get configuration if exists"""
         with self._get_db() as db:
             config = db.query(ShiftConfiguration).filter(
                 ShiftConfiguration.chat_id == chat_id
             ).first()
-            
-            if not config:
-                config = ShiftConfiguration(
-                    chat_id=chat_id,
-                    auto_close_enabled=False,
-                    auto_close_times=None,
-                    shift_name_prefix="Shift",
-                    reset_numbering_daily=True,
-                    timezone="Asia/Phnom_Penh"
-                )
-                db.add(config)
-                db.commit()
-                db.refresh(config)
             
             return config
 
@@ -96,10 +80,12 @@ class ShiftConfigurationService:
         chat_id: int, 
         enabled: bool, 
         auto_close_times: Optional[List[str]] = None
-    ) -> ShiftConfiguration:
+    ) -> Optional[ShiftConfiguration]:
         """Update auto close settings for a chat"""
         with self._get_db() as db:
-            config = await self.get_or_create_configuration(chat_id)
+            config = await self.get_configuration(chat_id)
+            if not config:
+                return None
             
             # Refresh the object in this session
             config = db.merge(config)
@@ -143,10 +129,12 @@ class ShiftConfigurationService:
         shift_name_prefix: Optional[str] = None,
         reset_numbering_daily: Optional[bool] = None,
         timezone: Optional[str] = None
-    ) -> ShiftConfiguration:
+    ) -> Optional[ShiftConfiguration]:
         """Update shift naming and numbering preferences"""
         with self._get_db() as db:
-            config = await self.get_or_create_configuration(chat_id)
+            config = await self.get_configuration(chat_id)
+            if not config:
+                return None
             
             # Refresh the object in this session
             config = db.merge(config)
@@ -168,3 +156,14 @@ class ShiftConfigurationService:
             return db.query(ShiftConfiguration).filter(
                 ShiftConfiguration.auto_close_enabled == True
             ).all()
+
+    async def update_last_job_run(self, chat_id: int, job_run_time) -> None:
+        """Update the last job run timestamp for a chat configuration"""
+        with self._get_db() as db:
+            config = db.query(ShiftConfiguration).filter(
+                ShiftConfiguration.chat_id == chat_id
+            ).first()
+            
+            if config:
+                config.last_job_run = job_run_time
+                db.commit()
