@@ -45,7 +45,7 @@ class MessageVerificationScheduler:
 
         try:
             # Get all chat IDs from database
-            chat_ids = await self.chat_service.get_all_chat_ids()
+            chat_ids = await self.chat_service.get_all_active_chat_ids()
             force_log(f"Found {len(chat_ids)} chats to verify")
 
             # Calculate time range (last 30 minutes)
@@ -140,19 +140,13 @@ class MessageVerificationScheduler:
             return await self._get_bot_messages_in_timeframe(chat_id, start_time, end_time)
         except RPCError as e:
             force_log(f"RPCError for chat {chat_id}: {e}")
-            
-            # Check if this is an entity-related error (400 status with specific error messages)
-            if (hasattr(e, 'code') and e.code == 400 and 
-                any(msg in str(e) for msg in ["INPUT_USER_DEACTIVATED", "USER_DEACTIVATED", 
-                                              "PEER_ID_INVALID", "INPUT_PEER_INVALID", 
-                                              "Could not find the input entity"])):
-                force_log(f"Chat {chat_id} appears to be inaccessible or deactivated, marking as inactive")
-                try:
-                    # Mark the chat as inactive in the database
-                    await self.chat_service.update_chat_status(chat_id, False)
-                    force_log(f"Successfully marked chat {chat_id} as inactive")
-                except Exception as db_error:
-                    force_log(f"Failed to mark chat {chat_id} as inactive: {db_error}")
+            force_log(f"Chat {chat_id} appears to be inaccessible or deactivated, marking as inactive")
+            try:
+                # Mark the chat as inactive in the database
+                await self.chat_service.update_chat_status(chat_id, False)
+                force_log(f"Successfully marked chat {chat_id} as inactive")
+            except Exception as db_error:
+                force_log(f"Failed to mark chat {chat_id} as inactive: {db_error}")
         except Exception as e:
             force_log(f"General error getting messages for chat {chat_id}: {e}")
             

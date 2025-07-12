@@ -67,7 +67,7 @@ class ChatService:
                 except Exception as shift_error:
                     force_log(f"Error creating shift: {shift_error}")
                     raise shift_error
-            
+
             # Update the chat setting after shift creation succeeds
             session.query(Chat).filter_by(chat_id=chat_id).update(
                 {"enable_shift": enable_shift}
@@ -110,8 +110,7 @@ class ChatService:
     async def get_chat_by_chat_id(self, chat_id: int) -> Chat | None:
         session = self.Session()
         try:
-            chat = (session.query(Chat).options(joinedload(Chat.user))
-                    .filter_by(chat_id=chat_id, is_active=True).first())
+            chat = (session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first())
             return chat
         except Exception as e:
             force_log(f"Error fetching chat by chat ID: {e}")
@@ -119,10 +118,10 @@ class ChatService:
         finally:
             session.close()
 
-    async def get_all_chat_ids(self):
+    async def get_all_active_chat_ids(self):
         session = self.Session()
         try:
-            chats = session.query(Chat.chat_id).all()
+            chats = session.query(Chat.chat_id).filter_by(is_active=True).all()
             return [int(c[0]) for c in chats]
         except Exception as e:
             force_log(f"Error fetching chat IDs: {e}")
@@ -159,13 +158,13 @@ class ChatService:
         try:
             # Update the chat_id in the chats table
             chat_result = session.query(Chat).filter_by(chat_id=old_chat_id).update({"chat_id": new_chat_id})
-            
+
             # Also update the chat_id in the income_balance table
             from models.income_balance_model import IncomeBalance
             income_result = session.query(IncomeBalance).filter_by(chat_id=old_chat_id).update({"chat_id": new_chat_id})
-            
+
             session.commit()
-            
+
             if chat_result > 0 or income_result > 0:
                 force_log(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
                 force_log(f"Updated {chat_result} chat records and {income_result} income_balance records")
