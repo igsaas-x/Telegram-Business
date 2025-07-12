@@ -135,10 +135,13 @@ class IncomeService:
 
             # Ensure shift exists - auto-create if needed
             if shift_id is None:
-                force_log(f"No shift_id provided, ensuring active shift for chat {chat_id}")
                 if enable_shift:
+                    force_log(f"No shift_id provided, ensuring active shift for chat {chat_id}")
                     shift_id = await self._ensure_active_shift(chat_id)
                     force_log(f"Using shift_id: {shift_id}")
+                else:
+                    force_log(f"Shifts disabled for chat {chat_id}, setting shift_id to None")
+                    shift_id = None
 
             with self._get_db() as db:
                 try:
