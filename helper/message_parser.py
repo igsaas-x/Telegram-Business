@@ -6,6 +6,11 @@ def extract_amount_and_currency(text: str):
     if khmer_amount is not None:
         return '៛', khmer_amount
     
+    # Pattern 1b: Khmer dollar format (e.g., "23.25 ដុល្លារ")
+    khmer_dollar_amount = extract_khmer_dollar_amount(text)
+    if khmer_dollar_amount is not None:
+        return '$', khmer_dollar_amount
+    
     # Pattern 2: Currency symbol before amount (e.g., "$100", "៛50.25")
     match = re.search(r'([៛$])\s?([\d,]+(?:\.\d+)?)', text)
     if match:
@@ -82,14 +87,38 @@ def extract_khmer_money_amount(text: str) -> float | None:
     
     return None
 
+def extract_khmer_dollar_amount(text: str) -> float | None:
+    """
+    Extract dollar amount from Khmer payment notification text.
+    
+    Looks for pattern: [number ដុល្លារ] regardless of what comes before
+    
+    Example inputs: 
+    - "លោកអ្នកបានទទួលប្រាក់ចំនួន 23.25 ដុល្លារ ពីឈ្មោះ PANH BORA..."
+    Returns: 23.25
+    """
+    # Pattern: [space number ដុល្លារ] - matches space, number, space, then ដុល្លារ
+    pattern = r'\s([\d,]+(?:\.\d+)?)\s+ដុល្លារ'
+    match = re.search(pattern, text)
+    
+    if match:
+        amount_str = match.group(1).replace(',', '')
+        try:
+            amount = float(amount_str) if '.' in amount_str else float(amount_str)
+            return amount
+        except ValueError:
+            return None
+    
+    return None
+
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"
     match = re.search(r'Trx\. ID:\s*([0-9]+)', message_text)
     if match:
         return match.group(1)
     
-    # Pattern 2: Hash format "(Hash. abc123def)"
-    match = re.search(r'\(Hash\.\s*([a-f0-9]+)\)', message_text, re.IGNORECASE)
+    # Pattern 2: Hash format "(Hash. abc123def)" or "(Hash. abc123def" (missing closing parenthesis)
+    match = re.search(r'\(Hash\.\s*([a-f0-9]+)\)?', message_text, re.IGNORECASE)
     if match:
         return match.group(1)
     

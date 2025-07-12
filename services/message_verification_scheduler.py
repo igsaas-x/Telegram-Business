@@ -10,6 +10,7 @@ from telethon.tl.types import Message
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from models import ChatService, IncomeService
+from models.shift_model import ShiftService
 
 
 class MessageVerificationScheduler:
@@ -17,6 +18,7 @@ class MessageVerificationScheduler:
         self.client = telethon_client
         self.chat_service = ChatService()
         self.income_service = IncomeService()
+        self.shift_service = ShiftService()
         self.is_running = False
 
     async def start_scheduler(self):
@@ -234,3 +236,4 @@ class MessageVerificationScheduler:
             force_log(f"Error verifying/storing message {message.id}: {e}")
             import traceback
             force_log(f"Traceback: {traceback.format_exc()}")
+

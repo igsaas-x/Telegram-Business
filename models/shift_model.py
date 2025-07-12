@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, relationship
 
 from config.database_config import SessionLocal
 from helper import DateUtils
+from helper.logger_utils import force_log
 from models.base_model import BaseModel
 
 
@@ -165,3 +166,170 @@ class ShiftService:
             ).distinct().order_by(Shift.shift_date.desc()).limit(days).all()
             
             return [d[0] for d in dates]
+
+    async def check_and_auto_close_shifts(self) -> list[dict]:
+        """Check all open shifts and auto-close them based on configuration"""
+        from models.shift_configuration_model import ShiftConfigurationService
+        from datetime import datetime
+
+        closed_shifts = []
+        closed_shift_info = []
+        config_service = ShiftConfigurationService()
+        current_time = DateUtils.now()
+        
+        # Track which chats we've processed to update their last_job_run
+        processed_chats = set()
+        
+        with self._get_db() as db:
+            # Get all open shifts
+            open_shifts = db.query(Shift).filter(
+                Shift.is_closed == False
+            ).all()
+            
+            for shift in open_shifts:
+                config = await config_service.get_configuration(shift.chat_id)
+                if not config or not config.auto_close_enabled:
+                    continue
+                
+                # Check if job already ran for this minute for this chat
+                if config.last_job_run:
+                    # Ensure both datetimes have the same timezone awareness
+                    last_job_run = config.last_job_run
+                    if last_job_run.tzinfo is None:
+                        # If last_job_run is naive, make it timezone-aware
+                        last_job_run = DateUtils.localize_datetime(last_job_run)
+                    
+                    # If last job run is within the same minute, skip
+                    if (last_job_run.replace(second=0, microsecond=0) >= 
+                        current_time.replace(second=0, microsecond=0)):
+                        continue
+                
+                # Mark this chat as processed
+                processed_chats.add(shift.chat_id)
+                
+                should_close = False
+                
+                # Check time-based auto close with multiple times
+                auto_close_times = config.get_auto_close_times_list()
+                if auto_close_times:
+                    for time_str in auto_close_times:
+                        try:
+                            # Parse time string (HH:MM:SS format)
+                            time_parts = time_str.split(":")
+                            hour = int(time_parts[0])
+                            minute = int(time_parts[1])
+                            second = int(time_parts[2]) if len(time_parts) > 2 else 0
+                            
+                            # Convert to datetime for comparison
+                            from datetime import time
+                            close_time = datetime.combine(
+                                current_time.date(), 
+                                time(hour, minute, second)
+                            )
+                            # Make timezone aware
+                            close_time = DateUtils.localize_datetime(close_time)
+                            
+                            # If current time is past the auto-close time and shift started before it
+                            shift_start = DateUtils.localize_datetime(shift.start_time)
+                            if current_time >= close_time and shift_start < close_time:
+                                should_close = True
+                                break  # Exit loop once we find a matching close time
+                        except (ValueError, IndexError):
+                            continue  # Skip invalid time formats
+                
+                # Close the shift if needed
+                if should_close:
+                    shift.end_time = current_time
+                    shift.is_closed = True
+                    closed_shifts.append(shift)
+                    # Collect info while still in session
+                    closed_shift_info.append({
+                        'id': shift.id,
+                        'chat_id': shift.chat_id,
+                        'number': shift.number
+                    })
+            
+            if closed_shifts:
+                db.commit()
+                for shift in closed_shifts:
+                    db.refresh(shift)
+                
+                # Create new shifts for each closed shift (same as manual close behavior)
+                for i, closed_shift in enumerate(closed_shifts):
+                    try:
+                        # Get the highest shift number for this chat for today (same logic as create_shift)
+                        last_shift_number = db.query(func.max(Shift.number)).filter(
+                            Shift.chat_id == closed_shift.chat_id,
+                            Shift.shift_date == current_time.date(),
+                        ).scalar() or 0
+                        
+                        # Create a new shift for this chat
+                        new_shift = Shift(
+                            chat_id=closed_shift.chat_id,
+                            shift_date=current_time.date(),
+                            number=last_shift_number + 1,
+                            start_time=current_time,
+                            is_closed=False
+                        )
+                        db.add(new_shift)
+                        force_log(f"Auto-created new shift #{new_shift.number} for chat {closed_shift.chat_id} after closing shift #{closed_shift.number}")
+                    except Exception as e:
+                        force_log(f"Error creating new shift after auto-close for chat {closed_shift.chat_id}: {e}", "ERROR")
+                
+                # Commit the new shifts
+                db.commit()
+        
+        # Update last_job_run for all processed chats
+        for chat_id in processed_chats:
+            await config_service.update_last_job_run(chat_id, current_time)
+        
+        return closed_shift_info
+
+    async def auto_close_shift_for_chat(self, chat_id: int) -> Optional[Shift]:
+        """Auto close the current shift for a specific chat based on its configuration"""
+        from models.shift_configuration_model import ShiftConfigurationService
+        from datetime import datetime
+        
+        config_service = ShiftConfigurationService()
+        config = await config_service.get_configuration(chat_id)
+        
+        if not config or not config.auto_close_enabled:
+            return None
+        
+        current_shift = await self.get_current_shift(chat_id)
+        if not current_shift:
+            return None
+        
+        should_close = False
+        current_time = DateUtils.now()
+        
+        # Check time-based auto close with multiple times
+        auto_close_times = config.get_auto_close_times_list()
+        if auto_close_times:
+            for time_str in auto_close_times:
+                try:
+                    # Parse time string (HH:MM:SS format)
+                    time_parts = time_str.split(":")
+                    hour = int(time_parts[0])
+                    minute = int(time_parts[1])
+                    second = int(time_parts[2]) if len(time_parts) > 2 else 0
+                    
+                    # Convert to datetime for comparison
+                    from datetime import time
+                    close_time = datetime.combine(
+                        current_time.date(), 
+                        time(hour, minute, second)
+                    )
+                    close_time = DateUtils.localize_datetime(close_time)
+                    
+                    shift_start = DateUtils.localize_datetime(current_shift.start_time)
+                    if current_time >= close_time and shift_start < close_time:
+                        should_close = True
+                        break  # Exit loop once we find a matching close time
+                except (ValueError, IndexError):
+                    continue  # Skip invalid time formats
+        
+        if should_close:
+            return await self.close_shift(current_shift.id)
+        
+        return None
