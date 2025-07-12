@@ -125,6 +125,7 @@ class IncomeService:
             message: str,
             trx_id: str | None,
             shift_id: int = None,
+            enable_shift: bool = False
     ) -> IncomeBalance:
         force_log(f"insert_income called: chat_id={chat_id}, amount={amount}, currency={currency}, shift_id={shift_id}")
         try:
@@ -135,9 +136,9 @@ class IncomeService:
             # Ensure shift exists - auto-create if needed
             if shift_id is None:
                 force_log(f"No shift_id provided, ensuring active shift for chat {chat_id}")
-                shift_id = await self._ensure_active_shift(chat_id)
-                force_log(f"Using shift_id: {shift_id}")
-
+                if enable_shift:
+                    shift_id = await self._ensure_active_shift(chat_id)
+                    force_log(f"Using shift_id: {shift_id}")
 
             with self._get_db() as db:
                 try:

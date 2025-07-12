@@ -151,6 +151,7 @@ class TelethonClientService:
                         message_id,
                         event.message.text,
                         trx_id,
+                        chat.enable_shift
                     )
                     force_log(f"Successfully saved income record with id={result.id} for message {message_id}")
                 except Exception as income_error:
