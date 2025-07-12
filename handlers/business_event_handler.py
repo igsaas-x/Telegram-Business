@@ -297,7 +297,7 @@ class BusinessEventHandler:
 
 🔴 ស្ថានភាព: បានបិទ
 ⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
 💰 ចំណូលសរុប:
@@ -522,7 +522,7 @@ class BusinessEventHandler:
 
 📊 សង្ខេបវេន #{closed_shift.number}:
 ⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
+⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
 💰 សង្ខេបចំណូលសរុប:
@@ -549,25 +549,16 @@ class BusinessEventHandler:
     async def show_support(self, event):
         """Show support information"""
         message = """
-📞 ការគាំទ្រអាជីវកម្ម
-
 🆘 ត្រូវការជំនួយ?
-• បញ្ហាបច្ចេកទេសជាមួយបុត
+• បញ្ហាបច្ចេកទេសជាមួយBot
 • សំណួរអំពីលក្ខណៈពិសេសអាជីវកម្ម
 • សំណើរបាយការណ៍ផ្ទាល់ខ្លួន
-• ការគ្រប់គ្រងគណនី
 
 📧 វិធីសាស្រ្តទំនាក់ទំនង:
-• ការគាំទ្រក្នុងកម្មវិធី: ឆ្លើយតបសារនេះ
-• អ៊ីមែល: business@yourcompany.com
-• ទូរស័ព្ទ: +1-XXX-XXX-XXXX
+Telegram: https://t.me/HK_688
 
 ⏰ ម៉ោងការគាំទ្រ:
-ច័ន្ទ - សុក្រ: 9:00 AM - 6:00 PM
-សៅរ៍: 10:00 AM - 2:00 PM
-អាទិត្យ: បិទ
-
-🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
+ច័ន្ទ - អាទិត្យ: 9:00 AM - 11:00 PM
 """
 
         buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
