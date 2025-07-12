@@ -1,3 +1,5 @@
+from typing import List
+
 from helper import DateUtils
 from helper.logger_utils import force_log
 from models.chat_model import ChatService
@@ -7,6 +9,7 @@ from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
 from .client_command_handler import CommandHandler
+
 
 class BusinessEventHandler:
     """
@@ -569,37 +572,35 @@ Telegram: https://t.me/HK_688
             force_log(f"Error checking auto close for chat {chat_id}: {e}", "ERROR")
             return False
 
-    async def configure_auto_close(self, event, time_str: str = None, hours: int = None):
-        """Configure auto close settings for a chat"""
+    async def configure_auto_close(self, event, times_list: List[str] = None):
+        """Configure auto close settings for a chat with multiple times"""
         chat_id = event.chat_id
 
         try:
-            # Enable auto close with either time or hours
+            if not times_list:
+                message = "❌ សូមផ្តល់បញ្ជីម៉ោងបិទវេន (ឧ. 08:00, 16:00, 23:59)។"
+                await event.respond(message)
+                return
+
+            # Enable auto close with multiple times
             config = await self.shift_config_service.update_auto_close_settings(
                 chat_id=chat_id,
                 enabled=True,
-                auto_close_time=time_str,
-                auto_close_after_hours=hours
+                auto_close_times=times_list
             )
 
-            if time_str:
-                message = f"""
+            # Format the times list for display
+            times_display = ", ".join(times_list)
+            
+            message = f"""
 ✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
 
-⏰ វេននឹងត្រូវបានបិទនៅម៉ោង: {time_str}
+⏰ វេននឹងត្រូវបានបិទនៅម៉ោង: {times_display}
 
 💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិរាល់ថ្ងៃនៅម៉ោងដែលបានកំណត់។
-"""
-            elif hours:
-                message = f"""
-✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
 
-⏱️ វេននឹងត្រូវបានបិទបន្ទាប់ពី: {hours} ម៉ោងនៃការអសកម្ម
-
-💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិបន្ទាប់ពីរយៈពេលដែលបានកំណត់។
+📝 ឧទាហរណ៍: វេននឹងបិទនៅម៉ោង {times_list[0]} ហើយវេនថ្មីនឹងចាប់ផ្តើមដោយស្វ័យប្រវត្តិ។
 """
-            else:
-                message = "❌ សូមផ្តល់ម៉ោង (ឧ. 23:59) ឬចំនួនម៉ោងអសកម្ម។"
 
         except Exception as e:
             force_log(f"Error configuring auto close: {e}", "ERROR")
@@ -641,17 +642,16 @@ Telegram: https://t.me/HK_688
 
 🔴 មិនបានបើក
 
-💡 ប្រើ /autoclose <time> ឬ /autoclose <hours>h ដើម្បីបើក
-ឧទាហរណ៍: /autoclose 23:59 ឬ /autoclose 8h
+💡 ប្រើ /autoclose <times> ដើម្បីបើក
+ឧទាហរណ៍: /autoclose 08:00,16:00,23:59
 """
             else:
-                settings = []
-                if config.auto_close_time:
-                    settings.append(f"⏰ បិទនៅម៉ោង: {config.auto_close_time}")
-                if config.auto_close_after_hours:
-                    settings.append(f"⏱️ បិទបន្ទាប់ពី: {config.auto_close_after_hours} ម៉ោងអសកម្ម")
-
-                settings_text = "\n".join(settings) if settings else "គ្មានការកំណត់"
+                auto_close_times = config.get_auto_close_times_list()
+                if auto_close_times:
+                    times_display = ", ".join(auto_close_times)
+                    settings_text = f"⏰ បិទនៅម៉ោង: {times_display}"
+                else:
+                    settings_text = "គ្មានការកំណត់ម៉ោងបិទ"
 
                 message = f"""
 📊 ស្ថានភាពការបិទវេនស្វ័យប្រវត្តិ

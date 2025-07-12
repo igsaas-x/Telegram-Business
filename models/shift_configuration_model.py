@@ -1,5 +1,6 @@
+import json
 from contextlib import contextmanager
-from typing import Optional, Generator, Any
+from typing import Optional, Generator, Any, List
 
 from sqlalchemy import (
     Boolean,
@@ -7,7 +8,7 @@ from sqlalchemy import (
     Integer,
     BigInteger,
     String,
-    Time,
+    Text,
 )
 from sqlalchemy.orm import Session
 
@@ -23,8 +24,7 @@ class ShiftConfiguration(BaseModel):
     
     # Auto close configuration
     auto_close_enabled = Column(Boolean, nullable=False, default=False)
-    auto_close_time = Column(Time, nullable=True)  # Time to auto-close (e.g., "23:59:00")
-    auto_close_after_hours = Column(Integer, nullable=True)  # Close after X hours of inactivity
+    auto_close_times = Column(Text, nullable=True)  # JSON array of times (e.g., ["08:00", "16:00", "23:59"])
     
     # Shift naming/numbering preferences
     shift_name_prefix = Column(String(50), nullable=True, default="Shift")
@@ -32,6 +32,22 @@ class ShiftConfiguration(BaseModel):
     
     # Timezone for this chat (optional)
     timezone = Column(String(50), nullable=True, default="Asia/Phnom_Penh")
+    
+    def get_auto_close_times_list(self) -> List[str]:
+        """Get auto close times as a list of time strings"""
+        if not self.auto_close_times:
+            return []
+        try:
+            return json.loads(self.auto_close_times)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
+    def set_auto_close_times_list(self, times: List[str]) -> None:
+        """Set auto close times from a list of time strings"""
+        if times:
+            self.auto_close_times = json.dumps(times)
+        else:
+            self.auto_close_times = None
 
 
 class ShiftConfigurationService:
@@ -64,8 +80,7 @@ class ShiftConfigurationService:
                 config = ShiftConfiguration(
                     chat_id=chat_id,
                     auto_close_enabled=False,
-                    auto_close_time=None,
-                    auto_close_after_hours=None,
+                    auto_close_times=None,
                     shift_name_prefix="Shift",
                     reset_numbering_daily=True,
                     timezone="Asia/Phnom_Penh"
@@ -80,12 +95,9 @@ class ShiftConfigurationService:
         self, 
         chat_id: int, 
         enabled: bool, 
-        auto_close_time: Optional[str] = None,
-        auto_close_after_hours: Optional[int] = None
+        auto_close_times: Optional[List[str]] = None
     ) -> ShiftConfiguration:
         """Update auto close settings for a chat"""
-        from datetime import time
-        
         with self._get_db() as db:
             config = await self.get_or_create_configuration(chat_id)
             
@@ -94,20 +106,32 @@ class ShiftConfigurationService:
             
             config.auto_close_enabled = enabled
             
-            if auto_close_time:
-                # Parse time string (e.g., "23:59" or "23:59:00")
-                time_parts = auto_close_time.split(":")
-                if len(time_parts) == 2:
-                    time_parts.append("00")  # Add seconds if not provided
-                config.auto_close_time = time(
-                    hour=int(time_parts[0]),
-                    minute=int(time_parts[1]),
-                    second=int(time_parts[2])
-                )
-            else:
-                config.auto_close_time = None
+            # Set multiple auto close times
+            if auto_close_times:
+                # Validate time formats and set the times
+                validated_times = []
+                for time_str in auto_close_times:
+                    # Validate time format (HH:MM or HH:MM:SS)
+                    try:
+                        time_parts = time_str.split(":")
+                        if len(time_parts) == 2:
+                            time_parts.append("00")  # Add seconds if not provided
+                        elif len(time_parts) != 3:
+                            continue  # Skip invalid format
+                        
+                        # Validate ranges
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1])
+                        second = int(time_parts[2])
+                        
+                        if 0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59:
+                            validated_times.append(f"{hour:02d}:{minute:02d}:{second:02d}")
+                    except (ValueError, IndexError):
+                        continue  # Skip invalid times
                 
-            config.auto_close_after_hours = auto_close_after_hours
+                config.set_auto_close_times_list(validated_times)
+            else:
+                config.set_auto_close_times_list([])
             
             db.commit()
             db.refresh(config)
