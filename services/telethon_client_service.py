@@ -1,17 +1,15 @@
 import os
-import pytz
 from typing import Optional
 
 import pytz
 from telethon import TelegramClient, events
-from telethon.events import NewMessage
 from telethon.errors import PersistentTimestampInvalidError
-# Check if message was sent after chat registration (applies to all messages)
-from helper import DateUtils
-from helper import DateUtils,extract_amount_and_currency, extract_trx_id
+from telethon.events import NewMessage
+
+from helper import CredentialLoader
+from helper import DateUtils, extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from models import ChatService, IncomeService, MessagesModel
-from helper import CredentialLoader
 from services.message_verification_scheduler import MessageVerificationScheduler
 
 
@@ -129,84 +127,84 @@ class TelethonClientService:
                 force_log(f"No duplicates found - proceeding with income processing...")
 
                 # Save the message to the database
-            if self._is_notification_bot_message(event) and trx_id:
-                self.messages_service.save(
-                    chat_id=chat_id,
-                    message_id=event.message.id,
-                    original_message=event.message.text or "",
-                )
-
-            # Only require currency and amount, trx_id is optional
-            if currency and amount:
-                # Check if chat exists, auto-register if not
-                # force_log(f"Checking if chat {event.chat_id} exists...")
-                # if not await chat_service.chat_exists(event.chat_id):
-                #     force_log(f"Chat {event.chat_id} not registered, auto-registering...")
-                #     try:
-                #         # Get chat title for registration
-                #         chat_entity = await self.client.get_entity(event.chat_id)
-                #         chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
-                #
-                #         # Register the chat without a specific user (user=None)
-                #         success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
-                #
-                #         if not success:
-                #             force_log(f"Failed to auto-register chat {event.chat_id}: {err_message}")
-                #             return
-                #
-                #         force_log(f"Auto-registered chat: {event.chat_id} ({chat_title})")
-                #     except Exception as e:
-                #         force_log(f"Error during chat auto-registration: {e}")
-                #         return
-
-                # Get chat info to check registration timestamp
-                force_log(f"Getting chat info for chat_id: {event.chat_id}")
-                chat = await chat_service.get_chat_by_chat_id(event.chat_id)
-                if not chat:
-                    force_log(f"Chat {event.chat_id} not found in database!")
-                    return
-
-                force_log(f"Checking message timestamp vs chat registration timestamp")
-                # Get message timestamp (Telethon provides it as UTC datetime)
-                message_time = event.message.date
-                if message_time.tzinfo is None:
-                    message_time = pytz.UTC.localize(message_time)
-
-                # Convert chat created_at to UTC for comparison
-                chat_created = chat.created_at
-                if chat_created.tzinfo is None:
-                    chat_created = DateUtils.localize_datetime(chat_created)
-                chat_created_utc = chat_created.astimezone(pytz.UTC)
-
-                force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
-                # Ignore messages sent before chat registration
-                if message_time < chat_created_utc:
-                    force_log(
-                        f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})"
+                if self._is_notification_bot_message(event) and trx_id:
+                    self.messages_service.save(
+                        chat_id=event.chat_id,
+                        message_id=event.message.id,
+                        original_message=event.message.text or ""
                     )
-                    return
 
-                force_log(f"Message timestamp verified, proceeding to save income...")
+                # Only require currency and amount, trx_id is optional
+                if currency and amount:
+                    # Check if chat exists, auto-register if not
+                    # force_log(f"Checking if chat {event.chat_id} exists...")
+                    # if not await chat_service.chat_exists(event.chat_id):
+                    #     force_log(f"Chat {event.chat_id} not registered, auto-registering...")
+                    #     try:
+                    #         # Get chat title for registration
+                    #         chat_entity = await self.client.get_entity(event.chat_id)
+                    #         chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
+                    #
+                    #         # Register the chat without a specific user (user=None)
+                    #         success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
+                    #
+                    #         if not success:
+                    #             force_log(f"Failed to auto-register chat {event.chat_id}: {err_message}")
+                    #             return
+                    #
+                    #         force_log(f"Auto-registered chat: {event.chat_id} ({chat_title})")
+                    #     except Exception as e:
+                    #         force_log(f"Error during chat auto-registration: {e}")
+                    #         return
 
-                # Let the income service handle shift creation automatically
-                force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
-                try:
-                    result = await self.service.insert_income(
-                        chat_id,
-                        amount,
-                        currency,
-                        amount,
-                        message_id,
-                        event.message.text,
-                        trx_id,
-                        None,  # shift_id
-                        chat.enable_shift  # enable_shift
-                    )
-                    force_log(f"Successfully saved income record with id={result.id} for message {message_id}")
-                except Exception as income_error:
-                    force_log(f"ERROR saving income: {income_error}")
-                    import traceback
-                    force_log(f"Traceback: {traceback.format_exc()}")
+                    # Get chat info to check registration timestamp
+                    force_log(f"Getting chat info for chat_id: {event.chat_id}")
+                    chat = await chat_service.get_chat_by_chat_id(event.chat_id)
+                    if not chat:
+                        force_log(f"Chat {event.chat_id} not found in database!")
+                        return
+
+                    force_log(f"Checking message timestamp vs chat registration timestamp")
+                    # Get message timestamp (Telethon provides it as UTC datetime)
+                    message_time = event.message.date
+                    if message_time.tzinfo is None:
+                        message_time = pytz.UTC.localize(message_time)
+
+                    # Convert chat created_at to UTC for comparison
+                    chat_created = chat.created_at
+                    if chat_created.tzinfo is None:
+                        chat_created = DateUtils.localize_datetime(chat_created)
+                    chat_created_utc = chat_created.astimezone(pytz.UTC)
+
+                    force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
+                    # Ignore messages sent before chat registration
+                    if message_time < chat_created_utc:
+                        force_log(
+                            f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})"
+                        )
+                        return
+
+                    force_log(f"Message timestamp verified, proceeding to save income...")
+
+                    # Let the income service handle shift creation automatically
+                    force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
+                    try:
+                        result = await self.service.insert_income(
+                            event.chat_id,
+                            amount,
+                            currency,
+                            amount,
+                            message_id,
+                            event.message.text,
+                            trx_id,
+                            None,  # shift_id
+                            chat.enable_shift  # enable_shift
+                        )
+                        force_log(f"Successfully saved income record with id={result.id} for message {message_id}")
+                    except Exception as income_error:
+                        force_log(f"ERROR saving income: {income_error}")
+                        import traceback
+                        force_log(f"Traceback: {traceback.format_exc()}")
 
             except Exception as e:
                 force_log(f"ERROR in message processing: {e}")

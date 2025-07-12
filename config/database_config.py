@@ -1,10 +1,9 @@
 import os
-from typing import Generator, Any
-from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+
 from config import load_environment
 
 load_environment()
