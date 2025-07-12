@@ -182,12 +182,15 @@ class IncomeService:
                 db.query(IncomeBalance).filter(IncomeBalance.chat_id == chat_id).all()
             )
 
-    async def get_income_by_message_id(self, message_id: int) -> bool:
-        force_log(f"Searching for existing income with message_id: {message_id}")
+    async def get_income_by_chat_and_message_id(self, chat_id: int, message_id: int) -> bool:
+        force_log(f"Searching for existing income with chat_id: {chat_id} and message_id: {message_id}")
         with self._get_db() as db:
-            result = db.query(IncomeBalance).filter(IncomeBalance.message_id == message_id).first()
+            result = db.query(IncomeBalance).filter(
+                IncomeBalance.chat_id == chat_id,
+                IncomeBalance.message_id == message_id
+            ).first()
             found = result is not None
-            force_log(f"Message ID {message_id} duplicate check: {'FOUND' if found else 'NOT FOUND'}")
+            force_log(f"Chat ID {chat_id} + Message ID {message_id} duplicate check: {'FOUND' if found else 'NOT FOUND'}")
             return found
 
     async def get_income_by_trx_id(self, trx_id: str | None, chat_id: int) -> bool:

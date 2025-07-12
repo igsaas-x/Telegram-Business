@@ -10,6 +10,7 @@ from telethon.errors import PersistentTimestampInvalidError
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from models import ChatService, IncomeService
+from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 def force_log(message):
@@ -26,6 +27,7 @@ class TelethonClientService:
     def __init__(self):
         self.client = None
         self.service = IncomeService()
+        self.scheduler = None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
@@ -58,6 +60,10 @@ class TelethonClientService:
 
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
+        
+        # Initialize and start the message verification scheduler
+        self.scheduler = MessageVerificationScheduler(self.client)
+        force_log("Starting message verification scheduler...")
         
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
@@ -183,4 +189,9 @@ class TelethonClientService:
                 import traceback
                 force_log(f"Traceback: {traceback.format_exc()}")
 
-        await self.client.run_until_disconnected()  # type: ignore
+        # Start both the client and scheduler concurrently
+        import asyncio
+        await asyncio.gather(
+            self.client.run_until_disconnected(),  # type: ignore
+            self.scheduler.start_scheduler()
+        )
