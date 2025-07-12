@@ -14,7 +14,7 @@ class EventHandler:
 
     async def menu(self, event):
         # Check if chat is activated and trial status
-        chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+        chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
             # Chat doesn't exist - automatically register using our own register method
             try:
@@ -35,7 +35,7 @@ class EventHandler:
                 await self.register(event, user)
                 
                 # Refresh chat information after registration
-                chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
                 
                 # If still not available, registration failed
                 if not chat:

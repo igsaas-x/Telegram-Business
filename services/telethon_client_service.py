@@ -10,6 +10,7 @@ from telethon.errors import PersistentTimestampInvalidError
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from models import ChatService, IncomeService
+from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 def force_log(message):
@@ -26,6 +27,7 @@ class TelethonClientService:
     def __init__(self):
         self.client = None
         self.service = IncomeService()
+        self.scheduler = None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
@@ -59,16 +61,32 @@ class TelethonClientService:
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
         
+        # Initialize and start the message verification scheduler
+        self.scheduler = MessageVerificationScheduler(self.client)
+        force_log("Starting message verification scheduler...")
+        
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
             force_log(f"Chat ID: {event.chat_id}, Message: '{event.message.text}'")
-            
+
             try:
+                sender = await event.get_sender()
+                is_bot = getattr(sender, 'bot', False)
                 # Check if this is a private chat (not a group)
-                if event.is_private:
+                if event.is_private and not is_bot:
                     force_log(f"Private chat detected, sending auto-response")
                     await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
+                    return
+
+                # Only listen to bot messages, ignore human messages
+                if not is_bot:
+                    force_log(f"Message from human user, ignoring")
+                    return
+                
+                # Ignore specific bot: AutosumBusinessBot
+                if getattr(sender, 'username', '') == 'AutosumBusinessBot':
+                    force_log(f"Message from AutosumBusinessBot, ignoring")
                     return
 
                 # Skip if no message text
@@ -171,4 +189,9 @@ class TelethonClientService:
                 import traceback
                 force_log(f"Traceback: {traceback.format_exc()}")
 
-        await self.client.run_until_disconnected()  # type: ignore
+        # Start both the client and scheduler concurrently
+        import asyncio
+        await asyncio.gather(
+            self.client.run_until_disconnected(),  # type: ignore
+            self.scheduler.start_scheduler()
+        )
