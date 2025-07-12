@@ -1,21 +1,22 @@
-from contextlib import contextmanager
 from enum import Enum
 from typing import Optional, Union
 
 from sqlalchemy import String, Column, Integer, DateTime, Boolean, BigInteger
-from sqlalchemy.orm import Session
-
-from config.database_config import SessionLocal
+from config.database_config import get_db_session
 from helper.dateutils import DateUtils
 from models.base_model import BaseModel
 
 
 class QuestionType(Enum):
+    """Question type"""
+
     DATE_INPUT = "date_input"
     AMOUNT_INPUT = "amount_input"
 
 
 class BotQuestion(BaseModel):
+    """Bot question model"""
+
     __tablename__ = "bot_questions"
 
     id = Column(Integer, primary_key=True)
@@ -28,24 +29,13 @@ class BotQuestion(BaseModel):
     context_data = Column(String(512), nullable=True)
 
     def mark_as_replied(self) -> None:
+        """Mark question as replied"""
         self.is_replied = True
         self.updated_at = DateUtils.now()
 
 
 class ConversationService:
-    def __init__(self, db_session: Optional[Session] = None):
-        self._db = db_session or SessionLocal()
-
-    @contextmanager
-    def session_scope(self):
-        try:
-            yield self._db
-            self._db.commit()
-        except Exception:
-            self._db.rollback()
-            raise
-        finally:
-            self._db.close()
+    """Conversation service"""
 
     async def save_question(
         self,
@@ -54,7 +44,8 @@ class ConversationService:
         question_type: Union[QuestionType, str],
         context_data: Optional[str] = None,
     ) -> BotQuestion:
-        with self.session_scope() as session:
+        """Save question"""
+        with get_db_session() as db:
             question_type_value = (
                 question_type.value
                 if isinstance(question_type, QuestionType)
@@ -66,15 +57,16 @@ class ConversationService:
                 question_type=question_type_value,
                 context_data=context_data,
             )
-            session.add(new_question)
+            db.add(new_question)
             return new_question
 
     async def mark_as_replied(
         self, chat_id: int, message_id: int
     ) -> type[BotQuestion] | None:
-        with self.session_scope() as session:
+        """Mark question as replied"""
+        with get_db_session() as db:
             question = (
-                session.query(BotQuestion)
+                db.query(BotQuestion)
                 .filter(
                     BotQuestion.chat_id == chat_id,
                     BotQuestion.message_id == message_id,
@@ -91,10 +83,11 @@ class ConversationService:
     async def get_pending_question(
         self, chat_id: int, question_type: Optional[QuestionType] = None
     ) -> Optional[BotQuestion]:
-        query = self._db.query(BotQuestion).filter(
-            BotQuestion.chat_id == chat_id, BotQuestion.is_replied == False  # type: ignore
-        )
-
+        """Get pending question"""
+        with get_db_session() as db:
+            query = db.query(BotQuestion).filter(
+                BotQuestion.chat_id == chat_id, BotQuestion.is_replied == False  # type: ignore
+            )
         if question_type:
             query = query.filter(BotQuestion.question_type == question_type.value)
 
@@ -103,10 +96,12 @@ class ConversationService:
     async def get_question_by_message_id(
         self, chat_id: int, message_id: int
     ) -> Optional[BotQuestion]:
-        return (
-            self._db.query(BotQuestion)
-            .filter(
-                BotQuestion.chat_id == chat_id, BotQuestion.message_id == message_id
+        """Get question by message ID"""
+        with get_db_session() as db:
+            return (
+                db.query(BotQuestion)
+                .filter(
+                    BotQuestion.chat_id == chat_id, BotQuestion.message_id == message_id
+                )
+                .first()
             )
-            .first()
-        )

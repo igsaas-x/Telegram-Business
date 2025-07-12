@@ -1,41 +1,64 @@
 import os
+import pytz
+from typing import Optional
 
 import pytz
 from telethon import TelegramClient, events
+from telethon.events import NewMessage
 from telethon.errors import PersistentTimestampInvalidError
-
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
-from helper import extract_amount_and_currency, extract_trx_id
+from helper import DateUtils,extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from models import ChatService, IncomeService
+from models import ChatService, IncomeService, MessagesModel
+from helper import CredentialLoader
 from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 class TelethonClientService:
     def __init__(self):
-        self.client = None
+        self.client: Optional[TelegramClient] = None
         self.service = IncomeService()
         self.scheduler = None
+        self.messages_service = MessagesModel()
+        self.config = CredentialLoader()
+        self.config.load_credentials()
 
-    async def start(self, username, api_id, api_hash):
+    def _is_notification_bot_message(self, event: NewMessage.Event) -> bool:
+        """Check if the message is a notification bot message
+
+        Args:
+            event: The NewMessage event from Telethon
+
+        Returns:
+            bool: True if the message is from a bot in a private chat and not from our bot
+        """
+        return (
+            event.sender is not None
+            and not event.is_private
+            and event.sender.username != self.config.bot_name
+        )
+
+    async def start(self, username: str, api_id: str, api_hash: str):
         session_file = f"{username}.session"
-        
+
         # Handle persistent timestamp errors by removing corrupted session
         try:
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
-            await self.client.start(phone=username)  # type: ignore
+            await self.client.start(phone=username)
             force_log(f"Account {username} started...")
         except PersistentTimestampInvalidError:
-            force_log(f"Session corrupted for {username}, removing session file...")
+            force_log(
+                f"Session corrupted for {username}, removing session file..."
+            )
             if os.path.exists(session_file):
                 os.remove(session_file)
-            
+
             # Recreate client with clean session
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
-            await self.client.start(phone=username)  # type: ignore
+            await self.client.start(phone=username)
             force_log(f"Account {username} restarted with clean session...")
         except TimeoutError as e:
             force_log(f"Connection timeout for {username}: {e}")
@@ -49,11 +72,11 @@ class TelethonClientService:
 
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
-        
+
         # Initialize and start the message verification scheduler
         self.scheduler = MessageVerificationScheduler(self.client)
         force_log("Starting message verification scheduler...")
-        
+
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
@@ -72,7 +95,7 @@ class TelethonClientService:
                 if not is_bot:
                     force_log(f"Message from human user, ignoring")
                     return
-                
+
                 # Ignore specific bot: AutosumBusinessBot
                 if getattr(sender, 'username', '') == 'AutosumBusinessBot':
                     force_log(f"Message from AutosumBusinessBot, ignoring")
@@ -87,7 +110,7 @@ class TelethonClientService:
                 currency, amount = extract_amount_and_currency(event.message.text)
                 message_id: int = event.message.id
                 trx_id: str | None = extract_trx_id(event.message.text)
-                
+
                 force_log(f"Extracted: currency={currency}, amount={amount}, trx_id={trx_id}")
 
                 # Skip if no valid currency/amount (do this check early)
@@ -105,6 +128,16 @@ class TelethonClientService:
 
                 force_log(f"No duplicates found - proceeding with income processing...")
 
+                # Save the message to the database
+            if self._is_notification_bot_message(event) and trx_id:
+                self.messages_service.save(
+                    chat_id=chat_id,
+                    message_id=event.message.id,
+                    original_message=event.message.text or "",
+                )
+
+            # Only require currency and amount, trx_id is optional
+            if currency and amount:
                 # Check if chat exists, auto-register if not
                 # force_log(f"Checking if chat {event.chat_id} exists...")
                 # if not await chat_service.chat_exists(event.chat_id):
@@ -148,7 +181,9 @@ class TelethonClientService:
                 force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
                 # Ignore messages sent before chat registration
                 if message_time < chat_created_utc:
-                    force_log(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
+                    force_log(
+                        f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})"
+                    )
                     return
 
                 force_log(f"Message timestamp verified, proceeding to save income...")
@@ -157,7 +192,7 @@ class TelethonClientService:
                 force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
                 try:
                     result = await self.service.insert_income(
-                        event.chat_id,
+                        chat_id,
                         amount,
                         currency,
                         amount,

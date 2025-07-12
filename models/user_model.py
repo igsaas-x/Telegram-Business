@@ -1,6 +1,4 @@
-from contextlib import contextmanager
 from enum import Enum
-from typing import Generator, Any
 
 from sqlalchemy import (
     Column,
@@ -9,10 +7,10 @@ from sqlalchemy import (
     Boolean,
     Enum as SQLAlchemyEnum,
 )
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import relationship
 
-from config.database_config import SessionLocal
 from models.base_model import BaseModel
+from config.database_config import get_db_session
 
 
 class ServicePackage(Enum):
@@ -39,49 +37,48 @@ class User(BaseModel):
 
 
 class UserService:
-    def __init__(self):
-        self._session_factory = SessionLocal
-
-    @contextmanager
-    def _get_db(self) -> Generator[Session, Any, Any]:
-        db = self._session_factory()
-        try:
-            yield db
-        finally:
-            db.close()
+    """User service"""
 
     async def update_user_package(
         self, user_identifier: str, package: ServicePackage
-    ) -> type[User] | None:
-        with self._get_db() as db:
+    ) -> User | None:
+        """Update user package"""
+        with get_db_session() as db:
             user = db.query(User).filter(User.identifier == user_identifier).first()
             if user:
-                user.package = package  
+                user.package = package  # type: ignore
                 db.commit()
                 return user
             return None
 
     async def get_user_by_identifier(self, identifier: str) -> type[User] | None:
-        with self._get_db() as db:
+        """Get user by identifier"""
+        with get_db_session() as db:
             user = db.query(User).filter(User.identifier == identifier).first()
             return user
 
     async def get_user_by_username(self, username: str) -> type[User] | None:
-        with self._get_db() as db:
+        """Get user by username"""
+        with get_db_session() as db:
             user = db.query(User).filter(User.username == username).first()
             return user
 
     async def create_user(self, sender) -> User | type[User]:
+        """Create user"""
         # First check if user already exists by identifier or username
-        with self._get_db() as db:
-            existing_user = db.query(User).filter(
-                (User.identifier == sender.id) | (User.username == sender.username)
-            ).first()
-            
+        with get_db_session() as db:
+            existing_user = (
+                db.query(User)
+                .filter(
+                    (User.identifier == sender.id) | (User.username == sender.username)
+                )
+                .first()
+            )
+
             # If user already exists, return it
             if existing_user:
                 return existing_user
-        
+
             # Create new user if not exists
             user = User(
                 first_name=sender.first_name,

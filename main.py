@@ -11,23 +11,15 @@ from helper.credential_loader import CredentialLoader
 from services import TelegramBotService, TelethonClientService
 from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
+from services.free_tier_bot_service import FreeTierBot
 
 load_environment()
 
 # Configure logging first, before any services are imported
-# Custom handler that ensures logs are written to file immediately
-class ForceFileHandler(logging.FileHandler):
-    def emit(self, record):
-        super().emit(record)
-        self.flush()
-
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        ForceFileHandler("telegram_bot.log"),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("telegram_bot.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +48,7 @@ async def main(loader: CredentialLoader) -> None:
         telethonClientService1 = TelethonClientService()
         adminBot = TelegramAdminBot(loader.admin_bot_token)
         businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
+        freeTierBot = FreeTierBot(loader.free_tier_bot_token)
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -73,8 +66,9 @@ async def main(loader: CredentialLoader) -> None:
                 )
             ),
             asyncio.create_task(adminBot.start_polling()),
+            asyncio.create_task(freeTierBot.start_polling()),
         ]
-        
+
         # Add business bot only if token is provided
         if loader.autosum_business_bot_token:
             logger.info("Starting business bot...")
