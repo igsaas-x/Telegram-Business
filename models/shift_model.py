@@ -193,8 +193,14 @@ class ShiftService:
                 
                 # Check if job already ran for this minute for this chat
                 if config.last_job_run:
+                    # Ensure both datetimes have the same timezone awareness
+                    last_job_run = config.last_job_run
+                    if last_job_run.tzinfo is None:
+                        # If last_job_run is naive, make it timezone-aware
+                        last_job_run = DateUtils.localize_datetime(last_job_run)
+                    
                     # If last job run is within the same minute, skip
-                    if (config.last_job_run.replace(second=0, microsecond=0) >= 
+                    if (last_job_run.replace(second=0, microsecond=0) >= 
                         current_time.replace(second=0, microsecond=0)):
                         continue
                 

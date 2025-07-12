@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 
 from handlers.business_event_handler import BusinessEventHandler
+from helper.logger_utils import force_log
 from models import ChatService, UserService
 
 # Get logger
@@ -473,10 +474,10 @@ class AutosumBusinessBot:
                 await self.app.bot.send_message(chat_id=chat_id, text=message)
                 return True
             else:
-                logger.error("Bot application not initialized")
+                force_log("Bot application not initialized")
                 return False
         except Exception as e:
-            logger.error(f"Error sending message to chat {chat_id}: {e}")
+            force_log(f"Error sending message to chat {chat_id}: {e}")
             return False
 
     async def stop(self):
