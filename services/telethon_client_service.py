@@ -63,12 +63,24 @@ class TelethonClientService:
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
             force_log(f"Chat ID: {event.chat_id}, Message: '{event.message.text}'")
-            
+
             try:
+                sender = await event.get_sender()
+                is_bot = getattr(sender, 'bot', False)
                 # Check if this is a private chat (not a group)
-                if event.is_private:
+                if event.is_private and not is_bot:
                     force_log(f"Private chat detected, sending auto-response")
                     await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
+                    return
+
+                # Only listen to bot messages, ignore human messages
+                if not is_bot:
+                    force_log(f"Message from human user, ignoring")
+                    return
+                
+                # Ignore specific bot: AutosumBusinessBot
+                if getattr(sender, 'username', '') == 'AutosumBusinessBot':
+                    force_log(f"Message from AutosumBusinessBot, ignoring")
                     return
 
                 # Skip if no message text
