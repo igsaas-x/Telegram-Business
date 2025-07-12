@@ -74,8 +74,8 @@ class BusinessEventHandler:
                 [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
-                [("🛑 បិទបញ្ជី", "close_shift")],
-                [("❌ បិទ", "close_menu")]
+                # [("🛑 បិទបញ្ជី", "close_shift")],
+                [("❌ ត្រលប់ក្រោយ", "close_menu")]
             ]
         else:
             buttons = [
@@ -379,8 +379,8 @@ class BusinessEventHandler:
                     force_log(f"Processing shift {shift.id}, number {shift.number}")
                     shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
                     force_log(f"Got shift summary: {shift_summary}")
-                    start_time = shift.start_time.strftime('%H:%M')
-                    end_time = shift.end_time.strftime('%H:%M') if shift.end_time else "សកម្ម"
+                    start_time = shift.start_time.strftime('%I:%M %p')
+                    end_time = shift.end_time.strftime('%I:%M %p') if shift.end_time else "កំពុងបន្ត"
                     status = "🔴" if shift.is_closed else "🟢"
 
                     button_text = f"{status} វេន #{shift.number} ({start_time}-{end_time})"
@@ -414,8 +414,8 @@ class BusinessEventHandler:
                 # Calculate duration
                 if shift.end_time:
                     duration = shift.end_time - shift.start_time
-                    end_text = shift.end_time.strftime('%Y-%m-%d %H:%M')
-                    status = "🔴 បានបិទ"
+                    end_text = shift.end_time.strftime('%Y-%m-%d %I:%M %p')
+                    status = "🔴 បានបិទបញ្ជី"
                 else:
                     from helper import DateUtils
                     try:
@@ -429,7 +429,7 @@ class BusinessEventHandler:
                         now = datetime.now()
                         duration = now - shift.start_time
                     end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
-                    status = "🟢 សកម្ម"
+                    status = "🟢 🟢 កំពុងបន្ត"
 
                 total_seconds = abs(duration.total_seconds())
                 hours = int(total_seconds // 3600)
@@ -487,7 +487,7 @@ class BusinessEventHandler:
 
 📊 វេន #{new_shift.number}
 ⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-🟢 ស្ថានភាព: សកម្ម
+🟢 ស្ថានភាព: កំពុងបន្ត
 
 💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
 """
