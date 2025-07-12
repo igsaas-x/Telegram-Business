@@ -7,7 +7,6 @@ from alembic import command
 from alembic.config import Config
 
 from config import load_environment
-from config.database_config import create_db_tables
 from helper.credential_loader import CredentialLoader
 from services import TelegramBotService, TelethonClientService
 from services.autosum_business_bot_service import AutosumBusinessBot
@@ -16,11 +15,17 @@ from services.telegram_admin_bot_service import TelegramAdminBot
 load_environment()
 
 # Configure logging first, before any services are imported
+# Custom handler that ensures logs are written to file immediately
+class ForceFileHandler(logging.FileHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("telegram_bot.log"),
+        ForceFileHandler("telegram_bot.log"),
         logging.StreamHandler()
     ]
 )
@@ -54,7 +59,7 @@ async def main(loader: CredentialLoader) -> None:
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-        create_db_tables()
+        # create_db_tables()
 
         loop = asyncio.get_running_loop()
         handle_signals(loop)

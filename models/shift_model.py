@@ -96,7 +96,7 @@ class ShiftService:
                 return shift
             return None
 
-    async def get_shifts_by_date_range(self, chat_id: int, start_date: date, end_date: date) -> list[Shift]:
+    async def get_shifts_by_date_range(self, chat_id: int, start_date: date, end_date: date) -> list[type[Shift]]:
         """Get all shifts for a chat within a date range"""
         with self._get_db() as db:
             return db.query(Shift).filter(
@@ -121,14 +121,15 @@ class ShiftService:
                 Shift.is_closed == True
             ).order_by(Shift.end_time.desc()).limit(limit).all()
 
-    async def get_shift_income_summary(self, shift_id: int) -> dict:
-        """Get income summary for a specific shift"""
+    async def get_shift_income_summary(self, shift_id: int, chat_id: int) -> dict:
+        """Get income summary for a specific shift and chat"""
         with self._get_db() as db:
             from models.income_balance_model import IncomeBalance
             
-            # Get all income records for this shift
+            # Get all income records for this shift and chat
             income_records = db.query(IncomeBalance).filter(
-                IncomeBalance.shift_id == shift_id
+                IncomeBalance.shift_id == shift_id,
+                IncomeBalance.chat_id == chat_id
             ).all()
             
             if not income_records:

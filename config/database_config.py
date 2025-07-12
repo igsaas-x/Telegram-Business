@@ -29,4 +29,5 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 def create_db_tables():
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
+    pass

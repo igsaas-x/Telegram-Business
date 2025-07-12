@@ -78,8 +78,6 @@ class AutosumBusinessBot:
 
     async def business_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Business-specific menu handler"""
-        from handlers.business_event_handler import force_log
-        force_log(f"CRITICAL: AutosumBusinessBot.business_menu called for chat_id: {update.effective_chat.id}")
         logger.error(f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}")
         # Create a mock event object for the business event handler
         class MockEvent:
@@ -109,9 +107,7 @@ class AutosumBusinessBot:
 
     async def handle_business_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle business-specific callback queries"""
-        from handlers.business_event_handler import force_log
         query = update.callback_query
-        force_log(f"CRITICAL: AutosumBusinessBot.handle_business_callback received: {query.data}")
         logger.error(f"CRITICAL: handle_business_callback received: {query.data}")
         await query.answer()
         
@@ -148,37 +144,6 @@ class AutosumBusinessBot:
             logger.error(f"Full traceback: {traceback.format_exc()}")
             await query.edit_message_text("❌ Error processing request. Please try again.")
             return ConversationHandler.END
-
-    async def business_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Business bot help command"""
-        help_message = """
-🏢 ជំនួយ Autosum Business Bot
-
-📋 ពាក្យបញ្ជាដែលមាន:
-• `/start` - សារស្វាគមន៍និងការណែនាំ
-• `/register` - ចុះឈ្មោះជជែកសម្រាប់សេវាអាជីវកម្ម
-• `/menu` - ចូលទៅផ្ទាំងគ្រប់គ្រងអាជីវកម្ម
-• `/help` - បង្ហាញសារជំនួយនេះ
-• `/support` - ទាក់ទងការគាំទ្រអាជីវកម្ម
-
-💼 លក្ខណៈពិសេសអាជីវកម្ម:
-• តាមដានចំណូល - ការតាមដានប្រតិបត្តិការដោយស្វ័យប្រវត្តិ
-• ការវិភាគ - ចំណេះដឹងនិងនិន្នាការអាជីវកម្ម
-• រូបិយប័ណ្ណច្រើន - ការគាំទ្ររូបិយប័ណ្ណផ្សេងៗ
-• របាយការណ៍ - សកម្មភាពប្រចាំថ្ងៃ សប្តាហ៍ និងខែ
-
-🔧 ជម្រើសផ្ទាំងគ្រប់គ្រង:
-• 💰 ចំណូលប្រចាំថ្ងៃ - សម្របសម្រួលប្រតិបត្តិការថ្ងៃនេះ
-
-📞 ត្រូវការជំនួយ?
-ប្រើ /support សម្រាប់ជំនួយបច្ចេកទេសឬសំណួរអាជីវកម្ម។
-
-💡 គន្លឹះ:
-• ចុះឈ្មោះជជែករបស់អ្នកដើម្បីចាប់ផ្តើមតាមដានដោយស្វ័យប្រវត្តិ
-• ពិនិត្យចំណូលប្រចាំថ្ងៃសម្រាប់ចំណេះដឹងពេលវេលាពិត
-        """
-        
-        await update.message.reply_text(help_message)
 
     async def business_support(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business support command"""
@@ -334,7 +299,7 @@ class AutosumBusinessBot:
 
 📊 វេន #{new_shift.number}
 ⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-🟢 ស្ថានភាព: សកម្ម
+🟢 ស្ថានភាព: កំពុងបន្ត
 
 💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
 🔧 ប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
@@ -434,11 +399,10 @@ class AutosumBusinessBot:
 
         # Business-specific command handlers
         self.app.add_handler(CommandHandler("start", self.business_start))
-        self.app.add_handler(CommandHandler("help", self.business_help))
         self.app.add_handler(CommandHandler("support", self.business_support))
         self.app.add_handler(CommandHandler("register", self.register_chat))
         self.app.add_handler(CommandHandler("shift", self.enable_shift))
-        
+
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.business_menu)],
