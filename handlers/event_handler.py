@@ -5,6 +5,7 @@ from models import ChatService, ConversationService, IncomeService, UserService
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
+contact_message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
 
 class EventHandler:
     def __init__(self):
@@ -12,9 +13,13 @@ class EventHandler:
         self.chat_service = ChatService()
         self.income_service = IncomeService()
 
+
     async def menu(self, event):
+        if event.is_private:
+            event.respond(contact_message)
+
         # Check if chat is activated and trial status
-        chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+        chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
             # Chat doesn't exist - automatically register using our own register method
             try:
@@ -35,7 +40,7 @@ class EventHandler:
                 await self.register(event, user)
                 
                 # Refresh chat information after registration
-                chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
                 
                 # If still not available, registration failed
                 if not chat:
@@ -61,13 +66,12 @@ class EventHandler:
             
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to contact admin
-                message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
                 
                 # Check if this is a callback (return button) or new command
                 if hasattr(event, 'callback_query') and event.callback_query:
-                    await event.edit(message)
+                    await event.edit(contact_message)
                 else:
-                    await event.respond(message)
+                    await event.respond(contact_message)
                 return
             # If within trial period, continue to show menu (don't update is_active)
         

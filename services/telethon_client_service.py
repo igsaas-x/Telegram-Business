@@ -1,28 +1,22 @@
-import datetime
-import logging
 import os
 
+import pytz
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
 
+# Check if message was sent after chat registration (applies to all messages)
+from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
+from helper.logger_utils import force_log
 from models import ChatService, IncomeService
-
-
-def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - TelethonClient - INFO - {message}\n")
-        f.flush()
-
-logger = logging.getLogger(__name__)
+from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 class TelethonClientService:
     def __init__(self):
         self.client = None
         self.service = IncomeService()
+        self.scheduler = None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
@@ -56,16 +50,32 @@ class TelethonClientService:
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
         
+        # Initialize and start the message verification scheduler
+        self.scheduler = MessageVerificationScheduler(self.client)
+        force_log("Starting message verification scheduler...")
+        
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
             force_log(f"Chat ID: {event.chat_id}, Message: '{event.message.text}'")
-            
+
             try:
+                sender = await event.get_sender()
+                is_bot = getattr(sender, 'bot', False)
                 # Check if this is a private chat (not a group)
-                if event.is_private:
+                if event.is_private and not is_bot:
                     force_log(f"Private chat detected, sending auto-response")
                     await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
+                    return
+
+                # Only listen to bot messages, ignore human messages
+                if not is_bot:
+                    force_log(f"Message from human user, ignoring")
+                    return
+                
+                # Ignore specific bot: AutosumBusinessBot
+                if getattr(sender, 'username', '') == 'AutosumBusinessBot':
+                    force_log(f"Message from AutosumBusinessBot, ignoring")
                     return
 
                 # Skip if no message text
@@ -96,35 +106,52 @@ class TelethonClientService:
                 force_log(f"No duplicates found - proceeding with income processing...")
 
                 # Check if chat exists, auto-register if not
-                force_log(f"Checking if chat {event.chat_id} exists...")
-                if not await chat_service.chat_exists(event.chat_id):
-                    force_log(f"Chat {event.chat_id} not registered, auto-registering...")
-                    try:
-                        # Get chat title for registration
-                        chat_entity = await self.client.get_entity(event.chat_id)
-                        chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
-
-                        # Register the chat without a specific user (user=None)
-                        success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
-
-                        if not success:
-                            force_log(f"Failed to auto-register chat {event.chat_id}: {err_message}")
-                            return
-
-                        force_log(f"Auto-registered chat: {event.chat_id} ({chat_title})")
-                    except Exception as e:
-                        force_log(f"Error during chat auto-registration: {e}")
-                        return
+                # force_log(f"Checking if chat {event.chat_id} exists...")
+                # if not await chat_service.chat_exists(event.chat_id):
+                #     force_log(f"Chat {event.chat_id} not registered, auto-registering...")
+                #     try:
+                #         # Get chat title for registration
+                #         chat_entity = await self.client.get_entity(event.chat_id)
+                #         chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
+                #
+                #         # Register the chat without a specific user (user=None)
+                #         success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
+                #
+                #         if not success:
+                #             force_log(f"Failed to auto-register chat {event.chat_id}: {err_message}")
+                #             return
+                #
+                #         force_log(f"Auto-registered chat: {event.chat_id} ({chat_title})")
+                #     except Exception as e:
+                #         force_log(f"Error during chat auto-registration: {e}")
+                #         return
 
                 # Get chat info to check registration timestamp
                 force_log(f"Getting chat info for chat_id: {event.chat_id}")
                 chat = await chat_service.get_chat_by_chat_id(event.chat_id)
                 if not chat:
-                    force_log(f"Chat {event.chat_id} not found in database after registration!")
+                    force_log(f"Chat {event.chat_id} not found in database!")
                     return
 
-                # Skip timestamp check for now to simplify debugging
-                force_log(f"Chat found, proceeding to save income...")
+                force_log(f"Checking message timestamp vs chat registration timestamp")
+                # Get message timestamp (Telethon provides it as UTC datetime)
+                message_time = event.message.date
+                if message_time.tzinfo is None:
+                    message_time = pytz.UTC.localize(message_time)
+
+                # Convert chat created_at to UTC for comparison
+                chat_created = chat.created_at
+                if chat_created.tzinfo is None:
+                    chat_created = DateUtils.localize_datetime(chat_created)
+                chat_created_utc = chat_created.astimezone(pytz.UTC)
+
+                force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
+                # Ignore messages sent before chat registration
+                if message_time < chat_created_utc:
+                    force_log(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
+                    return
+
+                force_log(f"Message timestamp verified, proceeding to save income...")
 
                 # Let the income service handle shift creation automatically
                 force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
@@ -151,4 +178,9 @@ class TelethonClientService:
                 import traceback
                 force_log(f"Traceback: {traceback.format_exc()}")
 
-        await self.client.run_until_disconnected()  # type: ignore
+        # Start both the client and scheduler concurrently
+        import asyncio
+        await asyncio.gather(
+            self.client.run_until_disconnected(),  # type: ignore
+            self.scheduler.start_scheduler()
+        )

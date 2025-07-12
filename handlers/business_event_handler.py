@@ -1,7 +1,5 @@
-import datetime
-import logging
-
 from helper import DateUtils
+from helper.logger_utils import force_log
 from models.chat_model import ChatService
 from models.income_balance_model import IncomeService
 from models.shift_configuration_model import ShiftConfigurationService
@@ -9,17 +7,6 @@ from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
 from .client_command_handler import CommandHandler
-
-
-def force_log(message, level="INFO"):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - BusinessEventHandler - {level} - {message}\n")
-        f.flush()
-
-logger = logging.getLogger(__name__)
-
 
 class BusinessEventHandler:
     """
@@ -69,10 +56,10 @@ class BusinessEventHandler:
 
         # Create menu buttons based on shift status
         chat_id = event.chat_id
-        
+
         # Check for auto close before showing menu
         await self.check_auto_close_shift(chat_id)
-        
+
         current_shift = await self.shift_service.get_current_shift(chat_id)
 
         if current_shift:
@@ -112,7 +99,7 @@ class BusinessEventHandler:
             if hasattr(event, 'chat') and event.chat:
                 chat_title = getattr(event.chat, 'title', 'Business Chat')
         except:
-            logger.exception("Failed to register business chat")
+            force_log("Failed to register business chat")
 
         success, message = await self.chat_service.register_chat_id(
             chat_id, f"[BUSINESS] {chat_title}", user
@@ -585,7 +572,7 @@ Telegram: https://t.me/HK_688
     async def configure_auto_close(self, event, time_str: str = None, hours: int = None):
         """Configure auto close settings for a chat"""
         chat_id = event.chat_id
-        
+
         try:
             # Enable auto close with either time or hours
             config = await self.shift_config_service.update_auto_close_settings(
@@ -594,7 +581,7 @@ Telegram: https://t.me/HK_688
                 auto_close_time=time_str,
                 auto_close_after_hours=hours
             )
-            
+
             if time_str:
                 message = f"""
 ✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
@@ -613,23 +600,23 @@ Telegram: https://t.me/HK_688
 """
             else:
                 message = "❌ សូមផ្តល់ម៉ោង (ឧ. 23:59) ឬចំនួនម៉ោងអសកម្ម។"
-                
+
         except Exception as e:
             force_log(f"Error configuring auto close: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការកំណត់ការបិទដោយស្វ័យប្រវត្តិ។"
-        
+
         await event.respond(message)
 
     async def disable_auto_close(self, event):
         """Disable auto close for a chat"""
         chat_id = event.chat_id
-        
+
         try:
             await self.shift_config_service.update_auto_close_settings(
                 chat_id=chat_id,
                 enabled=False
             )
-            
+
             message = """
 ✅ បានបិទការបិទវេនដោយស្វ័យប្រវត្តិ!
 
@@ -638,16 +625,16 @@ Telegram: https://t.me/HK_688
         except Exception as e:
             force_log(f"Error disabling auto close: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទការកំណត់ស្វ័យប្រវត្តិ។"
-        
+
         await event.respond(message)
 
     async def show_auto_close_status(self, event):
         """Show current auto close configuration for a chat"""
         chat_id = event.chat_id
-        
+
         try:
             config = await self.shift_config_service.get_configuration(chat_id)
-            
+
             if not config or not config.auto_close_enabled:
                 message = """
 📊 ស្ថានភាពការបិទវេនស្វ័យប្រវត្តិ
@@ -663,9 +650,9 @@ Telegram: https://t.me/HK_688
                     settings.append(f"⏰ បិទនៅម៉ោង: {config.auto_close_time}")
                 if config.auto_close_after_hours:
                     settings.append(f"⏱️ បិទបន្ទាប់ពី: {config.auto_close_after_hours} ម៉ោងអសកម្ម")
-                
+
                 settings_text = "\n".join(settings) if settings else "គ្មានការកំណត់"
-                
+
                 message = f"""
 📊 ស្ថានភាពការបិទវេនស្វ័យប្រវត្តិ
 
@@ -678,5 +665,5 @@ Telegram: https://t.me/HK_688
         except Exception as e:
             force_log(f"Error showing auto close status: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយកស្ថានភាពការកំណត់។"
-        
+
         await event.respond(message)
