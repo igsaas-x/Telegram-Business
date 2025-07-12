@@ -72,7 +72,7 @@ class BusinessEventHandler:
         if current_shift:
             buttons = [
                 [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
-                [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
+                # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
                 [("🛑 បិទបញ្ជី", "close_shift")],
                 [("❌ បិទ", "close_menu")]
@@ -98,7 +98,7 @@ class BusinessEventHandler:
 
     async def register_business(self, event, user: User):
         """Register chat for business services with special configuration"""
-        chat_id = int(event.chat_id)
+        chat_id = event.chat_id
         chat_title = "Business Chat"
 
         # Try to get chat title
@@ -106,7 +106,7 @@ class BusinessEventHandler:
             if hasattr(event, 'chat') and event.chat:
                 chat_title = getattr(event.chat, 'title', 'Business Chat')
         except:
-            pass
+            logger.exception("Failed to register business chat")
 
         success, message = await self.chat_service.register_chat_id(
             chat_id, f"[BUSINESS] {chat_title}", user
@@ -114,13 +114,13 @@ class BusinessEventHandler:
 
         if success:
             response = f"""
-✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
-
-🏢 ជជែករបស់អ្នកត្រូវបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម។
-📊 ការវិភាគកម្រិតខ្ពស់ឥឡូវនេះត្រូវបានបើក។
-💼 អ្នកអាចចូលប្រើលក្ខណៈពិសេសអាជីវកម្មតាមរយៈម៉ឺនុយ។
-
-វាយ /menu ដើម្បីចាប់ផ្តើមជាមួយនឹងផ្ទាំងគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
+                ✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
+                
+                🏢 ជជែករបស់អ្នកត្រូវបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម។
+                📊 ការវិភាគកម្រិតខ្ពស់ឥឡូវនេះត្រូវបានបើក។
+                💼 អ្នកអាចចូលប្រើលក្ខណៈពិសេសអាជីវកម្មតាមរយៈម៉ឺនុយ។
+                
+                វាយ /menu ដើម្បីចាប់ផ្តើមជាមួយនឹងផ្ទាំងគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
             """
         else:
             response = f"❌ Business registration failed: {message}"
@@ -154,7 +154,7 @@ class BusinessEventHandler:
 
     async def show_current_shift_report(self, event):
         """Show current shift report"""
-        chat_id = int(event.chat_id)
+        chat_id = event.chat_id
         force_log(f"show_current_shift_report called for chat_id: {chat_id}")
 
         try:
@@ -163,15 +163,15 @@ class BusinessEventHandler:
 
             if not current_shift:
                 message = """
-📊 របាយការណ៍វេនបច្ចុប្បន្ន
-
-🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
-
-💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
+                    📊 របាយការណ៍វេនបច្ចុប្បន្ន
+                    
+                    🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
+                    
+                    💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
                 """
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id)
+                shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id, chat_id)
                 
                 # Handle case where shift exists but has no transactions yet
                 if shift_summary['transaction_count'] == 0:
@@ -183,7 +183,7 @@ class BusinessEventHandler:
                         total_seconds = abs(duration.total_seconds())
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
-                    except Exception as e:
+                    except Exception:
                         from datetime import datetime
                         now = datetime.now()
                         duration = now - current_shift.start_time
@@ -191,21 +191,16 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
 
-                    message = f"""
-📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
-
-⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-🟢 កំពុងបន្ត
-
-💰 សង្ខេបចំណូលសរុប:
-• មិនទាន់មានប្រតិបត្តិការទេ
+                    f"""
+                        📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+                        
+                        ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+                        ⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+                        🟢 កំពុងបន្ត
+                        
+                        💰 សង្ខេបចំណូលសរុប:
+                        • មិនទាន់មានប្រតិបត្តិការទេ
                     """
-
-                    buttons = [
-                        [("🛑 បិទបញ្ជី", "close_shift")],
-                        [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
-                    ]
                 else:
                     # Calculate duration - simplified approach first
                     try:
@@ -238,14 +233,14 @@ class BusinessEventHandler:
                         currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                 message = f"""
-📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
-
-⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-🟢 កំពុងបន្ត
-
-💰 សង្ខេបចំណូលសរុប:
-{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+                    📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+                    
+                    ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+                    ⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+                    🟢 កំពុងបន្ត
+                    
+                    💰 សង្ខេបចំណូលសរុប:
+                    {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
                 """
 
                 buttons = [
@@ -278,7 +273,7 @@ class BusinessEventHandler:
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift = previous_shifts[0]
-                shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
 
                 # Calculate duration
                 duration = shift.end_time - shift.start_time
@@ -301,7 +296,7 @@ class BusinessEventHandler:
 📈 របាយការណ៍វេនមុន #{shift.number}
 
 🔴 ស្ថានភាព: បានបិទ
-⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
 ⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %H:%M')}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
@@ -382,7 +377,7 @@ class BusinessEventHandler:
                 buttons = []
                 for shift in shifts:
                     force_log(f"Processing shift {shift.id}, number {shift.number}")
-                    shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                    shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
                     force_log(f"Got shift summary: {shift_summary}")
                     start_time = shift.start_time.strftime('%H:%M')
                     end_time = shift.end_time.strftime('%H:%M') if shift.end_time else "សកម្ម"
@@ -406,7 +401,7 @@ class BusinessEventHandler:
     async def show_specific_shift_report(self, event, data):
         """Show report for a specific shift"""
         shift_id = int(data.replace("shift_", ""))
-
+        chat_id = event.chat_id
         try:
             shift = await self.shift_service.get_shift_by_id(shift_id)
 
@@ -414,7 +409,7 @@ class BusinessEventHandler:
                 message = "❌ រកមិនឃើញវេននេះទេ។"
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                shift_summary = await self.shift_service.get_shift_income_summary(shift.id)
+                shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
 
                 # Calculate duration
                 if shift.end_time:
@@ -455,7 +450,7 @@ class BusinessEventHandler:
 📊 របាយការណ៍វេន #{shift.number}
 
 {status}
-⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
 ⏱️ បញ្ចប់: {end_text}
 ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
 
@@ -491,53 +486,56 @@ class BusinessEventHandler:
 ✅ វេនថ្មីត្រូវបានបង្កើតដោយជោគជ័យ!
 
 📊 វេន #{new_shift.number}
-⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %H:%M')}
+⏰ ចាប់ផ្តើម: {new_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
 🟢 ស្ថានភាព: សកម្ម
 
 💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
                 """
-
-                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 # Close the current shift and create new one
                 closed_shift = await self.shift_service.close_shift(current_shift.id)
 
                 if closed_shift:
                     # Automatically create a new shift after closing the current one
-                    new_shift = await self.shift_service.create_shift(chat_id)
+                    await self.shift_service.create_shift(chat_id)
 
                     # Get final summary
-                    shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id)
+                    shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id, chat_id)
                     duration = closed_shift.end_time - closed_shift.start_time
                     total_seconds = abs(duration.total_seconds())
                     hours = int(total_seconds // 3600)
                     minutes = int((total_seconds % 3600) // 60)
 
+                    # Currency breakdown same as current shift report
+                    currency_text = ""
+                    for currency, data in shift_summary['currencies'].items():
+                        if currency == 'USD':
+                            currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+                        elif currency == 'KHR':
+                            khr_amount = int(data['amount'])
+                            currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
+                        else:
+                            currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
+
                     message = f"""
-✅ វេនត្រូវបានបិទដោយជោគជ័យ!
-
-📊 សង្ខេបវេន #{closed_shift.number}:
-⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %H:%M')}
-⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
-⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-
-🟢 វេនថ្មី #{new_shift.number} ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ
+                        ✅ វេនត្រូវបានបិទដោយជោគជ័យ!
+                        
+                        📊 សង្ខេបវេន #{closed_shift.number}:
+                        ⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+                        ⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
+                        ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+                        
+                        💰 សង្ខេបចំណូលសរុប:
+                        {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
                     """
-
-                    buttons = [
-                        [("📈 មើលវេនទាំងអស់", "other_days_report")],
-                        [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
-                    ]
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
-                    buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
             force_log(f"Error closing shift: {e}")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
-            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=None)
 
     async def close_menu(self, event):
         """Close the menu (delete message)"""
@@ -551,25 +549,25 @@ class BusinessEventHandler:
     async def show_support(self, event):
         """Show support information"""
         message = """
-📞 ការគាំទ្រអាជីវកម្ម
-
-🆘 ត្រូវការជំនួយ?
-• បញ្ហាបច្ចេកទេសជាមួយបុត
-• សំណួរអំពីលក្ខណៈពិសេសអាជីវកម្ម
-• សំណើរបាយការណ៍ផ្ទាល់ខ្លួន
-• ការគ្រប់គ្រងគណនី
-
-📧 វិធីសាស្រ្តទំនាក់ទំនង:
-• ការគាំទ្រក្នុងកម្មវិធី: ឆ្លើយតបសារនេះ
-• អ៊ីមែល: business@yourcompany.com
-• ទូរស័ព្ទ: +1-XXX-XXX-XXXX
-
-⏰ ម៉ោងការគាំទ្រ:
-ច័ន្ទ - សុក្រ: 9:00 AM - 6:00 PM
-សៅរ៍: 10:00 AM - 2:00 PM
-អាទិត្យ: បិទ
-
-🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
+            📞 ការគាំទ្រអាជីវកម្ម
+            
+            🆘 ត្រូវការជំនួយ?
+            • បញ្ហាបច្ចេកទេសជាមួយបុត
+            • សំណួរអំពីលក្ខណៈពិសេសអាជីវកម្ម
+            • សំណើរបាយការណ៍ផ្ទាល់ខ្លួន
+            • ការគ្រប់គ្រងគណនី
+            
+            📧 វិធីសាស្រ្តទំនាក់ទំនង:
+            • ការគាំទ្រក្នុងកម្មវិធី: ឆ្លើយតបសារនេះ
+            • អ៊ីមែល: business@yourcompany.com
+            • ទូរស័ព្ទ: +1-XXX-XXX-XXXX
+            
+            ⏰ ម៉ោងការគាំទ្រ:
+            ច័ន្ទ - សុក្រ: 9:00 AM - 6:00 PM
+            សៅរ៍: 10:00 AM - 2:00 PM
+            អាទិត្យ: បិទ
+            
+            🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
         """
 
         buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]

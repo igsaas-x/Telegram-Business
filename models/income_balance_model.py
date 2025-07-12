@@ -229,7 +229,7 @@ class IncomeService:
                 .all()
             )
 
-    async def get_income_by_shift_id(self, shift_id: int) -> list[IncomeBalance]:
+    async def get_income_by_shift_id(self, shift_id: int) -> list[type[IncomeBalance]]:
         """Get all income records for a specific shift"""
         with self._get_db() as db:
             return (
@@ -289,7 +289,7 @@ class IncomeService:
 
         return summary
 
-    async def get_today_income(self, chat_id: int) -> list[IncomeBalance]:
+    async def get_today_income(self, chat_id: int) -> list[type[IncomeBalance]]:
         """Get all income records for today"""
         today = DateUtils.today()
         tomorrow = today + timedelta(days=1)
@@ -305,7 +305,7 @@ class IncomeService:
                 .all()
             )
 
-    async def get_weekly_income(self, chat_id: int) -> list[IncomeBalance]:
+    async def get_weekly_income(self, chat_id: int) -> list[type[IncomeBalance]]:
         """Get all income records for this week"""
         today = DateUtils.today()
         week_start = today - timedelta(days=today.weekday())
@@ -320,7 +320,7 @@ class IncomeService:
                 .all()
             )
 
-    async def get_monthly_income(self, chat_id: int) -> list[IncomeBalance]:
+    async def get_monthly_income(self, chat_id: int) -> list[type[IncomeBalance]]:
         """Get all income records for this month"""
         today = DateUtils.today()
         month_start = today.replace(day=1)
