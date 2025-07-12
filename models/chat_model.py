@@ -1,20 +1,11 @@
-import logging
-
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
 from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
 from helper import DateUtils
-from helper.logger_utils import RotatingLogger
+from helper.logger_utils import force_log
 from models.income_balance_model import IncomeService
 from models.user_model import User, ServicePackage
-
-
-def force_log(message):
-    """Write logs with hourly rotation"""
-    RotatingLogger.log(message, "ChatService")
-
-logger = logging.getLogger(__name__)
 
 
 class Chat(Base):
@@ -176,11 +167,11 @@ class ChatService:
             session.commit()
             
             if chat_result > 0 or income_result > 0:
-                logger.info(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
-                logger.info(f"Updated {chat_result} chat records and {income_result} income_balance records")
+                force_log(f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}")
+                force_log(f"Updated {chat_result} chat records and {income_result} income_balance records")
                 return True
             else:
-                logger.warning(f"No records found with chat_id {old_chat_id}")
+                force_log(f"No records found with chat_id {old_chat_id}")
                 return False
         except Exception as e:
             session.rollback()

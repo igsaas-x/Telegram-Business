@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 from typing import List
 
 import pytz
@@ -9,16 +8,8 @@ from telethon.errors import FloodWaitError, RPCError
 from telethon.tl.types import Message
 
 from helper import extract_amount_and_currency, extract_trx_id
-from helper.logger_utils import RotatingLogger
+from helper.logger_utils import force_log
 from models import ChatService, IncomeService
-
-
-def force_log(message):
-    """Write logs with hourly rotation"""
-    RotatingLogger.log(message, "MessageVerificationScheduler")
-
-
-logger = logging.getLogger(__name__)
 
 
 class MessageVerificationScheduler:

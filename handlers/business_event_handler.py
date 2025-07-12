@@ -1,21 +1,11 @@
-import logging
-
 from helper import DateUtils
-from helper.logger_utils import RotatingLogger
+from helper.logger_utils import force_log
 from models.chat_model import ChatService
 from models.income_balance_model import IncomeService
 from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
 from .client_command_handler import CommandHandler
-
-
-def force_log(message):
-    """Write logs with hourly rotation"""
-    RotatingLogger.log(message, "BusinessEventHandler")
-
-logger = logging.getLogger(__name__)
-
 
 class BusinessEventHandler:
     """
@@ -103,7 +93,7 @@ class BusinessEventHandler:
             if hasattr(event, 'chat') and event.chat:
                 chat_title = getattr(event.chat, 'title', 'Business Chat')
         except:
-            logger.exception("Failed to register business chat")
+            force_log("Failed to register business chat")
 
         success, message = await self.chat_service.register_chat_id(
             chat_id, f"[BUSINESS] {chat_title}", user

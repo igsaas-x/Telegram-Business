@@ -18,13 +18,8 @@ from sqlalchemy.orm import Session, relationship
 
 from config.database_config import SessionLocal
 from helper import DateUtils
-from helper.logger_utils import RotatingLogger
+from helper.logger_utils import force_log
 from models.base_model import BaseModel
-
-
-def force_log(message):
-    """Write logs with hourly rotation"""
-    RotatingLogger.log(message, "IncomeService")
 
 
 class CurrencyEnum(Enum):

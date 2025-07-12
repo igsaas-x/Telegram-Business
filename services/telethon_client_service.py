@@ -7,14 +7,10 @@ from telethon.errors import PersistentTimestampInvalidError
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
-from helper.logger_utils import RotatingLogger
+from helper.logger_utils import force_log
 from models import ChatService, IncomeService
 from services.message_verification_scheduler import MessageVerificationScheduler
 
-
-def force_log(message):
-    """Write logs with hourly rotation"""
-    RotatingLogger.log(message, "TelethonClient")
 
 class TelethonClientService:
     def __init__(self):
