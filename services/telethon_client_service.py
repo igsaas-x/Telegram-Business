@@ -87,25 +87,11 @@ class TelethonClientService:
 
                 force_log(f"Valid currency and amount found, checking duplicates...")
 
-                # Check for duplicate based on message_id first
-                force_log(f"Checking for duplicate message_id: {message_id}")
-                is_duplicate_msg = await self.service.get_income_by_message_id(message_id)
-                force_log(f"Message ID duplicate check result: {is_duplicate_msg}")
-                if is_duplicate_msg:
-                    force_log(f"Duplicate message_id {message_id} found, skipping")
+                # Use comprehensive duplicate check (chat_id + trx_id + message_id)
+                is_duplicate = await self.service.check_duplicate_transaction(event.chat_id, trx_id, message_id)
+                if is_duplicate:
+                    force_log(f"Duplicate transaction found for chat_id={event.chat_id}, trx_id={trx_id}, message_id={message_id}, skipping")
                     return
-
-                # Check for duplicate based on trx_id only if trx_id exists
-                is_duplicate_trx = False
-                if trx_id:
-                    force_log(f"Checking for duplicate trx_id: {trx_id} in chat: {event.chat_id}")
-                    is_duplicate_trx = await self.service.get_income_by_trx_id(trx_id, event.chat_id)
-                    force_log(f"Transaction ID duplicate check result: {is_duplicate_trx}")
-                    if is_duplicate_trx:
-                        force_log(f"Duplicate trx_id {trx_id} found for chat {event.chat_id}, skipping")
-                        return
-                else:
-                    force_log(f"No trx_id to check for duplicates")
 
                 force_log(f"No duplicates found - proceeding with income processing...")
 

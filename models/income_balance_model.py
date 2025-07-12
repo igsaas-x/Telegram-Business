@@ -204,6 +204,41 @@ class IncomeService:
             force_log(f"Transaction ID {trx_id} duplicate check for chat {chat_id}: {'FOUND' if found else 'NOT FOUND'}")
             return found
 
+    async def check_duplicate_transaction(self, chat_id: int, trx_id: str | None, message_id: int) -> bool:
+        """
+        Check for duplicate transaction using combination of chat_id, trx_id, and message_id
+        - If trx_id exists: check (chat_id, trx_id, message_id)
+        - If trx_id is null: check (chat_id, message_id)
+        Returns True if duplicate found, False if unique
+        """
+        force_log(f"Checking duplicate with chat_id: {chat_id}, trx_id: {trx_id}, message_id: {message_id}")
+        
+        with self._get_db() as db:
+            if trx_id:
+                # Check combination of chat_id, trx_id, and message_id
+                duplicate = db.query(IncomeBalance).filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.trx_id == trx_id,
+                    IncomeBalance.message_id == message_id
+                ).first()
+                
+                if duplicate:
+                    force_log(f"Duplicate found by combination: chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}")
+                    return True
+            else:
+                # If trx_id is null, check combination of chat_id and message_id
+                duplicate = db.query(IncomeBalance).filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.message_id == message_id
+                ).first()
+                
+                if duplicate:
+                    force_log(f"Duplicate found by combination: chat_id={chat_id}, message_id={message_id} (trx_id is null)")
+                    return True
+            
+            force_log(f"No duplicate found for chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}")
+            return False
+
     async def get_last_yesterday_message(
             self, date: datetime
     ) -> Optional[IncomeBalance]:
