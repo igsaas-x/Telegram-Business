@@ -66,7 +66,7 @@ class MessageVerificationScheduler:
             verification_count = 0
             new_messages_found = 0
             
-            for chat_id in chat_ids:
+            for i, chat_id in enumerate(chat_ids):
                 try:
                     # Get chat info to check if it's active
                     chat = await self.chat_service.get_chat_by_chat_id(chat_id)
@@ -86,6 +86,15 @@ class MessageVerificationScheduler:
                     for message in messages:
                         await self._verify_and_store_message(chat, message)
                         new_messages_found += 1
+                    
+                    # Rate limiting: Add delay between chats to prevent Telegram API rate limits
+                    # 200ms delay between chats, longer delay every 20 chats
+                    if i < len(chat_ids) - 1:  # Don't delay after the last chat
+                        if (i + 1) % 20 == 0:
+                            force_log(f"Processed {i + 1} chats, taking longer break to prevent rate limits...")
+                            await asyncio.sleep(2)  # 2 second break every 20 chats
+                        else:
+                            await asyncio.sleep(0.2)  # 200ms between each chat
                         
                 except Exception as chat_error:
                     force_log(f"Error processing chat {chat_id}: {chat_error}")
@@ -110,7 +119,7 @@ class MessageVerificationScheduler:
                 chat_id, 
                 offset_date=end_time,
                 reverse=True,
-                limit=None
+                limit=100
             ):
                 # Check if message is within our time range
                 message_time = message.date
