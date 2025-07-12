@@ -1,4 +1,3 @@
-import datetime
 import logging
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, BigInteger
@@ -6,16 +5,14 @@ from sqlalchemy.orm import relationship, joinedload
 
 from config.database_config import Base, SessionLocal
 from helper import DateUtils
+from helper.logger_utils import RotatingLogger
 from models.income_balance_model import IncomeService
 from models.user_model import User, ServicePackage
 
 
 def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - ChatService - ERROR - {message}\n")
-        f.flush()
+    """Write logs with hourly rotation"""
+    RotatingLogger.log(message, "ChatService")
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +119,8 @@ class ChatService:
     async def get_chat_by_chat_id(self, chat_id: int) -> Chat | None:
         session = self.Session()
         try:
-            chat = session.query(Chat).options(joinedload(Chat.user)).filter_by(chat_id=chat_id).first()
+            chat = (session.query(Chat).options(joinedload(Chat.user))
+                    .filter_by(chat_id=chat_id, is_active=True).first())
             return chat
         except Exception as e:
             force_log(f"Error fetching chat by chat ID: {e}")

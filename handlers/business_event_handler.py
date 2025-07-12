@@ -1,7 +1,7 @@
-import datetime
 import logging
 
 from helper import DateUtils
+from helper.logger_utils import RotatingLogger
 from models.chat_model import ChatService
 from models.income_balance_model import IncomeService
 from models.shift_model import ShiftService
@@ -11,11 +11,8 @@ from .client_command_handler import CommandHandler
 
 
 def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - BusinessEventHandler - ERROR - {message}\n")
-        f.flush()
+    """Write logs with hourly rotation"""
+    RotatingLogger.log(message, "BusinessEventHandler")
 
 logger = logging.getLogger(__name__)
 

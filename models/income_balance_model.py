@@ -1,4 +1,3 @@
-import datetime as dt
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from enum import Enum
@@ -19,15 +18,13 @@ from sqlalchemy.orm import Session, relationship
 
 from config.database_config import SessionLocal
 from helper import DateUtils
+from helper.logger_utils import RotatingLogger
 from models.base_model import BaseModel
 
 
 def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - IncomeService - INFO - {message}\n")
-        f.flush()
+    """Write logs with hourly rotation"""
+    RotatingLogger.log(message, "IncomeService")
 
 
 class CurrencyEnum(Enum):

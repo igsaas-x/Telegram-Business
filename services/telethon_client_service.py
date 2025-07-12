@@ -1,5 +1,3 @@
-import datetime
-import logging
 import os
 
 import pytz
@@ -9,19 +7,14 @@ from telethon.errors import PersistentTimestampInvalidError
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
+from helper.logger_utils import RotatingLogger
 from models import ChatService, IncomeService
 from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - TelethonClient - INFO - {message}\n")
-        f.flush()
-
-logger = logging.getLogger(__name__)
-
+    """Write logs with hourly rotation"""
+    RotatingLogger.log(message, "TelethonClient")
 
 class TelethonClientService:
     def __init__(self):

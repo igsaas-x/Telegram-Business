@@ -9,15 +9,13 @@ from telethon.errors import FloodWaitError, RPCError
 from telethon.tl.types import Message
 
 from helper import extract_amount_and_currency, extract_trx_id
+from helper.logger_utils import RotatingLogger
 from models import ChatService, IncomeService
 
 
 def force_log(message):
-    """Write logs to telegram_bot.log since normal logging doesn't work"""
-    with open("telegram_bot.log", "a") as f:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - MessageVerificationScheduler - INFO - {message}\n")
-        f.flush()
+    """Write logs with hourly rotation"""
+    RotatingLogger.log(message, "MessageVerificationScheduler")
 
 
 logger = logging.getLogger(__name__)
@@ -117,13 +115,14 @@ class MessageVerificationScheduler:
 
         try:
             # Get messages from the chat
-            async for message in self.client.iter_messages(
-                    chat_id,
+            all_messages = await self.client.get_messages(chat_id,
                     offset_date=end_time,
                     reverse=True,
                     limit=100,
-                    wait_time=0.5
-            ):
+                    wait_time=0.5)
+            force_log(f"Found {len(all_messages)} messages from {chat_id}")
+
+            for message in all_messages:
                 # Check if message is within our time range
                 message_time = message.date
                 if message_time.tzinfo is None:
