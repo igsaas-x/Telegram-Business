@@ -10,11 +10,11 @@ from models.user_model import UserService
 from .client_command_handler import CommandHandler
 
 
-def force_log(message):
+def force_log(message, level="INFO"):
     """Write logs to telegram_bot.log since normal logging doesn't work"""
     with open("telegram_bot.log", "a") as f:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        f.write(f"{timestamp} - BusinessEventHandler - ERROR - {message}\n")
+        f.write(f"{timestamp} - BusinessEventHandler - {level} - {message}\n")
         f.flush()
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class BusinessEventHandler:
                     return
 
             except Exception as e:
-                force_log(f"Error during business auto-registration: {e}")
+                force_log(f"Error during business auto-registration: {e}", "ERROR")
                 message = "⚠️ Business auto-registration failed. Please contact support."
                 await event.respond(message)
                 return
@@ -211,7 +211,7 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
                     except Exception as e:
-                        force_log(f"Error in duration calculation: {e}")
+                        force_log(f"Error in duration calculation: {e}", "ERROR")
                         # Fallback to simple calculation
                         from datetime import datetime
                         now = datetime.now()
@@ -249,7 +249,7 @@ class BusinessEventHandler:
                 ]
 
         except Exception as e:
-            force_log(f"Error showing current shift report: {e}")
+            force_log(f"Error showing current shift report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -307,7 +307,7 @@ class BusinessEventHandler:
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         except Exception as e:
-            force_log(f"Error showing previous shift report: {e}")
+            force_log(f"Error showing previous shift report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -342,7 +342,7 @@ class BusinessEventHandler:
                 buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
 
         except Exception as e:
-            force_log(f"Error showing other days report: {e}")
+            force_log(f"Error showing other days report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -392,7 +392,7 @@ class BusinessEventHandler:
                 ])
 
         except Exception as e:
-            force_log(f"Error showing date shifts: {e}")
+            force_log(f"Error showing date shifts: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -423,7 +423,7 @@ class BusinessEventHandler:
                         aware_start_time = DateUtils.localize_datetime(shift.start_time)
                         duration = now - aware_start_time
                     except Exception as e:
-                        force_log(f"Error calculating duration for active shift: {e}")
+                        force_log(f"Error calculating duration for active shift: {e}", "ERROR")
                         # Fallback to naive datetime calculation
                         from datetime import datetime
                         now = datetime.now()
@@ -464,7 +464,7 @@ class BusinessEventHandler:
                 ]
 
         except Exception as e:
-            force_log(f"Error showing specific shift report: {e}")
+            force_log(f"Error showing specific shift report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -532,7 +532,7 @@ class BusinessEventHandler:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
         except Exception as e:
-            force_log(f"Error closing shift: {e}")
+            force_log(f"Error closing shift: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
         await event.edit(message, buttons=None)
@@ -542,7 +542,7 @@ class BusinessEventHandler:
         try:
             await event.query.delete_message()
         except Exception as e:
-            force_log(f"Error deleting message: {e}")
+            force_log(f"Error deleting message: {e}", "ERROR")
             # Fallback to editing the message
             await event.edit("Menu closed.", buttons=None)
 
