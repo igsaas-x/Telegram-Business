@@ -2,6 +2,9 @@ from models.income_balance_model import CurrencyEnum
 
 
 def total_summary_report(incomes, summary_title: str) -> str:
+    """
+    Generate a total summary report for the given incomes.
+    """
     totals = {currency.name: 0 for currency in CurrencyEnum}
     transaction_counts = {"KHR": 0, "USD": 0}
 

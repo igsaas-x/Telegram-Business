@@ -20,58 +20,68 @@ class EventHandler:
             try:
                 # Get sender information
                 sender = await event.get_sender()
-                
+
                 # Check if sender is anonymous
-                if not sender or not hasattr(sender, 'id') or sender.id is None:
+                if not sender or not hasattr(sender, "id") or sender.id is None:
                     message = "⚠️ Registration failed: You must be a non-anonymous user to register this chat. Please disable anonymous mode and try again."
                     await event.respond(message)
                     return
-                
+
                 # Create user if not exists
                 user_service = UserService()
                 user = await user_service.create_user(sender)
-                
+
                 # Use our own register method to register the chat
                 await self.register(event, user)
-                
+
                 # Refresh chat information after registration
                 chat = await self.chat_service.get_chat_by_chat_id(str(event.chat_id))
-                
+
                 # If still not available, registration failed
                 if not chat:
                     return  # Register method would have shown appropriate message
-                
+
                 # No need to show success message here since register method already does that
-                
+
             except Exception as e:
                 import logging
+
                 logging.error(f"Error during auto-registration: {e}")
-                message = "⚠️ Auto-registration failed. Please use /register command manually."
+                message = (
+                    "⚠️ Auto-registration failed. Please use /register command manually."
+                )
                 await event.respond(message)
                 return
-        
+
         # Check if chat is not active (needs trial period check)
         if not chat.is_active:
             # Check if it's still within 7-day trial period
             from datetime import timedelta
+
             trial_end = chat.created_at + timedelta(days=7)
-            
+
             # Make trial_end timezone-aware for comparison
             trial_end = DateUtils.localize_datetime(trial_end)
-            
+
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to contact admin
                 message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
-                
+
                 # Check if this is a callback (return button) or new command
-                if hasattr(event, 'callback_query') and event.callback_query:
+                if hasattr(event, "callback_query") and event.callback_query:
                     await event.edit(message)
                 else:
                     await event.respond(message)
                 return
             # If within trial period, continue to show menu (don't update is_active)
-        
+
         # Chat is either active (is_active=True) or within trial period - show menu
+        await self.get_menu_buttons(event)
+
+    async def get_menu_buttons(self, event):
+        """
+        Get the menu buttons for the event.
+        """
         buttons = [
             [
                 Button.inline(
@@ -83,9 +93,9 @@ class EventHandler:
             [Button.inline("ប្រចាំខែ", "monthly_summary")],
             [Button.inline("បិទ", "close_menu")],
         ]
-        
+
         # Check if this is a callback (return button) or new command
-        if hasattr(event, 'callback_query') and event.callback_query:
+        if hasattr(event, "callback_query") and event.callback_query:
             # This is from a return button - edit existing message
             await event.edit("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
         else:
@@ -98,16 +108,16 @@ class EventHandler:
     async def register(self, event, user: User | None):
         chat_id = event.chat_id
         # Handle both group chats (with title) and private chats (without title)
-        group_name = getattr(event.chat, 'title', f"Private Chat {chat_id}")
+        group_name = getattr(event.chat, "title", f"Private Chat {chat_id}")
         chat_service = ChatService()
-        success, message = await chat_service.register_chat_id(chat_id, group_name, user)
-        
+        success, message = await chat_service.register_chat_id(
+            chat_id, group_name, user
+        )
+
         # Add a menu button to the response message for successful registration
         if success:
             # Create menu button
-            buttons = [
-                [Button.inline("របាយការណ៍", "menu")]
-            ]
+            buttons = [[Button.inline("របាយការណ៍", "menu")]]
             await event.respond(message, buttons=buttons)
         else:
             # For failures, just show the message without buttons
