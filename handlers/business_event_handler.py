@@ -86,7 +86,7 @@ class BusinessEventHandler:
 
         message = f"""
 ជ្រើសរើសជម្រើសខាងក្រោម
-        """
+"""
 
         # Check if this is a callback query (edit existing message) or new message (respond)
         if hasattr(event, 'data') and hasattr(event, 'edit'):
@@ -114,14 +114,14 @@ class BusinessEventHandler:
 
         if success:
             response = f"""
-                ✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
-                
-                🏢 ជជែករបស់អ្នកត្រូវបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម។
-                📊 ការវិភាគកម្រិតខ្ពស់ឥឡូវនេះត្រូវបានបើក។
-                💼 អ្នកអាចចូលប្រើលក្ខណៈពិសេសអាជីវកម្មតាមរយៈម៉ឺនុយ។
-                
-                វាយ /menu ដើម្បីចាប់ផ្តើមជាមួយនឹងផ្ទាំងគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
-            """
+✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
+
+🏢 ជជែករបស់អ្នកត្រូវបានចុះឈ្មោះសម្រាប់សេវាអាជីវកម្ម។
+📊 ការវិភាគកម្រិតខ្ពស់ឥឡូវនេះត្រូវបានបើក។
+💼 អ្នកអាចចូលប្រើលក្ខណៈពិសេសអាជីវកម្មតាមរយៈម៉ឺនុយ។
+
+វាយ /menu ដើម្បីចាប់ផ្តើមជាមួយនឹងផ្ទាំងគ្រប់គ្រងអាជីវកម្មរបស់អ្នក។
+"""
         else:
             response = f"❌ Business registration failed: {message}"
 
@@ -163,12 +163,12 @@ class BusinessEventHandler:
 
             if not current_shift:
                 message = """
-                    📊 របាយការណ៍វេនបច្ចុប្បន្ន
-                    
-                    🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
-                    
-                    💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
-                """
+📊 របាយការណ៍វេនបច្ចុប្បន្ន
+
+🔴 គ្មានវេនសកម្មកំពុងដំណើរការ។
+
+💡 វេនថ្មីនឹងត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិនៅពេលមានប្រតិបត្តិការថ្មី។
+"""
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id, chat_id)
@@ -191,16 +191,16 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
 
-                    f"""
-                        📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
-                        
-                        ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-                        ⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-                        🟢 កំពុងបន្ត
-                        
-                        💰 សង្ខេបចំណូលសរុប:
-                        • មិនទាន់មានប្រតិបត្តិការទេ
-                    """
+                    message = f"""
+📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+🟢 កំពុងបន្ត
+
+💰 សង្ខេបចំណូលសរុប:
+• មិនទាន់មានប្រតិបត្តិការទេ
+"""
                 else:
                     # Calculate duration - simplified approach first
                     try:
@@ -233,15 +233,15 @@ class BusinessEventHandler:
                         currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                 message = f"""
-                    📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
-                    
-                    ⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-                    ⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-                    🟢 កំពុងបន្ត
-                    
-                    💰 សង្ខេបចំណូលសរុប:
-                    {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-                """
+📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
+
+⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+🟢 កំពុងបន្ត
+
+💰 សង្ខេបចំណូលសរុប:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+"""
 
                 buttons = [
                     [("🛑 បិទបញ្ជី", "close_shift")],
@@ -269,7 +269,7 @@ class BusinessEventHandler:
 🔴 គ្មានវេនដែលបានបិទ។
 
 💡 វេនមុននឹងបង្ហាញនៅទីនេះបន្ទាប់ពីអ្នកបិទវេន។
-                """
+"""
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift = previous_shifts[0]
@@ -302,7 +302,7 @@ class BusinessEventHandler:
 
 💰 ចំណូលសរុប:
 {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-                """
+"""
 
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -328,7 +328,7 @@ class BusinessEventHandler:
 🔴 គ្មានទិន្នន័យសម្រាប់ថ្ងៃមុនៗ។
 
 💡 ទិន្នន័យនឹងបង្ហាញនៅទីនេះបន្ទាប់ពីមានវេនបានបិទ។
-                """
+"""
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 message = "📅 របាយការណ៍ថ្ងៃផ្សេង\n\nជ្រើសរើសថ្ងៃដែលអ្នកចង់មើល:"
@@ -366,7 +366,7 @@ class BusinessEventHandler:
 📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}
 
 🔴 គ្មានវេនសម្រាប់ថ្ងៃនេះ។
-                """
+"""
                 buttons = [
                     [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
                     [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
@@ -456,7 +456,7 @@ class BusinessEventHandler:
 
 💰 សង្ខេបចំណូលសរុប:
 {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-                """
+"""
 
                 buttons = [
                     [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
@@ -490,7 +490,7 @@ class BusinessEventHandler:
 🟢 ស្ថានភាព: សកម្ម
 
 💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
-                """
+"""
             else:
                 # Close the current shift and create new one
                 closed_shift = await self.shift_service.close_shift(current_shift.id)
@@ -518,16 +518,16 @@ class BusinessEventHandler:
                             currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
 
                     message = f"""
-                        ✅ វេនត្រូវបានបិទដោយជោគជ័យ!
-                        
-                        📊 សង្ខេបវេន #{closed_shift.number}:
-                        ⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-                        ⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
-                        ⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-                        
-                        💰 សង្ខេបចំណូលសរុប:
-                        {currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-                    """
+✅ វេនត្រូវបានបិទដោយជោគជ័យ!
+
+📊 សង្ខេបវេន #{closed_shift.number}:
+⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
+⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %H:%M')}
+⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
+
+💰 សង្ខេបចំណូលសរុប:
+{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
+"""
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
@@ -549,26 +549,26 @@ class BusinessEventHandler:
     async def show_support(self, event):
         """Show support information"""
         message = """
-            📞 ការគាំទ្រអាជីវកម្ម
-            
-            🆘 ត្រូវការជំនួយ?
-            • បញ្ហាបច្ចេកទេសជាមួយបុត
-            • សំណួរអំពីលក្ខណៈពិសេសអាជីវកម្ម
-            • សំណើរបាយការណ៍ផ្ទាល់ខ្លួន
-            • ការគ្រប់គ្រងគណនី
-            
-            📧 វិធីសាស្រ្តទំនាក់ទំនង:
-            • ការគាំទ្រក្នុងកម្មវិធី: ឆ្លើយតបសារនេះ
-            • អ៊ីមែល: business@yourcompany.com
-            • ទូរស័ព្ទ: +1-XXX-XXX-XXXX
-            
-            ⏰ ម៉ោងការគាំទ្រ:
-            ច័ន្ទ - សុក្រ: 9:00 AM - 6:00 PM
-            សៅរ៍: 10:00 AM - 2:00 PM
-            អាទិត្យ: បិទ
-            
-            🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
-        """
+📞 ការគាំទ្រអាជីវកម្ម
+
+🆘 ត្រូវការជំនួយ?
+• បញ្ហាបច្ចេកទេសជាមួយបុត
+• សំណួរអំពីលក្ខណៈពិសេសអាជីវកម្ម
+• សំណើរបាយការណ៍ផ្ទាល់ខ្លួន
+• ការគ្រប់គ្រងគណនី
+
+📧 វិធីសាស្រ្តទំនាក់ទំនង:
+• ការគាំទ្រក្នុងកម្មវិធី: ឆ្លើយតបសារនេះ
+• អ៊ីមែល: business@yourcompany.com
+• ទូរស័ព្ទ: +1-XXX-XXX-XXXX
+
+⏰ ម៉ោងការគាំទ្រ:
+ច័ន្ទ - សុក្រ: 9:00 AM - 6:00 PM
+សៅរ៍: 10:00 AM - 2:00 PM
+អាទិត្យ: បិទ
+
+🚀 ការគាំទ្រពិសេស: មានសម្រាប់គណនីអាជីវកម្ម
+"""
 
         buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
         await event.edit(message, buttons=buttons)
