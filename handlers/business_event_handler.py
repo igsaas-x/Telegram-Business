@@ -4,6 +4,7 @@ import logging
 from helper import DateUtils
 from models.chat_model import ChatService
 from models.income_balance_model import IncomeService
+from models.shift_configuration_model import ShiftConfigurationService
 from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
@@ -30,6 +31,7 @@ class BusinessEventHandler:
         self.chat_service = ChatService()
         self.income_service = IncomeService()
         self.shift_service = ShiftService()
+        self.shift_config_service = ShiftConfigurationService()
 
     async def menu(self, event):
         """Business-specific menu handler"""
@@ -67,6 +69,10 @@ class BusinessEventHandler:
 
         # Create menu buttons based on shift status
         chat_id = event.chat_id
+        
+        # Check for auto close before showing menu
+        await self.check_auto_close_shift(chat_id)
+        
         current_shift = await self.shift_service.get_current_shift(chat_id)
 
         if current_shift:
@@ -563,3 +569,114 @@ Telegram: https://t.me/HK_688
 
         buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
         await event.edit(message, buttons=buttons)
+
+    async def check_auto_close_shift(self, chat_id: int) -> bool:
+        """Check if the current shift should be auto-closed and close it if needed"""
+        try:
+            closed_shift = await self.shift_service.auto_close_shift_for_chat(chat_id)
+            if closed_shift:
+                force_log(f"Auto-closed shift {closed_shift.id} for chat {chat_id}")
+                return True
+            return False
+        except Exception as e:
+            force_log(f"Error checking auto close for chat {chat_id}: {e}", "ERROR")
+            return False
+
+    async def configure_auto_close(self, event, time_str: str = None, hours: int = None):
+        """Configure auto close settings for a chat"""
+        chat_id = event.chat_id
+        
+        try:
+            # Enable auto close with either time or hours
+            config = await self.shift_config_service.update_auto_close_settings(
+                chat_id=chat_id,
+                enabled=True,
+                auto_close_time=time_str,
+                auto_close_after_hours=hours
+            )
+            
+            if time_str:
+                message = f"""
+✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
+
+⏰ វេននឹងត្រូវបានបិទនៅម៉ោង: {time_str}
+
+💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិរាល់ថ្ងៃនៅម៉ោងដែលបានកំណត់។
+"""
+            elif hours:
+                message = f"""
+✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
+
+⏱️ វេននឹងត្រូវបានបិទបន្ទាប់ពី: {hours} ម៉ោងនៃការអសកម្ម
+
+💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិបន្ទាប់ពីរយៈពេលដែលបានកំណត់។
+"""
+            else:
+                message = "❌ សូមផ្តល់ម៉ោង (ឧ. 23:59) ឬចំនួនម៉ោងអសកម្ម។"
+                
+        except Exception as e:
+            force_log(f"Error configuring auto close: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការកំណត់ការបិទដោយស្វ័យប្រវត្តិ។"
+        
+        await event.respond(message)
+
+    async def disable_auto_close(self, event):
+        """Disable auto close for a chat"""
+        chat_id = event.chat_id
+        
+        try:
+            await self.shift_config_service.update_auto_close_settings(
+                chat_id=chat_id,
+                enabled=False
+            )
+            
+            message = """
+✅ បានបិទការបិទវេនដោយស្វ័យប្រវត្តិ!
+
+💡 ឥឡូវនេះអ្នកត្រូវបិទវេនដោយដៃតែម្តង។
+"""
+        except Exception as e:
+            force_log(f"Error disabling auto close: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការបិទការកំណត់ស្វ័យប្រវត្តិ។"
+        
+        await event.respond(message)
+
+    async def show_auto_close_status(self, event):
+        """Show current auto close configuration for a chat"""
+        chat_id = event.chat_id
+        
+        try:
+            config = await self.shift_config_service.get_configuration(chat_id)
+            
+            if not config or not config.auto_close_enabled:
+                message = """
+📊 ស្ថានភាពការបិទវេនស្វ័យប្រវត្តិ
+
+🔴 មិនបានបើក
+
+💡 ប្រើ /autoclose <time> ឬ /autoclose <hours>h ដើម្បីបើក
+ឧទាហរណ៍: /autoclose 23:59 ឬ /autoclose 8h
+"""
+            else:
+                settings = []
+                if config.auto_close_time:
+                    settings.append(f"⏰ បិទនៅម៉ោង: {config.auto_close_time}")
+                if config.auto_close_after_hours:
+                    settings.append(f"⏱️ បិទបន្ទាប់ពី: {config.auto_close_after_hours} ម៉ោងអសកម្ម")
+                
+                settings_text = "\n".join(settings) if settings else "គ្មានការកំណត់"
+                
+                message = f"""
+📊 ស្ថានភាពការបិទវេនស្វ័យប្រវត្តិ
+
+🟢 បានបើក
+
+{settings_text}
+
+💡 ប្រើ /autoclose off ដើម្បីបិទ
+"""
+        except Exception as e:
+            force_log(f"Error showing auto close status: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយកស្ថានភាពការកំណត់។"
+        
+        await event.respond(message)
