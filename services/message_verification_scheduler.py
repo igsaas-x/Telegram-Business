@@ -60,8 +60,8 @@ class MessageVerificationScheduler:
             
             # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)
-            twenty_minutes_ago = now - datetime.timedelta(minutes=30)
-            force_log(f"Checking messages from {twenty_minutes_ago} to {now}")
+            thirty_minutes_ago = now - datetime.timedelta(minutes=30)
+            force_log(f"Checking messages from {thirty_minutes_ago} to {now}")
             
             verification_count = 0
             new_messages_found = 0
@@ -78,7 +78,7 @@ class MessageVerificationScheduler:
                     
                     # Read messages from the chat within the time range
                     messages = await self._get_bot_messages_in_timeframe(
-                        chat_id, twenty_minutes_ago, now
+                        chat_id, thirty_minutes_ago, now
                     )
                     
                     verification_count += len(messages)
