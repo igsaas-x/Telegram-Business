@@ -148,8 +148,6 @@ class EventHandler:
             "daily_summary": self.command_handler.handle_daily_summary,
             "weekly_summary": self.command_handler.handle_weekly_summary,
             "monthly_summary": self.command_handler.handle_monthly_summary,
-            "report_per_shift": self.command_handler.handle_report_per_shift,
-            "close_shift": self.command_handler.close_shift,
             "close": self.command_handler.close,
             "close_menu": self.close_menu,
             "other_dates": self.command_handler.handle_other_dates,

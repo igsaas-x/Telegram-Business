@@ -17,20 +17,6 @@ class CommandHandler:
         title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, title)
 
-    async def _handle_unlimited_package_report(self, event, message: str):
-        buttons = []
-        shift_number = await self.chat_service.is_unlimited_package(event.chat_id)
-        if shift_number:
-            buttons.append(
-                [
-                    Button.inline(
-                        f"បិទបញ្ជីសម្រាប់វេន ({shift_number})",
-                        "close_shift",
-                    ),
-                    Button.inline("ត្រឡប់ក្រោយ", "close")
-                ]
-            )
-        await event.client.send_message(event.chat_id, message, buttons=buttons)
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -85,54 +71,6 @@ class CommandHandler:
             print(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
-    async def handle_report_per_shift(self, event):
-        await event.delete()
-        chat_id = event.chat_id
-        income_service = IncomeService()
-        last_shift = await income_service.get_last_shift_id(chat_id)
-        # if last_shift is None or last_shift.shift_closed:  # type: ignore
-        #     await event.edit("គ្មានបញ្ជីដើម្បីបិទទេ សម្រាប់វេននេះទេ។")
-        #     return
-
-        income_service = IncomeService()
-        incomes = await income_service.get_income_by_shift_id(
-            shift_id=last_shift.shift_id,  # type: ignore
-        )
-
-        await income_service.update_shift(
-            income_id=last_shift.id,  # type: ignore
-            shift=last_shift.shift + 1,  # type: ignore
-        )
-
-        if not incomes:
-            await event.client.send_message(
-                event.chat_id,
-                f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី​{last_shift.shift}ទេ។",
-                buttons=[
-                    [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("ត្រឡប់ក្រោយ", "close")]
-                ]
-            )
-            return
-
-        message = self.format_totals_message(
-            f"ថ្ងៃទី {last_shift.income_date.strftime('%d %b %Y')} វេនទី {last_shift.shift}",
-            incomes,
-        )
-        await event.client.send_message(
-            event.chat_id,
-            message,
-            buttons=[
-                [Button.inline(f"បិទបញ្ជីសម្រាប់វេន", "close_shift"), Button.inline("ត្រឡប់ក្រោយ", "close")]
-            ],
-        )
-
-    async def close_shift(self, event):
-        await event.edit(buttons=None)
-        current_time = DateUtils.now().strftime("%H:%M")
-        await event.client.send_message(
-            event.chat_id,
-            f"បានបិទបញ្ជីសម្រាប់វេន្តនេះ ត្រឹមម៉ោង {current_time}",
-        )
 
     async def close(self, event):
         await self.handle_daily_summary(event)
@@ -141,20 +79,12 @@ class CommandHandler:
         today = DateUtils.now()
         buttons = []
 
-        shift_enabled = await self.chat_service.is_shift_enabled(event.chat_id)
-        if shift_enabled:
-            buttons.append([Button.inline("ប្រចាំវេន​ថ្ងៃ​នេះ", "report_per_shift")])
-            # Only show current date for shift-enabled chats
-            label = today.strftime("ថ្ងៃ​នេះ")
-            callback_value = today.strftime("%Y-%m-%d")
+        # Show 3 days for all chats
+        for i in range(2, -1, -1):
+            day = today - timedelta(days=i)
+            label = day.strftime("%b %d")
+            callback_value = day.strftime("%Y-%m-%d")
             buttons.append([Button.inline(label, f"summary_of_{callback_value}")])
-        else:
-            # Show 3 days for non-shift chats
-            for i in range(2, -1, -1):
-                day = today - timedelta(days=i)
-                label = day.strftime("%b %d")
-                callback_value = day.strftime("%Y-%m-%d")
-                buttons.append([Button.inline(label, f"summary_of_{callback_value}")])
 
         buttons.append([Button.inline("ថ្ងៃផ្សេងទៀត", "other_dates")])
         buttons.append([Button.inline("ត្រឡប់ក្រោយ", "menu")])
