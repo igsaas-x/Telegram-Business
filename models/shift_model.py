@@ -187,6 +187,10 @@ class ShiftService:
             ).all()
             
             for shift in open_shifts:
+                # Skip if we've already processed this chat in this run
+                if shift.chat_id in processed_chats:
+                    continue
+                    
                 config = await config_service.get_configuration(shift.chat_id)
                 if not config or not config.auto_close_enabled:
                     continue
@@ -204,8 +208,17 @@ class ShiftService:
                         current_time.replace(second=0, microsecond=0)):
                         continue
                 
-                # Mark this chat as processed
+                # Mark this chat as processed immediately to prevent duplicates
                 processed_chats.add(shift.chat_id)
+                
+                # Update last_job_run immediately to prevent race conditions
+                from models.shift_configuration_model import ShiftConfiguration
+                db_config = db.query(ShiftConfiguration).filter(
+                    ShiftConfiguration.chat_id == shift.chat_id
+                ).first()
+                if db_config:
+                    db_config.last_job_run = current_time
+                    db.commit()
                 
                 should_close = False
                 
@@ -278,10 +291,6 @@ class ShiftService:
                 
                 # Commit the new shifts
                 db.commit()
-        
-        # Update last_job_run for all processed chats
-        for chat_id in processed_chats:
-            await config_service.update_last_job_run(chat_id, current_time)
         
         return closed_shift_info
 
