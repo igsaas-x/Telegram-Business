@@ -75,6 +75,14 @@ class CommandHandler:
     async def close(self, event):
         await self.handle_daily_summary(event)
 
+    async def handle_current_date_summary(self, event):
+        """Handle current date summary for basic package users"""
+        today = DateUtils.now()
+        date_str = today.strftime("%Y-%m-%d")
+        
+        # Use the existing date summary logic
+        await self.handle_date_summary(event, f"summary_of_{date_str}")
+
     async def handle_daily_summary(self, event):
         today = DateUtils.now()
         buttons = []

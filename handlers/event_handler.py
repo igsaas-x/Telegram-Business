@@ -2,6 +2,7 @@ from telethon import Button
 
 from helper import DateUtils
 from models import ChatService, ConversationService, IncomeService, UserService
+from models.group_package_model import GroupPackageService, ServicePackage
 from models.user_model import User
 from .client_command_handler import CommandHandler
 
@@ -12,6 +13,7 @@ class EventHandler:
         self.command_handler = CommandHandler()
         self.chat_service = ChatService()
         self.income_service = IncomeService()
+        self.group_package_service = GroupPackageService()
 
 
     async def menu(self, event):
@@ -76,17 +78,28 @@ class EventHandler:
             # If within trial period, continue to show menu (don't update is_active)
         
         # Chat is either active (is_active=True) or within trial period - show menu
-        buttons = [
-            [
-                Button.inline(
-                    "ប្រចាំថ្ងៃ",
-                    "daily_summary",
-                )
-            ],
-            [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
-            [Button.inline("ប្រចាំខែ", "monthly_summary")],
-            [Button.inline("បិទ", "close_menu")],
-        ]
+        # Check package to determine available options
+        group_package = await self.group_package_service.get_or_create_group_package(event.chat_id)
+        
+        if group_package.package == ServicePackage.BASIC:
+            # Basic package: only current date option
+            buttons = [
+                [Button.inline("ថ្ងៃនេះ", "current_date_summary")],
+                [Button.inline("បិទ", "close_menu")],
+            ]
+        else:
+            # Trial, Pro, Business packages: full menu
+            buttons = [
+                [
+                    Button.inline(
+                        "ប្រចាំថ្ងៃ",
+                        "daily_summary",
+                    )
+                ],
+                [Button.inline("ប្រចាំសប្តាហ៍", "weekly_summary")],
+                [Button.inline("ប្រចាំខែ", "monthly_summary")],
+                [Button.inline("បិទ", "close_menu")],
+            ]
         
         # Check if this is a callback (return button) or new command
         if hasattr(event, 'callback_query') and event.callback_query:
@@ -146,6 +159,7 @@ class EventHandler:
         command_handlers = {
             "menu": self.menu,
             "daily_summary": self.command_handler.handle_daily_summary,
+            "current_date_summary": self.command_handler.handle_current_date_summary,
             "weekly_summary": self.command_handler.handle_weekly_summary,
             "monthly_summary": self.command_handler.handle_monthly_summary,
             "close": self.command_handler.close,
