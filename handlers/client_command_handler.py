@@ -6,11 +6,13 @@ from telethon import Button
 
 from helper import total_summary_report, DateUtils
 from models import ConversationService, IncomeService, ChatService
+from models.group_package_model import GroupPackageService, ServicePackage
 
 
 class CommandHandler:
     def __init__(self):
         self.chat_service = ChatService()
+        self.group_package_service = GroupPackageService()
 
     @staticmethod
     def format_totals_message(period_text: str, incomes):
@@ -76,12 +78,46 @@ class CommandHandler:
         await self.handle_daily_summary(event)
 
     async def handle_current_date_summary(self, event):
-        """Handle current date summary for basic package users"""
+        """Handle current date summary for basic package users with record limit"""
+        chat_id = event.chat_id
         today = DateUtils.now()
-        date_str = today.strftime("%Y-%m-%d")
         
-        # Use the existing date summary logic
-        await self.handle_date_summary(event, f"summary_of_{date_str}")
+        # Check package type
+        group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
+        
+        try:
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=today,
+                end_date=today + timedelta(days=1),
+            )
+
+            await event.delete()
+            
+            if not incomes:
+                await event.client.send_message(
+                    chat_id,
+                    f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {today.strftime('%d %b %Y')} ទេ។",
+                )
+                return
+
+            # Check if BASIC package and more than 30 records
+            if (group_package and 
+                group_package.package == ServicePackage.BASIC and 
+                len(incomes) > 30):
+                
+                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 30 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
+                await event.client.send_message(chat_id, contact_message)
+                return
+
+            message = self.format_totals_message(
+                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes
+            )
+            await event.client.send_message(chat_id, message)
+
+        except ValueError:
+            await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
 
     async def handle_daily_summary(self, event):
         today = DateUtils.now()

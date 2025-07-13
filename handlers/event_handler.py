@@ -88,7 +88,7 @@ class EventHandler:
                 [Button.inline("បិទ", "close_menu")],
             ]
         else:
-            # Trial, Pro, Business packages: full menu
+            # Trial, Unlimited, Business packages: full menu
             buttons = [
                 [
                     Button.inline(

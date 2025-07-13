@@ -176,7 +176,7 @@ class TelegramAdminBot:
                     keyboard = [
                         [InlineKeyboardButton(ServicePackage.TRIAL.value, callback_data="TRIAL")],
                         [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
-                        [InlineKeyboardButton(ServicePackage.PRO.value, callback_data="PRO")],
+                        [InlineKeyboardButton(ServicePackage.UNLIMITED.value, callback_data="UNLIMITED")],
                         [InlineKeyboardButton(ServicePackage.BUSINESS.value, callback_data="BUSINESS")],
                     ]
                     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -212,7 +212,7 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
                 
                 # Handle package selection buttons
-                if selected_package in ["TRIAL", "BASIC", "PRO", "BUSINESS"]:
+                if selected_package in ["TRIAL", "BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
                     
                     if not chat_id:

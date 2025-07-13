@@ -25,7 +25,7 @@ def upgrade() -> None:
         "group_package",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("chat_id", sa.BigInteger, nullable=False),
-        sa.Column("package", sa.Enum("TRIAL", "BASIC", "PRO", "BUSINESS", name="servicepackage"), nullable=False, server_default="TRIAL"),
+        sa.Column("package", sa.Enum("TRIAL", "BASIC", "UNLIMITED", "BUSINESS", name="servicepackage"), nullable=False, server_default="TRIAL"),
         sa.Column("is_paid", sa.Boolean, default=False),
         sa.Column("package_start_date", sa.DateTime, nullable=True),
         sa.Column("package_end_date", sa.DateTime, nullable=True),

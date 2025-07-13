@@ -21,7 +21,7 @@ from models.base_model import BaseModel
 class ServicePackage(Enum):
     TRIAL = "TRIAL"
     BASIC = "BASIC"
-    PRO = "PRO"
+    UNLIMITED = "UNLIMITED"
     BUSINESS = "BUSINESS"
 
 
