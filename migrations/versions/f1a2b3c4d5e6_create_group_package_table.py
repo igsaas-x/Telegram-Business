@@ -25,7 +25,7 @@ def upgrade() -> None:
         "group_package",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("chat_id", sa.BigInteger, nullable=False),
-        sa.Column("package", sa.Enum("TRAIL", "BASIC", "PRO", "BUSINESS", name="servicepackage"), nullable=False, server_default="TRAIL"),
+        sa.Column("package", sa.Enum("TRIAL", "BASIC", "PRO", "BUSINESS", name="servicepackage"), nullable=False, server_default="TRIAL"),
         sa.Column("is_paid", sa.Boolean, default=False),
         sa.Column("package_start_date", sa.DateTime, nullable=True),
         sa.Column("package_end_date", sa.DateTime, nullable=True),
@@ -45,17 +45,9 @@ def upgrade() -> None:
     
     # Add unique constraint on chat_id
     op.create_unique_constraint("uq_group_package_chat_id", "group_package", ["chat_id"])
-    
-    # Remove package-related columns from users table
-    op.drop_column("users", "is_paid")
-    op.drop_column("users", "package")
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # Add package-related columns back to users table
-    op.add_column("users", sa.Column("is_paid", sa.Boolean, default=False))
-    op.add_column("users", sa.Column("package", sa.Enum("BASIC", "PRO", "UNLIMITED", name="servicepackage_old"), nullable=False, server_default="BASIC"))
-    
     # Drop the group_package table
     op.drop_table("group_package")

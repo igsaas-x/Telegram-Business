@@ -19,7 +19,7 @@ from models.base_model import BaseModel
 
 
 class ServicePackage(Enum):
-    TRAIL = "TRAIL"
+    TRIAL = "TRIAL"
     BASIC = "BASIC"
     PRO = "PRO"
     BUSINESS = "BUSINESS"
@@ -31,7 +31,7 @@ class GroupPackage(BaseModel):
     id = Column(Integer, primary_key=True)
     chat_id = Column(BigInteger, ForeignKey("chat_group.chat_id"), unique=True, nullable=False)
     package = Column(
-        SQLAlchemyEnum(ServicePackage), nullable=False, default=ServicePackage.TRAIL
+        SQLAlchemyEnum(ServicePackage), nullable=False, default=ServicePackage.TRIAL
     )
     is_paid = Column(Boolean, default=False)
     package_start_date = Column(DateTime, nullable=True)
@@ -64,13 +64,13 @@ class GroupPackageService:
             ).first()
             return package
 
-    async def create_group_package(self, chat_id: int, package: ServicePackage = ServicePackage.TRAIL) -> GroupPackage:
+    async def create_group_package(self, chat_id: int, package: ServicePackage = ServicePackage.TRIAL) -> GroupPackage:
         """Create a new group package record for a chat"""
         with self._get_db() as db:
             group_package = GroupPackage(
                 chat_id=chat_id,
                 package=package,
-                is_paid=False if package == ServicePackage.TRAIL else True,
+                is_paid=False if package == ServicePackage.TRIAL else True,
                 created_at=DateUtils.now(),
                 updated_at=DateUtils.now()
             )
@@ -100,7 +100,7 @@ class GroupPackageService:
             
             if group_package:
                 group_package.package = package
-                group_package.is_paid = False if package == ServicePackage.TRAIL else True
+                group_package.is_paid = False if package == ServicePackage.TRIAL else True
                 group_package.updated_at = DateUtils.now()
                 
                 if package_start_date:
@@ -116,8 +116,8 @@ class GroupPackageService:
             return None
 
     async def get_or_create_group_package(self, chat_id: int) -> GroupPackage:
-        """Get existing group package or create a new one with TRAIL package"""
+        """Get existing group package or create a new one with TRIAL package"""
         existing = await self.get_package_by_chat_id(chat_id)
         if existing:
             return existing
-        return await self.create_group_package(chat_id, ServicePackage.TRAIL)
+        return await self.create_group_package(chat_id, ServicePackage.TRIAL)

@@ -174,7 +174,7 @@ class TelegramAdminBot:
                 if action == "confirm_user":
                     # Show package selection
                     keyboard = [
-                        [InlineKeyboardButton(ServicePackage.TRAIL.value, callback_data="TRAIL")],
+                        [InlineKeyboardButton(ServicePackage.TRIAL.value, callback_data="TRIAL")],
                         [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
                         [InlineKeyboardButton(ServicePackage.PRO.value, callback_data="PRO")],
                         [InlineKeyboardButton(ServicePackage.BUSINESS.value, callback_data="BUSINESS")],
@@ -212,7 +212,7 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
                 
                 # Handle package selection buttons
-                if selected_package in ["TRAIL", "BASIC", "PRO", "BUSINESS"]:
+                if selected_package in ["TRIAL", "BASIC", "PRO", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
                     
                     if not chat_id:
@@ -234,8 +234,8 @@ class TelegramAdminBot:
                     if ServicePackage(selected_package) == ServicePackage.BUSINESS:
                         # When upgrading to business, automatically enable shift
                         await self.chat_service.update_chat_enable_shift(chat_id, True)
-                    elif ServicePackage(selected_package) == ServicePackage.TRAIL:
-                        # When downgrading to trail, disable shift
+                    elif ServicePackage(selected_package) == ServicePackage.TRIAL:
+                        # When downgrading to trial, disable shift
                         await self.chat_service.update_chat_enable_shift(chat_id, False)
                     
                     # Get user info for confirmation message
