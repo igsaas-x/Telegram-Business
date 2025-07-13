@@ -76,9 +76,13 @@ class GroupPackageService:
 
     async def create_group_package(self, chat_id: int, package: ServicePackage = ServicePackage.TRIAL) -> GroupPackage:
         """Create a new group package record for a chat"""
+        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
+        if not chat_group_id:
+            raise ValueError(f"Chat with chat_id {chat_id} not found")
+            
         with self._get_db() as db:
             group_package = GroupPackage(
-                chat_id=chat_id,
+                chat_group_id=chat_group_id,
                 package=package,
                 is_paid=False if package == ServicePackage.TRIAL else True,
                 created_at=DateUtils.now(),
@@ -103,9 +107,13 @@ class GroupPackageService:
         last_paid_date: Optional[DateTime] = None
     ) -> Optional[GroupPackage]:
         """Update package information for a chat"""
+        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
+        if not chat_group_id:
+            return None
+            
         with self._get_db() as db:
             group_package = db.query(GroupPackage).filter(
-                GroupPackage.chat_id == chat_id
+                GroupPackage.chat_group_id == chat_group_id
             ).first()
             
             if group_package:
