@@ -29,9 +29,9 @@ def upgrade() -> None:
     
     # Insert group packages for all active chats
     op.execute(f"""
-        INSERT INTO group_package (chat_id, package, is_paid, package_start_date, package_end_date, created_at, updated_at)
+        INSERT INTO group_package (chat_group_id, package, is_paid, package_start_date, package_end_date, created_at, updated_at)
         SELECT 
-            chat_id,
+            id as chat_group_id,
             'TRIAL' as package,
             false as is_paid,
             '{trial_start.strftime('%Y-%m-%d %H:%M:%S')}' as package_start_date,
@@ -40,7 +40,7 @@ def upgrade() -> None:
             '{current_time.strftime('%Y-%m-%d %H:%M:%S')}' as updated_at
         FROM chat_group 
         WHERE is_active = true
-        AND chat_id NOT IN (SELECT chat_id FROM group_package)
+        AND id NOT IN (SELECT chat_group_id FROM group_package)
     """)
 
 

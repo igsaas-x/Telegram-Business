@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.create_table(
         "group_package",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("chat_id", sa.BigInteger, nullable=False),
+        sa.Column("chat_group_id", sa.Integer, nullable=False),
         sa.Column("package", sa.Enum("TRIAL", "BASIC", "UNLIMITED", "BUSINESS", name="servicepackage"), nullable=False, server_default="TRIAL"),
         sa.Column("is_paid", sa.Boolean, default=False),
         sa.Column("package_start_date", sa.DateTime, nullable=True),
@@ -33,18 +33,18 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
     )
-    
+
     # Add foreign key constraint
     op.create_foreign_key(
-        "fk_group_package_chat_id", 
-        "group_package", 
-        "chat_group", 
-        ["chat_id"], 
-        ["chat_id"]
+        "fk_group_package_chat_id",
+        "group_package",
+        "chat_group",
+        ["chat_group_id"],
+        ["id"]
     )
     
-    # Add unique constraint on chat_id
-    op.create_unique_constraint("uq_group_package_chat_id", "group_package", ["chat_id"])
+    # Add unique constraint on chat_group_id
+    op.create_unique_constraint("uq_group_package_chat_group_id", "group_package", ["chat_group_id"])
 
 
 def downgrade() -> None:

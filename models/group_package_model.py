@@ -5,7 +5,6 @@ from typing import Generator, Any, Optional
 from sqlalchemy import (
     Column,
     Integer,
-    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -29,7 +28,7 @@ class GroupPackage(BaseModel):
     __tablename__ = "group_package"
 
     id = Column(Integer, primary_key=True)
-    chat_id = Column(BigInteger, ForeignKey("chat_group.chat_id"), unique=True, nullable=False)
+    chat_group_id = Column(Integer, ForeignKey("chat_group.id"), unique=True, nullable=False)
     package = Column(
         SQLAlchemyEnum(ServicePackage), nullable=False, default=ServicePackage.TRIAL
     )
@@ -41,7 +40,7 @@ class GroupPackage(BaseModel):
     updated_at = Column(DateTime, default=DateUtils.now, onupdate=DateUtils.now, nullable=False)
     
     # One-to-one relationship with chat_group
-    chat = relationship("Chat", backref="group_package", uselist=False)
+    chat_group = relationship("Chat", backref="group_package", uselist=False)
 
 
 class GroupPackageService:
@@ -56,11 +55,22 @@ class GroupPackageService:
         finally:
             db.close()
 
+    async def _get_chat_group_id_by_chat_id(self, chat_id: int) -> Optional[int]:
+        """Get chat_group.id by chat_id"""
+        with self._get_db() as db:
+            from models.chat_model import Chat
+            chat = db.query(Chat).filter(Chat.chat_id == chat_id).first()
+            return chat.id if chat else None
+
     async def get_package_by_chat_id(self, chat_id: int) -> Optional[GroupPackage]:
         """Get group package info for a chat"""
+        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
+        if not chat_group_id:
+            return None
+            
         with self._get_db() as db:
             package = db.query(GroupPackage).filter(
-                GroupPackage.chat_id == chat_id
+                GroupPackage.chat_group_id == chat_group_id
             ).first()
             return package
 

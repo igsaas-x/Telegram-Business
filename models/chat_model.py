@@ -5,7 +5,7 @@ from config.database_config import Base, SessionLocal
 from helper import DateUtils
 from helper.logger_utils import force_log
 from models.income_balance_model import IncomeService
-from models.user_model import User, ServicePackage
+from models.user_model import User
 
 
 class Chat(Base):
