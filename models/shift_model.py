@@ -227,17 +227,16 @@ class ShiftService:
                 if auto_close_times:
                     for time_str in auto_close_times:
                         try:
-                            # Parse time string (HH:MM:SS format)
+                            # Parse time string (HH:MM format)
                             time_parts = time_str.split(":")
                             hour = int(time_parts[0])
                             minute = int(time_parts[1])
-                            second = int(time_parts[2]) if len(time_parts) > 2 else 0
                             
                             # Convert to datetime for comparison
                             from datetime import time
                             close_time = datetime.combine(
                                 current_time.date(), 
-                                time(hour, minute, second)
+                                time(hour, minute)
                             )
                             # Make timezone aware
                             close_time = DateUtils.localize_datetime(close_time)
@@ -317,17 +316,16 @@ class ShiftService:
         if auto_close_times:
             for time_str in auto_close_times:
                 try:
-                    # Parse time string (HH:MM:SS format)
+                    # Parse time string (HH:MM format)
                     time_parts = time_str.split(":")
                     hour = int(time_parts[0])
                     minute = int(time_parts[1])
-                    second = int(time_parts[2]) if len(time_parts) > 2 else 0
                     
                     # Convert to datetime for comparison
                     from datetime import time
                     close_time = datetime.combine(
                         current_time.date(), 
-                        time(hour, minute, second)
+                        time(hour, minute)
                     )
                     close_time = DateUtils.localize_datetime(close_time)
                     
@@ -335,7 +333,8 @@ class ShiftService:
                     if current_time >= close_time and shift_start < close_time:
                         should_close = True
                         break  # Exit loop once we find a matching close time
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) :
+                    force_log(f"fail to parse time:{time_str}", "shift_model")
                     continue  # Skip invalid time formats
         
         if should_close:
