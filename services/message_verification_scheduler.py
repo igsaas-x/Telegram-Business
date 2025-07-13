@@ -107,9 +107,9 @@ class MessageVerificationScheduler:
         messages = []
 
         try:
-            # Get messages from the chat
+            # Get messages from the chat starting from 30 minutes ago
             all_messages = await self.client.get_messages(chat_id,
-                    offset_date=end_time,
+                    offset_date=start_time,
                     reverse=True,
                     limit=100,
                     wait_time=0.5)
