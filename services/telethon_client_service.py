@@ -9,14 +9,14 @@ from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from services import ChatService, IncomeService
-from services.message_verification_scheduler import MessageVerificationScheduler
+from schedulers import MessageVerificationScheduler
 
 
 class TelethonClientService:
     def __init__(self):
-        self.client = None
+        self.client: TelegramClient | None = None
         self.service = IncomeService()
-        self.scheduler = None
+        self.scheduler: MessageVerificationScheduler | None = None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
@@ -51,7 +51,7 @@ class TelethonClientService:
         force_log("Telethon client event handlers registered successfully")
 
         # Initialize and start the message verification scheduler
-        self.scheduler = MessageVerificationScheduler(self.client)
+        self.scheduler = MessageVerificationScheduler(self.client)  # type: ignore
         force_log("Starting message verification scheduler...")
 
         @self.client.on(events.NewMessage)  # type: ignore
@@ -180,7 +180,7 @@ class TelethonClientService:
                         message_id,
                         event.message.text,
                         trx_id,
-                        None,  # shift_id
+                        0,  # shift_id
                         chat.enable_shift,  # enable_shift
                     )
                     force_log(

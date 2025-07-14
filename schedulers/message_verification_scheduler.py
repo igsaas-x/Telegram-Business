@@ -9,9 +9,7 @@ from telethon.tl.types import Message
 
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from .chat_service import ChatService
-from .income_balance_service import IncomeService
-from .shift_service import ShiftService
+from services import ChatService, IncomeService, ShiftService
 
 
 class MessageVerificationScheduler:

@@ -10,7 +10,7 @@ from config import load_environment
 from helper.credential_loader import CredentialLoader
 from services.telegram_bot_service import TelegramBotService
 from services.telethon_client_service import TelethonClientService
-from services.auto_close_scheduler import AutoCloseScheduler
+from schedulers import AutoCloseScheduler
 from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
 
