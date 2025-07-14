@@ -463,6 +463,7 @@ class TelegramAdminBot:
     async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
         return MENU_COMMAND_CODE
+
         
     async def process_menu_chat_id(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

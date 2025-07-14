@@ -1,6 +1,7 @@
 from telethon import Button
 
 from helper import DateUtils
+from helper.logger_utils import force_log
 from models import ChatService, ConversationService, IncomeService, UserService
 from models.group_package_model import GroupPackageService, ServicePackage
 from models.user_model import User
@@ -15,6 +16,43 @@ class EventHandler:
         self.income_service = IncomeService()
         self.group_package_service = GroupPackageService()
 
+    async def _check_and_notify_autosum_missing(self, event):
+        """Check if @autosum_kh exists in the group and notify if missing"""
+        try:
+            # Only check for groups, not private chats
+            if event.is_private:
+                return
+                
+            # Get participants to check if @autosum_kh is already in the group
+            try:
+                participants = await event.client.get_participants(event.chat_id)
+                autosum_usernames = ['autosum_kh']
+                
+                # Check if any of the autosum bots are already in the group
+                existing_usernames = {getattr(p, 'username', '').lower() for p in participants if hasattr(p, 'username') and p.username}
+                
+                for username in autosum_usernames:
+                    if username.lower() in existing_usernames:
+                        return  # Bot already exists, no need to notify
+                
+                # Notify that @autosum_kh should be added with a convenient button
+                notification_message = (
+                    "⚠️ សម្រាប់ការប្រើប្រាស់ពេញលេញ សូមបន្ថែម @autosum_kh ចូលក្រុមនេះ។"
+                )
+                
+                # Create button to easily add @autosum_kh
+                buttons = [
+                    [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
+                ]
+                
+                await event.respond(notification_message, buttons=buttons)
+                force_log(f"Notified group {event.chat_id} to add @autosum_kh with button")
+
+            except Exception as e:
+                force_log(f"Error checking participants in group {event.chat_id}: {e}")
+                
+        except Exception as e:
+            force_log(f"Error in _check_and_notify_autosum_missing: {e}")
 
     async def menu(self, event):
         if event.is_private:
@@ -78,6 +116,9 @@ class EventHandler:
             # If within trial period, continue to show menu (don't update is_active)
         
         # Chat is either active (is_active=True) or within trial period - show menu
+        # Check and notify if @autosum_kh is missing
+        await self._check_and_notify_autosum_missing(event)
+        
         # Check package to determine available options
         group_package = await self.group_package_service.get_or_create_group_package(event.chat_id)
         
@@ -121,6 +162,9 @@ class EventHandler:
         
         # Add a menu button to the response message for successful registration
         if success:
+            # Check and notify if @autosum_kh is missing after successful registration
+            await self._check_and_notify_autosum_missing(event)
+            
             # Create menu button
             buttons = [
                 [Button.inline("របាយការណ៍", "menu")]
