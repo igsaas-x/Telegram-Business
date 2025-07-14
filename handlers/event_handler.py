@@ -40,13 +40,8 @@ class EventHandler:
                     "⚠️ សម្រាប់ការប្រើប្រាស់ពេញលេញ សូមបន្ថែម @autosum_kh ចូលក្រុមនេះ។"
                 )
                 
-                # Create button to easily add @autosum_kh
-                buttons = [
-                    [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
-                ]
-                
-                await event.respond(notification_message, buttons=buttons)
                 force_log(f"Notified group {event.chat_id} to add @autosum_kh with button")
+                return notification_message, True
 
             except Exception as e:
                 force_log(f"Error checking participants in group {event.chat_id}: {e}")
@@ -117,7 +112,13 @@ class EventHandler:
         
         # Chat is either active (is_active=True) or within trial period - show menu
         # Check and notify if @autosum_kh is missing
-        await self._check_and_notify_autosum_missing(event)
+        telethon_message, not_added = await self._check_and_notify_autosum_missing(event)
+        if telethon_message and not_added:
+            # Create button to easily add @autosum_kh
+            buttons = [
+                [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
+            ]
+            await event.respond(telethon_message, buttons=buttons)
         
         # Check package to determine available options
         group_package = await self.group_package_service.get_or_create_group_package(event.chat_id)
@@ -163,12 +164,18 @@ class EventHandler:
         # Add a menu button to the response message for successful registration
         if success:
             # Check and notify if @autosum_kh is missing after successful registration
-            await self._check_and_notify_autosum_missing(event)
-            
-            # Create menu button
-            buttons = [
-                [Button.inline("របាយការណ៍", "menu")]
-            ]
+            telethon_message, not_added = await self._check_and_notify_autosum_missing(event)
+            if telethon_message and not_added:
+                # Create button to easily add @autosum_kh
+                message = telethon_message
+                buttons = [
+                    [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
+                ]
+            else:
+                # Create menu button
+                buttons = [
+                    [Button.inline("របាយការណ៍", "menu")]
+                ]
             await event.respond(message, buttons=buttons)
         else:
             # For failures, just show the message without buttons
