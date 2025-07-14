@@ -2,13 +2,15 @@ from typing import List
 
 from helper import DateUtils
 from helper.logger_utils import force_log
-from models.chat_model import ChatService
-from models.income_balance_model import IncomeService
-from models.shift_configuration_model import ShiftConfigurationService
-from models.shift_model import ShiftService
-from models.user_model import User
-from models.user_model import UserService
+from services.chat_service import ChatService
+from services.income_balance_service import IncomeService
+from services.shift_service import ShiftService
+from services.shift_configuration_service import ShiftConfigurationService
+from services.user_service import UserService
+from services.group_package_service import GroupPackageService
 from .client_command_handler import CommandHandler
+from common.enums import ServicePackage
+from models import User
 
 
 class BusinessEventHandler:
@@ -22,6 +24,7 @@ class BusinessEventHandler:
         self.income_service = IncomeService()
         self.shift_service = ShiftService()
         self.shift_config_service = ShiftConfigurationService()
+        self.group_package_service = GroupPackageService()
 
     async def menu(self, event):
         """Business-specific menu handler"""
@@ -33,7 +36,7 @@ class BusinessEventHandler:
             try:
                 sender = await event.get_sender()
 
-                if not sender or not hasattr(sender, 'id') or sender.id is None:
+                if not sender or not hasattr(sender, "id") or sender.id is None:
                     message = "⚠️ Business Registration failed: You must be a non-anonymous user to register this chat for business services."
                     await event.respond(message)
                     return
@@ -71,13 +74,13 @@ class BusinessEventHandler:
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
                 # [("🛑 បិទបញ្ជី", "close_shift")],
-                [("❌ ត្រលប់ក្រោយ", "close_menu")]
+                [("❌ ត្រលប់ក្រោយ", "close_menu")],
             ]
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
-                [("❌ បិទ", "close_menu")]
+                [("❌ បិទ", "close_menu")],
             ]
 
         message = f"""
@@ -85,7 +88,7 @@ class BusinessEventHandler:
 """
 
         # Check if this is a callback query (edit existing message) or new message (respond)
-        if hasattr(event, 'data') and hasattr(event, 'edit'):
+        if hasattr(event, "data") and hasattr(event, "edit"):
             # This is a callback query, edit the existing message
             await event.edit(message, buttons=buttons)
         else:
@@ -99,8 +102,8 @@ class BusinessEventHandler:
 
         # Try to get chat title
         try:
-            if hasattr(event, 'chat') and event.chat:
-                chat_title = getattr(event.chat, 'title', 'Business Chat')
+            if hasattr(event, "chat") and event.chat:
+                chat_title = getattr(event.chat, "title", "Business Chat")
         except:
             force_log("Failed to register business chat")
 
@@ -111,12 +114,14 @@ class BusinessEventHandler:
         if success:
             # Assign BUSINESS package for business bot registrations
             try:
-                from models.group_package_model import GroupPackageService, ServicePackage
-                package_service = GroupPackageService()
-                await package_service.create_group_package(chat_id, ServicePackage.BUSINESS)
+                await self.group_package_service.create_group_package(
+                    chat_id, ServicePackage.BUSINESS
+                )
                 force_log(f"Assigned BUSINESS package to chat_id: {chat_id}")
             except Exception as package_error:
-                force_log(f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}")
+                force_log(
+                    f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}"
+                )
             response = f"""
 ✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
 
@@ -133,7 +138,7 @@ class BusinessEventHandler:
 
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
-        data = event.data.decode('utf-8')
+        data = event.data.decode("utf-8")
         force_log(f"handle_business_callback received data: {data}")
 
         if data == "current_shift_report":
@@ -175,20 +180,25 @@ class BusinessEventHandler:
 """
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                shift_summary = await self.shift_service.get_shift_income_summary(current_shift.id, chat_id)
-                
+                shift_summary = await self.shift_service.get_shift_income_summary(
+                    current_shift.id, chat_id
+                )
+
                 # Handle case where shift exists but has no transactions yet
-                if shift_summary['transaction_count'] == 0:
+                if shift_summary["transaction_count"] == 0:
                     # Calculate duration for empty shift
                     try:
                         now = DateUtils.now()
-                        aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
+                        aware_start_time = DateUtils.localize_datetime(
+                            current_shift.start_time
+                        )
                         duration = now - aware_start_time
                         total_seconds = abs(duration.total_seconds())
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
                     except Exception:
                         from datetime import datetime
+
                         now = datetime.now()
                         duration = now - current_shift.start_time
                         total_seconds = abs(duration.total_seconds())
@@ -209,7 +219,9 @@ class BusinessEventHandler:
                     # Calculate duration - simplified approach first
                     try:
                         now = DateUtils.now()
-                        aware_start_time = DateUtils.localize_datetime(current_shift.start_time)
+                        aware_start_time = DateUtils.localize_datetime(
+                            current_shift.start_time
+                        )
                         duration = now - aware_start_time
                         total_seconds = abs(duration.total_seconds())
                         hours = int(total_seconds // 3600)
@@ -218,6 +230,7 @@ class BusinessEventHandler:
                         force_log(f"Error in duration calculation: {e}", "ERROR")
                         # Fallback to simple calculation
                         from datetime import datetime
+
                         now = datetime.now()
 
                         duration = now - current_shift.start_time
@@ -227,11 +240,11 @@ class BusinessEventHandler:
 
                 # Currency breakdown
                 currency_text = ""
-                for currency, data in shift_summary['currencies'].items():
-                    if currency == 'USD':
+                for currency, data in shift_summary["currencies"].items():
+                    if currency == "USD":
                         currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                    elif currency == 'KHR':
-                        khr_amount = int(data['amount'])
+                    elif currency == "KHR":
+                        khr_amount = int(data["amount"])
                         currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
                     else:
                         currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
@@ -249,7 +262,7 @@ class BusinessEventHandler:
 
                 buttons = [
                     [("🛑 បិទបញ្ជី", "close_shift")],
-                    [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                    [("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
                 ]
 
         except Exception as e:
@@ -264,7 +277,9 @@ class BusinessEventHandler:
         chat_id = int(event.chat_id)
 
         try:
-            previous_shifts = await self.shift_service.get_recent_closed_shifts(chat_id, 1)
+            previous_shifts = await self.shift_service.get_recent_closed_shifts(
+                chat_id, 1
+            )
 
             if not previous_shifts:
                 message = """
@@ -277,7 +292,9 @@ class BusinessEventHandler:
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
                 shift = previous_shifts[0]
-                shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
+                shift_summary = await self.shift_service.get_shift_income_summary(
+                    shift.id, chat_id
+                )
 
                 # Calculate duration
                 duration = shift.end_time - shift.start_time
@@ -287,11 +304,11 @@ class BusinessEventHandler:
 
                 # Currency breakdown
                 currency_text = ""
-                for currency, data in shift_summary['currencies'].items():
-                    if currency == 'USD':
+                for currency, data in shift_summary["currencies"].items():
+                    if currency == "USD":
                         currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                    elif currency == 'KHR':
-                        khr_amount = int(data['amount'])
+                    elif currency == "KHR":
+                        khr_amount = int(data["amount"])
                         currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
                     else:
                         currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
@@ -322,7 +339,9 @@ class BusinessEventHandler:
         chat_id = int(event.chat_id)
 
         try:
-            recent_dates = await self.shift_service.get_recent_dates_with_shifts(chat_id, 3)
+            recent_dates = await self.shift_service.get_recent_dates_with_shifts(
+                chat_id, 3
+            )
             force_log(f"Found recent dates: {recent_dates}")
 
             if not recent_dates:
@@ -356,10 +375,13 @@ class BusinessEventHandler:
         """Show shifts for a specific date"""
         chat_id = int(event.chat_id)
         date_str = data.replace("date_", "")
-        force_log(f"show_date_shifts called with data: {data}, date_str: {date_str}, chat_id: {chat_id}")
+        force_log(
+            f"show_date_shifts called with data: {data}, date_str: {date_str}, chat_id: {chat_id}"
+        )
 
         try:
             from datetime import datetime
+
             selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             force_log(f"Parsed date: {selected_date}")
             shifts = await self.shift_service.get_shifts_by_date(chat_id, selected_date)
@@ -373,7 +395,7 @@ class BusinessEventHandler:
 """
                 buttons = [
                     [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
-                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
                 ]
             else:
                 message = f"📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}\n\nជ្រើសរើសវេនដែលអ្នកចង់មើល:"
@@ -381,19 +403,29 @@ class BusinessEventHandler:
                 buttons = []
                 for shift in shifts:
                     force_log(f"Processing shift {shift.id}, number {shift.number}")
-                    shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
+                    shift_summary = await self.shift_service.get_shift_income_summary(
+                        shift.id, chat_id
+                    )
                     force_log(f"Got shift summary: {shift_summary}")
-                    start_time = shift.start_time.strftime('%I:%M %p')
-                    end_time = shift.end_time.strftime('%I:%M %p') if shift.end_time else "កំពុងបន្ត"
+                    start_time = shift.start_time.strftime("%I:%M %p")
+                    end_time = (
+                        shift.end_time.strftime("%I:%M %p")
+                        if shift.end_time
+                        else "កំពុងបន្ត"
+                    )
                     status = "🔴" if shift.is_closed else "🟢"
 
-                    button_text = f"{status} វេន #{shift.number} ({start_time}-{end_time})"
+                    button_text = (
+                        f"{status} វេន #{shift.number} ({start_time}-{end_time})"
+                    )
                     buttons.append([(button_text, f"shift_{shift.id}")])
 
-                buttons.extend([
-                    [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
-                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
-                ])
+                buttons.extend(
+                    [
+                        [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
+                        [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
+                    ]
+                )
 
         except Exception as e:
             force_log(f"Error showing date shifts: {e}", "ERROR")
@@ -413,23 +445,29 @@ class BusinessEventHandler:
                 message = "❌ រកមិនឃើញវេននេះទេ។"
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             else:
-                shift_summary = await self.shift_service.get_shift_income_summary(shift.id, chat_id)
+                shift_summary = await self.shift_service.get_shift_income_summary(
+                    shift.id, chat_id
+                )
 
                 # Calculate duration
                 if shift.end_time:
                     duration = shift.end_time - shift.start_time
-                    end_text = shift.end_time.strftime('%Y-%m-%d %I:%M %p')
+                    end_text = shift.end_time.strftime("%Y-%m-%d %I:%M %p")
                     status = "🔴 បានបិទបញ្ជី"
                 else:
                     from helper import DateUtils
+
                     try:
                         now = DateUtils.now()
                         aware_start_time = DateUtils.localize_datetime(shift.start_time)
                         duration = now - aware_start_time
                     except Exception as e:
-                        force_log(f"Error calculating duration for active shift: {e}", "ERROR")
+                        force_log(
+                            f"Error calculating duration for active shift: {e}", "ERROR"
+                        )
                         # Fallback to naive datetime calculation
                         from datetime import datetime
+
                         now = datetime.now()
                         duration = now - shift.start_time
                     end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
@@ -441,11 +479,11 @@ class BusinessEventHandler:
 
                 # Currency breakdown
                 currency_text = ""
-                for currency, data in shift_summary['currencies'].items():
-                    if currency == 'USD':
+                for currency, data in shift_summary["currencies"].items():
+                    if currency == "USD":
                         currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                    elif currency == 'KHR':
-                        khr_amount = int(data['amount'])
+                    elif currency == "KHR":
+                        khr_amount = int(data["amount"])
                         currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
                     else:
                         currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
@@ -464,7 +502,7 @@ class BusinessEventHandler:
 
                 buttons = [
                     [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
-                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")]
+                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
                 ]
 
         except Exception as e:
@@ -504,7 +542,9 @@ class BusinessEventHandler:
                     await self.shift_service.create_shift(chat_id)
 
                     # Get final summary
-                    shift_summary = await self.shift_service.get_shift_income_summary(closed_shift.id, chat_id)
+                    shift_summary = await self.shift_service.get_shift_income_summary(
+                        closed_shift.id, chat_id
+                    )
                     duration = closed_shift.end_time - closed_shift.start_time
                     total_seconds = abs(duration.total_seconds())
                     hours = int(total_seconds // 3600)
@@ -512,11 +552,11 @@ class BusinessEventHandler:
 
                     # Currency breakdown same as current shift report
                     currency_text = ""
-                    for currency, data in shift_summary['currencies'].items():
-                        if currency == 'USD':
+                    for currency, data in shift_summary["currencies"].items():
+                        if currency == "USD":
                             currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                        elif currency == 'KHR':
-                            khr_amount = int(data['amount'])
+                        elif currency == "KHR":
+                            khr_amount = int(data["amount"])
                             currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
                         else:
                             currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
@@ -592,20 +632,18 @@ Telegram: https://t.me/HK_688
 
             # Enable auto close with multiple times
             config = await self.shift_config_service.update_auto_close_settings(
-                chat_id=chat_id,
-                enabled=True,
-                auto_close_times=times_list
+                chat_id=chat_id, enabled=True, auto_close_times=times_list
             )
 
             # Format the times list for display
             times_display = ", ".join(times_list)
-            
+
             message = f"""
 ✅ បានកំណត់បិទវេនដោយស្វ័យប្រវត្តិ!
 
 ⏰ វេននឹងត្រូវបានបិទនៅម៉ោង: {times_display}
 
-💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិរាល់ថ្ងៃនៅម៉ោងដែលបានកំណត់។
+💡 វេនសកម្មនឹងត្រូវបានបិទដោយស្វ័យប្រវត្តិរាល់ថ្ងៃនច្នៃម៉ោងដែលបានកំណត់។
 
 📝 ឧទាហរណ៍: វេននឹងបិទនៅម៉ោង {times_list[0]} ហើយវេនថ្មីនឹងចាប់ផ្តើមដោយស្វ័យប្រវត្តិ។
 """
@@ -622,8 +660,7 @@ Telegram: https://t.me/HK_688
 
         try:
             await self.shift_config_service.update_auto_close_settings(
-                chat_id=chat_id,
-                enabled=False
+                chat_id=chat_id, enabled=False
             )
 
             message = """
