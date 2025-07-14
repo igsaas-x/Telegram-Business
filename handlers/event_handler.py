@@ -53,7 +53,7 @@ class EventHandler:
 
     async def menu(self, event):
         if event.is_private:
-            event.respond(contact_message)
+            await event.respond(contact_message)
 
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
@@ -163,6 +163,14 @@ class EventHandler:
         
         # Add a menu button to the response message for successful registration
         if success:
+            # Assign TRIAL package for normal bot registrations
+            try:
+                from models.group_package_model import GroupPackageService, ServicePackage
+                package_service = GroupPackageService()
+                await package_service.create_group_package(chat_id, ServicePackage.TRIAL)
+                force_log(f"Assigned TRIAL package to chat_id: {chat_id}")
+            except Exception as package_error:
+                force_log(f"Error assigning TRIAL package to chat_id {chat_id}: {package_error}")
             # Check and notify if @autosum_kh is missing after successful registration
             telethon_message, not_added = await self._check_and_notify_autosum_missing(event)
             if telethon_message and not_added:

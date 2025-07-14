@@ -234,6 +234,14 @@ class AutosumBusinessBot:
             )
 
             if success:
+                # Assign BUSINESS package for business bot registrations
+                try:
+                    from models.group_package_model import GroupPackageService, ServicePackage
+                    package_service = GroupPackageService()
+                    await package_service.create_group_package(chat_id, ServicePackage.BUSINESS)
+                    logger.info(f"Assigned BUSINESS package to chat_id: {chat_id}")
+                except Exception as package_error:
+                    logger.error(f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}")
                 # Registration successful, now ask about shift
                 message = f"""
 ✅ ការចុះឈ្មោះជជែកបានជោគជ័យ!
@@ -424,6 +432,7 @@ class AutosumBusinessBot:
         # Add separate callback handlers for registration flow
         self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
         self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_back_to_menu, pattern="^back_to_menu$"))
         
         # Add fallback callback handler for any unhandled callbacks
         self.app.add_handler(CallbackQueryHandler(self.handle_fallback_callback))

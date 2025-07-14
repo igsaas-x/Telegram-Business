@@ -109,6 +109,14 @@ class BusinessEventHandler:
         )
 
         if success:
+            # Assign BUSINESS package for business bot registrations
+            try:
+                from models.group_package_model import GroupPackageService, ServicePackage
+                package_service = GroupPackageService()
+                await package_service.create_group_package(chat_id, ServicePackage.BUSINESS)
+                force_log(f"Assigned BUSINESS package to chat_id: {chat_id}")
+            except Exception as package_error:
+                force_log(f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}")
             response = f"""
 ✅ ការចុះឈ្មោះអាជីវកម្មបានជោគជ័យ!
 
