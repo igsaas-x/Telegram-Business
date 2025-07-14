@@ -21,7 +21,7 @@ class EventHandler:
         try:
             # Only check for groups, not private chats
             if event.is_private:
-                return
+                return None, False
                 
             # Get participants to check if @autosum_kh is already in the group
             try:
@@ -33,7 +33,7 @@ class EventHandler:
                 
                 for username in autosum_usernames:
                     if username.lower() in existing_usernames:
-                        return  # Bot already exists, no need to notify
+                        return None, False  # Bot already exists, no need to notify
                 
                 # Notify that @autosum_kh should be added with a convenient button
                 notification_message = (
@@ -45,9 +45,11 @@ class EventHandler:
 
             except Exception as e:
                 force_log(f"Error checking participants in group {event.chat_id}: {e}")
+                return None, False
                 
         except Exception as e:
             force_log(f"Error in _check_and_notify_autosum_missing: {e}")
+            return None, False
 
     async def menu(self, event):
         if event.is_private:
