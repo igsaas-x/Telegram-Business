@@ -5,11 +5,11 @@ from config.database_config import Base, SessionLocal
 from helper import DateUtils
 from helper.logger_utils import force_log
 from models.income_balance_model import IncomeService
-from models.user_model import User, ServicePackage
+from models.user_model import User
 
 
 class Chat(Base):
-    __tablename__ = "chats"
+    __tablename__ = "chat_group"
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(BigInteger, unique=True, nullable=False)
     group_name = Column(String(255), nullable=False)
@@ -28,9 +28,15 @@ class ChatService:
     async def is_unlimited_package(self, chat_id: int) -> int | None:
         try:
             chat = await self.get_chat_by_chat_id(chat_id)
-            if chat and chat.enable_shift and chat.user.package == ServicePackage.UNLIMITED:  # type: ignore
-                last_shift = await self.income_service.get_last_shift_id(chat_id)
-                return last_shift.shift if last_shift else None  # type: ignore
+            if chat and chat.enable_shift:
+                # Check if chat has unlimited/business package
+                from models.group_package_model import GroupPackageService, ServicePackage
+                package_service = GroupPackageService()
+                group_package = await package_service.get_package_by_chat_id(chat_id)
+                
+                if group_package and group_package.package in [ServicePackage.BUSINESS]:
+                    last_shift = await self.income_service.get_last_shift_id(chat_id)
+                    return last_shift.shift if last_shift else None  # type: ignore
         except Exception as e:
             force_log(f"Error checking unlimited package: {e}")
 
@@ -156,7 +162,7 @@ class ChatService:
         """Migrate chat_id from old to new (for group migrations)"""
         session = self.Session()
         try:
-            # Update the chat_id in the chats table
+            # Update the chat_id in the chat_group table
             chat_result = session.query(Chat).filter_by(chat_id=old_chat_id).update({"chat_id": new_chat_id})
 
             # Also update the chat_id in the income_balance table

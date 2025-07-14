@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from enum import Enum
 from typing import Generator, Any
 
 from sqlalchemy import (
@@ -7,18 +6,11 @@ from sqlalchemy import (
     Integer,
     String,
     Boolean,
-    Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.orm import Session, relationship
 
 from config.database_config import SessionLocal
 from models.base_model import BaseModel
-
-
-class ServicePackage(Enum):
-    BASIC = "BASIC"
-    PRO = "PRO"
-    UNLIMITED = "UNLIMITED"
 
 
 class User(BaseModel):
@@ -30,10 +22,6 @@ class User(BaseModel):
     last_name = Column(String(50), nullable=True)
     identifier = Column(String(50), unique=True, nullable=False)
     phone_number = Column(String(20), unique=True, nullable=True)
-    is_paid = Column(Boolean, default=False)
-    package = Column(
-        SQLAlchemyEnum(ServicePackage), nullable=False, default=ServicePackage.BASIC
-    )
     is_active = Column(Boolean, default=True)
     chats = relationship("Chat", back_populates="user")
 
@@ -50,16 +38,6 @@ class UserService:
         finally:
             db.close()
 
-    async def update_user_package(
-        self, user_identifier: str, package: ServicePackage
-    ) -> type[User] | None:
-        with self._get_db() as db:
-            user = db.query(User).filter(User.identifier == user_identifier).first()
-            if user:
-                user.package = package  
-                db.commit()
-                return user
-            return None
 
     async def get_user_by_identifier(self, identifier: str) -> type[User] | None:
         with self._get_db() as db:
@@ -89,8 +67,6 @@ class UserService:
                 phone_number=sender.phone,
                 identifier=sender.id,
                 username=sender.username,
-                is_paid=False,
-                package=ServicePackage.BASIC,
                 is_active=False,
             )
 

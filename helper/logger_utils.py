@@ -1,11 +1,17 @@
 import datetime
+import os
 
 def force_log(message, component="System"):
     """Write logs with hourly rotation"""
     try:
+        # Ensure logs directory exists
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+        
         # Generate filename with current hour for rotation
         now = datetime.datetime.now()
-        filename = f"telegram_bot_{now.strftime('%Y%m%d_%H')}.log"
+        filename = f"logs/telegram_bot_{now.strftime('%Y%m%d_%H')}.log"
         
         # Write to the hourly log file
         with open(filename, "a", encoding="utf-8") as f:

@@ -17,3 +17,4 @@ anon.*
 .env.local
 *.log
 debug_log.txt
+logs/

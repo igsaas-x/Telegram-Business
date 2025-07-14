@@ -13,7 +13,8 @@ from telegram.ext import (
 )
 
 from handlers.event_handler import EventHandler
-from models import ChatService, Chat, ServicePackage, UserService
+from models import ChatService, Chat, UserService
+from models.group_package_model import GroupPackageService, ServicePackage
 
 # Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class TelegramAdminBot:
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
+        self.group_package_service = GroupPackageService()
         self.event_handler = EventHandler()
         self.default_question = (
             "Please provide the chat ID by replying to this message."
@@ -126,7 +128,17 @@ class TelegramAdminBot:
             user_info = f"User Found:\n"
             user_info += f"Username: @{username}\n"
             user_info += f"Name: {first_name} {last_name}\n"
-            user_info += f"Current Package: {user.package.value}"  # type: ignore
+            
+            # Get package info from chat if available
+            chat_id = context.user_data.get("chat_id_input")
+            if chat_id:
+                group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
+                if group_package:
+                    user_info += f"Current Package: {group_package.package.value}"
+                else:
+                    user_info += f"Current Package: No package assigned"
+            else:
+                user_info += f"Current Package: N/A (no chat specified)"
             
             keyboard = [
                 [InlineKeyboardButton(f"✅ Confirm (@{username})", callback_data="confirm_user")],
@@ -162,9 +174,10 @@ class TelegramAdminBot:
                 if action == "confirm_user":
                     # Show package selection
                     keyboard = [
+                        [InlineKeyboardButton(ServicePackage.TRIAL.value, callback_data="TRIAL")],
                         [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
-                        [InlineKeyboardButton(ServicePackage.PRO.value, callback_data="PRO")],
                         [InlineKeyboardButton(ServicePackage.UNLIMITED.value, callback_data="UNLIMITED")],
+                        [InlineKeyboardButton(ServicePackage.BUSINESS.value, callback_data="BUSINESS")],
                     ]
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     await query.edit_message_text("Please choose a subscription package:", reply_markup=reply_markup)
@@ -199,31 +212,31 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
                 
                 # Handle package selection buttons
-                if selected_package in ["BASIC", "PRO", "UNLIMITED"]:
-                    user_identifier: str = context.user_data.get("user_identifier") # type: ignore
+                if selected_package in ["TRIAL", "BASIC", "UNLIMITED", "BUSINESS"]:
+                    chat_id = context.user_data.get("chat_id_input")
                     
-                    if not user_identifier:
-                        await query.edit_message_text("User identifier not found.")
+                    if not chat_id:
+                        await query.edit_message_text("Chat ID not found.")
                         return ConversationHandler.END
                     
-                    # Update user package with await
-                    user = await self.user_service.update_user_package(user_identifier, ServicePackage(selected_package))
-                    if not user:
-                        await query.edit_message_text("Failed to update user package.")
+                    # Update group package
+                    group_package = await self.group_package_service.get_or_create_group_package(chat_id)
+                    updated_package = await self.group_package_service.update_package(
+                        chat_id, 
+                        ServicePackage(selected_package)
+                    )
+                    
+                    if not updated_package:
+                        await query.edit_message_text("Failed to update group package.")
                         return ConversationHandler.END
                     
                     # Update shift settings based on package change
-                    selection_type = context.user_data.get("selection_type")
-                    if selection_type == "chat_id":
-                        # If using chat_id, update only that specific chat
-                        chat_id = context.user_data.get("chat_id_input")
-                        if chat_id:
-                            if ServicePackage(selected_package) == ServicePackage.UNLIMITED:
-                                # When upgrading to unlimited, automatically enable shift
-                                await self.chat_service.update_chat_enable_shift(chat_id, True)
-                            else:
-                                # When downgrading from unlimited, disable shift
-                                await self.chat_service.update_chat_enable_shift(chat_id, False)
+                    if ServicePackage(selected_package) == ServicePackage.BUSINESS:
+                        # When upgrading to business, automatically enable shift
+                        await self.chat_service.update_chat_enable_shift(chat_id, True)
+                    elif ServicePackage(selected_package) == ServicePackage.TRIAL:
+                        # When downgrading to trial, disable shift
+                        await self.chat_service.update_chat_enable_shift(chat_id, False)
                     
                     # Get user info for confirmation message
                     found_user = context.user_data.get("found_user")
@@ -231,7 +244,7 @@ class TelegramAdminBot:
                     
                     # Confirm to user
                     await query.edit_message_text(
-                        f"✅ Successfully updated package to {selected_package} for user @{username}."
+                        f"✅ Successfully updated package to {selected_package} for chat {chat_id} (user @{username})."
                     )
                     return ConversationHandler.END
                 
@@ -421,10 +434,12 @@ class TelegramAdminBot:
                 await update.message.reply_text("Chat does not have an associated user.")
                 return ConversationHandler.END
 
-            # Check if user has unlimited package
-            if chat.user.package != ServicePackage.UNLIMITED:  # type: ignore
+            # Check if chat has business package
+            group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
+            if not group_package or group_package.package != ServicePackage.BUSINESS:
+                current_package = group_package.package.value if group_package else "No package"
                 await update.message.reply_text(
-                    f"User must have UNLIMITED package to enable shift. Current package: {chat.user.package.value}"  # type: ignore
+                    f"Chat must have BUSINESS package to enable shift. Current package: {current_package}"
                 )
                 return ConversationHandler.END
 
