@@ -62,16 +62,13 @@ class EventHandler:
             try:
                 # Get sender information
                 sender = await event.get_sender()
-                
+
+                user = None
                 # Check if sender is anonymous
-                if not sender or not hasattr(sender, 'id') or sender.id is None:
-                    message = "⚠️ Registration failed: You must be a non-anonymous user to register this chat. Please disable anonymous mode and try again."
-                    await event.respond(message)
-                    return
-                
-                # Create user if not exists
-                user_service = UserService()
-                user = await user_service.create_user(sender)
+                if sender and hasattr(sender, 'id') and sender.id is not None:
+                    # Create user if not exists
+                    user_service = UserService()
+                    user = await user_service.create_user(sender)
                 
                 # Use our own register method to register the chat
                 await self.register(event, user)
@@ -121,6 +118,7 @@ class EventHandler:
                 [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
             ]
             await event.respond(telethon_message, buttons=buttons)
+            return
         
         # Check package to determine available options
         group_package = await self.group_package_service.get_or_create_group_package(event.chat_id)
