@@ -259,6 +259,20 @@ class IncomeService:
                 .all()
             )
 
+    async def get_income_by_specific_date_and_chat_id(
+            self, chat_id: int, target_date: datetime
+    ) -> list[type[IncomeBalance]]:
+        """Get income records for a specific date using DATE() function for accurate date matching"""
+        with self._get_db() as db:
+            return (
+                db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    func.date(IncomeBalance.income_date) == target_date.date()
+                )
+                .all()
+            )
+
     async def get_income_by_shift_id(self, shift_id: int) -> list[type[IncomeBalance]]:
         """Get all income records for a specific shift"""
         with self._get_db() as db:

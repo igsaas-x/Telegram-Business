@@ -87,10 +87,9 @@ class CommandHandler:
         
         try:
             income_service = IncomeService()
-            incomes = await income_service.get_income_by_date_and_chat_id(
+            incomes = await income_service.get_income_by_specific_date_and_chat_id(
                 chat_id=chat_id,
-                start_date=today,
-                end_date=today + timedelta(days=1),
+                target_date=today,
             )
 
             await event.delete()
