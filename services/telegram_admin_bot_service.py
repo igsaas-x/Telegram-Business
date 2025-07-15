@@ -13,10 +13,8 @@ from telegram.ext import (
 )
 
 from handlers.event_handler import EventHandler
-from services import ChatService, UserService
-from .group_package_service import GroupPackageService
-from common.enums import ServicePackage
-from models import Chat
+from models import ChatService, Chat, UserService
+from models.group_package_model import GroupPackageService, ServicePackage
 
 # Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
@@ -44,16 +42,14 @@ class TelegramAdminBot:
         )
         logger.info("TelegramAdminBot initialized with token")
 
-    async def validate_user_identifier(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def validate_user_identifier(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             chat_id = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
-
-            identifier: str = chat.user.identifier if chat.user else ""  # type: ignore
+            
+            identifier: str = chat.user.identifier if chat.user else "" # type: ignore
             logger.debug(f"Identifier: {identifier}")
             user = await self.user_service.get_user_by_identifier(identifier)
             if not user:
@@ -63,10 +59,11 @@ class TelegramAdminBot:
             context.user_data["user_identifier"] = identifier  # type: ignore
             context.user_data["chat_id_input"] = chat_id  # type: ignore
             context.user_data["found_user"] = user  # type: ignore
-            return await self.show_user_confirmation(update, context, user)
+            return await self.show_user_confirmation(update, context, user) 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             return ConversationHandler.END
+
 
     async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
@@ -79,28 +76,22 @@ class TelegramAdminBot:
         )
         return PACKAGE_SELECTION_CODE
 
-    async def package_selection_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def package_selection_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         try:
             if query:
                 await query.answer()
                 selection = query.data
-
+                
                 if selection == "use_chat_id":
                     context.user_data["selection_type"] = "chat_id"
-                    await query.edit_message_text(
-                        "Please provide the chat ID by replying to this message."
-                    )
+                    await query.edit_message_text("Please provide the chat ID by replying to this message.")
                     return PACKAGE_COMMAND_CODE
                 elif selection == "use_username":
                     context.user_data["selection_type"] = "username"
-                    await query.edit_message_text(
-                        "Please provide the username by replying to this message."
-                    )
+                    await query.edit_message_text("Please provide the username by replying to this message.")
                     return PACKAGE_COMMAND_CODE
-
+                    
             return PACKAGE_SELECTION_CODE
         except Exception as e:
             logger.error(f"Error in package_selection_handler: {e}")
@@ -108,15 +99,13 @@ class TelegramAdminBot:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def validate_user_by_username(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def validate_user_by_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             username = update.message.text.strip()  # type: ignore
             # Remove @ if user included it
             if username.startswith("@"):
                 username = username[1:]
-
+            
             user = await self.user_service.get_user_by_username(username)
             if not user:
                 await update.message.reply_text("User not found.")  # type: ignore
@@ -124,47 +113,39 @@ class TelegramAdminBot:
 
             context.user_data["user_identifier"] = user.identifier  # type: ignore
             context.user_data["found_user"] = user  # type: ignore
-            return await self.show_user_confirmation(update, context, user)
+            return await self.show_user_confirmation(update, context, user) 
         except ValueError:
             await update.message.reply_text("Invalid username.")  # type: ignore
             return ConversationHandler.END
 
-    async def show_user_confirmation(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE, user
-    ) -> int:
+    async def show_user_confirmation(self, update: Update, context: ContextTypes.DEFAULT_TYPE, user) -> int:
         try:
             # Display user information with username
             username = user.username if user.username else "N/A"  # type: ignore
             first_name = user.first_name if user.first_name else "N/A"  # type: ignore
             last_name = user.last_name if user.last_name else "N/A"  # type: ignore
-
+            
             user_info = f"User Found:\n"
             user_info += f"Username: @{username}\n"
             user_info += f"Name: {first_name} {last_name}\n"
-
+            
             # Get package info from chat if available
             chat_id = context.user_data.get("chat_id_input")
             if chat_id:
-                group_package = await self.group_package_service.get_package_by_chat_id(
-                    chat_id
-                )
+                group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
                 if group_package:
                     user_info += f"Current Package: {group_package.package.value}"
                 else:
                     user_info += f"Current Package: No package assigned"
             else:
                 user_info += f"Current Package: N/A (no chat specified)"
-
+            
             keyboard = [
-                [
-                    InlineKeyboardButton(
-                        f"✅ Confirm (@{username})", callback_data="confirm_user"
-                    )
-                ],
-                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_user")],
+                [InlineKeyboardButton(f"✅ Confirm (@{username})", callback_data="confirm_user")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_user")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
+            
             await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
             return USER_CONFIRMATION_CODE
         except Exception as e:
@@ -172,11 +153,9 @@ class TelegramAdminBot:
             await update.message.reply_text("Error displaying user information.")  # type: ignore
             return ConversationHandler.END
 
-    async def process_package_input(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def process_package_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         selection_type = context.user_data.get("selection_type")
-
+        
         if selection_type == "chat_id":
             return await self.validate_user_identifier(update, context)
         elif selection_type == "username":
@@ -185,51 +164,29 @@ class TelegramAdminBot:
             await update.message.reply_text("Invalid selection type.")  # type: ignore
             return ConversationHandler.END
 
-    async def user_confirmation_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def user_confirmation_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         try:
             if query:
                 await query.answer()
                 action = query.data
-
+                
                 if action == "confirm_user":
                     # Show package selection
                     keyboard = [
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.TRIAL.value, callback_data="TRIAL"
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.BASIC.value, callback_data="BASIC"
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value,
-                                callback_data="UNLIMITED",
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.BUSINESS.value, callback_data="BUSINESS"
-                            )
-                        ],
+                        [InlineKeyboardButton(ServicePackage.TRIAL.value, callback_data="TRIAL")],
+                        [InlineKeyboardButton(ServicePackage.BASIC.value, callback_data="BASIC")],
+                        [InlineKeyboardButton(ServicePackage.UNLIMITED.value, callback_data="UNLIMITED")],
+                        [InlineKeyboardButton(ServicePackage.BUSINESS.value, callback_data="BUSINESS")],
                     ]
                     reply_markup = InlineKeyboardMarkup(keyboard)
-                    await query.edit_message_text(
-                        "Please choose a subscription package:",
-                        reply_markup=reply_markup,
-                    )
+                    await query.edit_message_text("Please choose a subscription package:", reply_markup=reply_markup)
                     return PACKAGE_COMMAND_CODE
-
+                    
                 elif action == "cancel_user":
                     await query.edit_message_text("Operation cancelled.")
                     return ConversationHandler.END
-
+                    
             return USER_CONFIRMATION_CODE
         except Exception as e:
             logger.error(f"Error in user_confirmation_handler: {e}")
@@ -245,37 +202,34 @@ class TelegramAdminBot:
             if query:
                 await query.answer()
                 selected_package = query.data
-
+                
                 # Handle selection buttons
                 if selected_package in ["use_chat_id", "use_username"]:
                     return await self.package_selection_handler(update, context)
-
+                
                 # Handle user confirmation buttons
                 if selected_package in ["confirm_user", "cancel_user"]:
                     return await self.user_confirmation_handler(update, context)
-
+                
                 # Handle package selection buttons
                 if selected_package in ["TRIAL", "BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
-
+                    
                     if not chat_id:
                         await query.edit_message_text("Chat ID not found.")
                         return ConversationHandler.END
-
+                    
                     # Update group package
-                    group_package = (
-                        await self.group_package_service.get_or_create_group_package(
-                            chat_id
-                        )
-                    )
+                    group_package = await self.group_package_service.get_or_create_group_package(chat_id)
                     updated_package = await self.group_package_service.update_package(
-                        chat_id, ServicePackage(selected_package)
+                        chat_id, 
+                        ServicePackage(selected_package)
                     )
-
+                    
                     if not updated_package:
                         await query.edit_message_text("Failed to update group package.")
                         return ConversationHandler.END
-
+                    
                     # Update shift settings based on package change
                     if ServicePackage(selected_package) == ServicePackage.BUSINESS:
                         # When upgrading to business, automatically enable shift
@@ -283,49 +237,45 @@ class TelegramAdminBot:
                     elif ServicePackage(selected_package) == ServicePackage.TRIAL:
                         # When downgrading to trial, disable shift
                         await self.chat_service.update_chat_enable_shift(chat_id, False)
-
+                    
                     # Get user info for confirmation message
                     found_user = context.user_data.get("found_user")
                     username = found_user.username if found_user and found_user.username else "N/A"  # type: ignore
-
+                    
                     # Confirm to user
                     await query.edit_message_text(
                         f"✅ Successfully updated package to {selected_package} for chat {chat_id} (user @{username})."
                     )
                     return ConversationHandler.END
-
+                
             return PACKAGE_COMMAND_CODE
         except Exception as e:
             logger.error(f"Error in package_button: {e}")
             if query:
-                await query.edit_message_text(f"Error updating user package: {str(e)}")
+                await query.edit_message_text(
+                    f"Error updating user package: {str(e)}"
+                )
             return ConversationHandler.END
 
-    async def callback_query_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle callback queries from inline buttons"""
         query = update.callback_query
-
+        
         try:
             # We need to answer the callback query first to stop the loading indicator
             await query.answer()
-
+            
             # Extract the callback data (similar to what Telethon would get)
             callback_data = query.data
-
+            
             # Create a pseudo event for the callback similar to Telethon's events.CallbackQuery
             class PseudoCallbackEvent:
                 def __init__(self, callback_query, callback_data):
                     self.chat_id = callback_query.message.chat_id
-                    self.data = (
-                        callback_data.encode("utf-8")
-                        if isinstance(callback_data, str)
-                        else callback_data
-                    )
+                    self.data = callback_data.encode('utf-8') if isinstance(callback_data, str) else callback_data
                     self.callback_query = True
                     self.message = callback_query.message
-
+                    
                 async def edit(self, text, buttons=None):
                     if buttons:
                         # Convert Telethon buttons to python-telegram-bot InlineKeyboardButton format
@@ -338,23 +288,21 @@ class TelegramAdminBot:
                                     # Convert bytes to string if needed
                                     button_data = button.data
                                     if isinstance(button_data, bytes):
-                                        button_data = button_data.decode("utf-8")
+                                        button_data = button_data.decode('utf-8')
                                     elif not isinstance(button_data, str):
                                         button_data = str(button_data)
-
+                                    
                                     keyboard_row.append(
-                                        InlineKeyboardButton(
-                                            button.text, callback_data=button_data
-                                        )
+                                        InlineKeyboardButton(button.text, callback_data=button_data)
                                     )
                             if keyboard_row:
                                 keyboard.append(keyboard_row)
-
+                        
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         await query.edit_message_text(text, reply_markup=reply_markup)
                     else:
                         await query.edit_message_text(text)
-
+                        
                 async def respond(self, text, buttons=None):
                     """For cases where a new message needs to be sent instead of editing"""
                     if buttons:
@@ -367,31 +315,29 @@ class TelegramAdminBot:
                                     # Convert bytes to string if needed
                                     button_data = button.data
                                     if isinstance(button_data, bytes):
-                                        button_data = button_data.decode("utf-8")
+                                        button_data = button_data.decode('utf-8')
                                     elif not isinstance(button_data, str):
                                         button_data = str(button_data)
-
+                                    
                                     keyboard_row.append(
-                                        InlineKeyboardButton(
-                                            button.text, callback_data=button_data
-                                        )
+                                        InlineKeyboardButton(button.text, callback_data=button_data)
                                     )
                             if keyboard_row:
                                 keyboard.append(keyboard_row)
-
+                        
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         await query.message.reply_text(text, reply_markup=reply_markup)
                     else:
                         await query.message.reply_text(text)
-
+            
             # Create pseudo event
             pseudo_event = PseudoCallbackEvent(query, callback_data)
-
+            
             # Call the event_handler's callback method
             await self.event_handler.callback(pseudo_event)
-
+            
             return CALLBACK_QUERY_CODE
-
+            
         except Exception as e:
             logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
             await query.message.reply_text(f"Error processing button action: {str(e)}")
@@ -485,19 +431,13 @@ class TelegramAdminBot:
 
             # Check if chat has a user
             if not chat.user:  # type: ignore
-                await update.message.reply_text(
-                    "Chat does not have an associated user."
-                )
+                await update.message.reply_text("Chat does not have an associated user.")
                 return ConversationHandler.END
 
             # Check if chat has business package
-            group_package = await self.group_package_service.get_package_by_chat_id(
-                chat_id
-            )
+            group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
             if not group_package or group_package.package != ServicePackage.BUSINESS:
-                current_package = (
-                    group_package.package.value if group_package else "No package"
-                )
+                current_package = group_package.package.value if group_package else "No package"
                 await update.message.reply_text(
                     f"Chat must have BUSINESS package to enable shift. Current package: {current_package}"
                 )
@@ -505,16 +445,12 @@ class TelegramAdminBot:
 
             # Check if shift is already enabled
             if chat.enable_shift:  # type: ignore
-                await update.message.reply_text(
-                    "Shift is already enabled for this chat."
-                )
+                await update.message.reply_text("Shift is already enabled for this chat.")
                 return ConversationHandler.END
 
             # Enable shift for the chat
             await self.chat_service.update_chat_enable_shift(chat_id, True)
-            await update.message.reply_text(
-                "Shift has been enabled successfully for this chat."
-            )
+            await update.message.reply_text("Shift has been enabled successfully for this chat.")
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")
@@ -528,6 +464,7 @@ class TelegramAdminBot:
         await update.message.reply_text(self.default_question)  # type: ignore
         return MENU_COMMAND_CODE
 
+        
     async def process_menu_chat_id(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
@@ -539,10 +476,10 @@ class TelegramAdminBot:
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
-
+            
             # Store the chat_id in context for use in callback queries
             context.user_data["admin_chat_id"] = chat_id
-
+                
             # Create buttons for the menu
             keyboard = [
                 [InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")],
@@ -551,52 +488,46 @@ class TelegramAdminBot:
                 [InlineKeyboardButton("បិទ", callback_data="close_menu")],
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await update.message.reply_text(
-                "ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup
-            )
-
+            
+            await update.message.reply_text("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup)
+            
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             logger.error(f"Error in process_menu_chat_id: {e}", exc_info=True)
 
         return CALLBACK_QUERY_CODE
 
-    async def callback_query_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle callback queries from inline buttons"""
         query = update.callback_query
-
+        
         try:
             # We need to answer the callback query first to stop the loading indicator
             await query.answer()
-
+            
             # Get the callback data
             callback_data = query.data
-
+            
             # First, check if we're handling direct admin bot actions
             if callback_data in ["close_menu"]:
                 await query.edit_message_text("Menu closed.")
                 return ConversationHandler.END
-
+                
             # Get chat_id from context or use message chat_id as fallback
             if context and context.user_data and "admin_chat_id" in context.user_data:
                 chat_id = context.user_data["admin_chat_id"]
             else:
                 # No stored chat ID from admin bot menu flow
                 # This might be a global callback handler case
-                await query.edit_message_text(
-                    "Session expired. Please run /menu again."
-                )
+                await query.edit_message_text("Session expired. Please run /menu again.")
                 return ConversationHandler.END
-
+                
             # Prepare callback handlers for different report types
             if callback_data == "daily_summary":
                 result = await self._handle_daily_summary_menu(chat_id, query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
             elif callback_data == "weekly_summary":
-                result = await self._handle_report(chat_id, "weekly", query)
+                result = await self._handle_report(chat_id, "weekly", query) 
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
             elif callback_data == "monthly_summary":
                 result = await self._handle_report(chat_id, "monthly", query)
@@ -610,10 +541,8 @@ class TelegramAdminBot:
                     [InlineKeyboardButton("បិទ", callback_data="close_menu")],
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
-
-                await query.edit_message_text(
-                    "ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup
-                )
+                
+                await query.edit_message_text("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup)
                 return CALLBACK_QUERY_CODE
             elif callback_data.startswith("summary_of_"):
                 result = await self._handle_date_summary(chat_id, callback_data, query)
@@ -624,17 +553,15 @@ class TelegramAdminBot:
             elif callback_data == "other_dates":
                 result = await self._handle_other_dates(chat_id, query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
-
+                
             # If we get here, it's an unknown callback
             await query.edit_message_text(f"Unhandled callback: {callback_data}")
             return CALLBACK_QUERY_CODE
-
+            
         except Exception as e:
             logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
             try:
-                await query.message.reply_text(
-                    f"Error processing button action: {str(e)}"
-                )
+                await query.message.reply_text(f"Error processing button action: {str(e)}")
             except:
                 pass
             return ConversationHandler.END
@@ -644,58 +571,38 @@ class TelegramAdminBot:
         try:
             from helper import DateUtils
             from datetime import timedelta
-
+            
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
             if not chat:
                 await query.edit_message_text(f"Chat {chat_id} not found.")
                 return False
-
+                
             today = DateUtils.now()
             keyboard = []
 
             # Check if shift is enabled for this chat
             shift_enabled = await self.chat_service.is_shift_enabled(int(chat_id))
             if shift_enabled:
-                keyboard.append(
-                    [
-                        InlineKeyboardButton(
-                            "ប្រចាំវេន​ថ្ងៃ​នេះ", callback_data="report_per_shift"
-                        )
-                    ]
-                )
+                keyboard.append([InlineKeyboardButton("ប្រចាំវេន​ថ្ងៃ​នេះ", callback_data="report_per_shift")])
                 # Only show current date for shift-enabled chats
                 label = today.strftime("ថ្ងៃ​នេះ")
                 callback_value = today.strftime("%Y-%m-%d")
-                keyboard.append(
-                    [
-                        InlineKeyboardButton(
-                            label, callback_data=f"summary_of_{callback_value}"
-                        )
-                    ]
-                )
+                keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_of_{callback_value}")])
             else:
                 # Show 3 days for non-shift chats
                 for i in range(2, -1, -1):
                     day = today - timedelta(days=i)
                     label = day.strftime("%b %d")
                     callback_value = day.strftime("%Y-%m-%d")
-                    keyboard.append(
-                        [
-                            InlineKeyboardButton(
-                                label, callback_data=f"summary_of_{callback_value}"
-                            )
-                        ]
-                    )
+                    keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_of_{callback_value}")])
 
-            keyboard.append(
-                [InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")]
-            )
+            keyboard.append([InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")])
             keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text("ឆែករបាយការណ៍ថ្ងៃ:", reply_markup=reply_markup)
             return True
-
+            
         except Exception as e:
             logger.error(f"Error in _handle_daily_summary_menu: {e}", exc_info=True)
             await query.edit_message_text(f"Error showing daily menu: {str(e)}")
@@ -708,11 +615,11 @@ class TelegramAdminBot:
             if not chat:
                 await query.edit_message_text(f"Chat {chat_id} not found.")
                 return False
-
+                
             # Create return to menu button
             keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
+            
             if report_type == "daily":
                 # Call report generation logic or reuse from event_handler
                 report = await self._generate_report(chat_id, "daily")
@@ -723,25 +630,23 @@ class TelegramAdminBot:
             elif report_type == "monthly":
                 report = await self._generate_report(chat_id, "monthly")
                 await query.edit_message_text(report, reply_markup=reply_markup)
-
+                
             return True
         except Exception as e:
             logger.error(f"Error in _handle_report: {e}", exc_info=True)
-            await query.edit_message_text(
-                f"Error generating {report_type} report: {str(e)}"
-            )
+            await query.edit_message_text(f"Error generating {report_type} report: {str(e)}")
             return False
-
+            
     async def _handle_date_summary(self, chat_id: str, callback_data: str, query):
         """Handle date summary like normal bot"""
         try:
             from datetime import datetime, timedelta
             from models import IncomeService
             from helper import total_summary_report
-
+            
             date_str = callback_data.replace("summary_of_", "")
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
-
+            
             income_service = IncomeService()
             incomes = await income_service.get_income_by_date_and_chat_id(
                 chat_id=int(chat_id),
@@ -750,15 +655,11 @@ class TelegramAdminBot:
             )
 
             # Create return to daily menu button
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
+            
             if not incomes:
-                message = (
-                    f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
-                )
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
             else:
                 period_text = f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}"
                 formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
@@ -766,7 +667,7 @@ class TelegramAdminBot:
 
             await query.edit_message_text(message, reply_markup=reply_markup)
             return True
-
+            
         except Exception as e:
             logger.error(f"Error in _handle_date_summary: {e}", exc_info=True)
             await query.edit_message_text(f"Error generating date summary: {str(e)}")
@@ -776,17 +677,12 @@ class TelegramAdminBot:
         """Handle shift report - placeholder for now"""
         try:
             # For now, just show a placeholder message
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(
-                "Shift report functionality not implemented yet.",
-                reply_markup=reply_markup,
-            )
+            
+            await query.edit_message_text("Shift report functionality not implemented yet.", reply_markup=reply_markup)
             return True
-
+            
         except Exception as e:
             logger.error(f"Error in _handle_shift_report: {e}", exc_info=True)
             await query.edit_message_text(f"Error: {str(e)}")
@@ -796,17 +692,12 @@ class TelegramAdminBot:
         """Handle other dates - placeholder for now"""
         try:
             # For now, just show a placeholder message
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
+            keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(
-                "Other dates functionality not implemented yet.",
-                reply_markup=reply_markup,
-            )
+            
+            await query.edit_message_text("Other dates functionality not implemented yet.", reply_markup=reply_markup)
             return True
-
+            
         except Exception as e:
             logger.error(f"Error in _handle_other_dates: {e}", exc_info=True)
             await query.edit_message_text(f"Error: {str(e)}")
@@ -817,12 +708,12 @@ class TelegramAdminBot:
         from datetime import timedelta
         from models import IncomeService
         from helper import total_summary_report, DateUtils
-
+        
         income_service = IncomeService()
-
+        
         # Get current time using DateUtils for consistency
         now = DateUtils.now()
-
+        
         if report_type == "daily":
             start_date = now
             end_date = now + timedelta(days=1)
@@ -841,18 +732,18 @@ class TelegramAdminBot:
             title = f"{start_of_month.strftime('%d')} - {now.strftime('%d %b %Y')}"
         else:
             return "Invalid report type"
-
+            
         # Get income data using the same method as normal bot
         incomes = await income_service.get_income_by_date_and_chat_id(
             chat_id=int(chat_id),
             start_date=start_date,
             end_date=end_date,
         )
-
+        
         # If no data found, return no data message
         if not incomes:
             return f"គ្មានប្រតិបត្តិការសម្រាប់ {title} ទេ។"
-
+        
         # Use the same formatting as normal bot
         period_text = title
         formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
@@ -871,7 +762,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
+            per_message=False
         )
 
         deactivate_command_handler = ConversationHandler(
@@ -886,7 +777,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
+            per_message=False
         )
 
         # Package command handler with multiple states
@@ -894,43 +785,41 @@ class TelegramAdminBot:
         package_handler = ConversationHandler(
             entry_points=[CommandHandler("package", self.package)],
             states={
-                PACKAGE_SELECTION_CODE: [CallbackQueryHandler(self.package_button)],
-                PACKAGE_COMMAND_CODE: [
-                    MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_package_input
-                    ),
-                    CallbackQueryHandler(self.package_button),
+                PACKAGE_SELECTION_CODE: [
+                    CallbackQueryHandler(self.package_button)
                 ],
-                USER_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_button)],
+                PACKAGE_COMMAND_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_package_input),
+                    CallbackQueryHandler(self.package_button)
+                ],
+                USER_CONFIRMATION_CODE: [
+                    CallbackQueryHandler(self.package_button)
+                ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
+            per_message=False
         )
 
         enable_shift_handler = ConversationHandler(
             entry_points=[CommandHandler("enable_shift", self.enable_shift)],
             states={
                 ENABLE_SHIFT_COMMAND_CODE: [
-                    MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_enable_shift_chat_id
-                    )
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_enable_shift_chat_id)
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
+            per_message=False
         )
 
         menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.menu)],
             states={
                 MENU_COMMAND_CODE: [
-                    MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_menu_chat_id
-                    )
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_menu_chat_id)
                 ],
                 CALLBACK_QUERY_CODE: [
                     CallbackQueryHandler(self.callback_query_handler)
@@ -939,7 +828,7 @@ class TelegramAdminBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
-            per_message=False,
+            per_message=False
         )
 
         self.app.add_handler(activate_command_handler)
@@ -947,7 +836,7 @@ class TelegramAdminBot:
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
-
+        
         # Remove the global callback query handler to avoid duplicate handling
         # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
         logger.info("TelegramAdminBot handlers set up")
