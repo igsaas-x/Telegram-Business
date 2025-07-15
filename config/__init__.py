@@ -1,29 +1,8 @@
-import os
-from typing import Optional
+"""
+The package to load application configuration
+"""
 
-from dotenv import load_dotenv
+from .load_environment import load_environment
+from .database_config import get_db_session, Base
 
-
-def load_environment(env: Optional[str] = None) -> None:
-    current_env = (env or os.getenv('APP_ENV'))
-    
-    # Load .env.local first if it exists (highest priority)
-    if os.path.exists('.env.local'):
-        load_dotenv(dotenv_path='.env.local')
-    
-    # Then load .env as fallback
-    if os.path.exists('.env'):
-        load_dotenv(dotenv_path='.env')
-    
-    # Finally load environment-specific file
-    env_file = f'.env.{current_env}'
-    if os.path.exists(env_file):
-        load_dotenv(dotenv_path=env_file, override=True)
-    
-load_environment()
-CURRENT_ENV = os.getenv('APP_ENV', 'local') 
-
-
-__all__ = [
-    'CURRENT_ENV',
-]   
+__all__ = ["load_environment", "get_db_session", "Base"]

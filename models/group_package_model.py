@@ -1,141 +1,34 @@
-from contextlib import contextmanager
-from enum import Enum
-from typing import Generator, Any, Optional
-
+from datetime import datetime
 from sqlalchemy import (
-    Column,
     Integer,
     Boolean,
     DateTime,
     ForeignKey,
-    Enum as SQLAlchemyEnum,
+    Enum,
 )
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from config.database_config import SessionLocal
-from helper import DateUtils
+from models.chat_model import Chat
 from models.base_model import BaseModel
-
-
-class ServicePackage(Enum):
-    TRIAL = "TRIAL"
-    BASIC = "BASIC"
-    UNLIMITED = "UNLIMITED"
-    BUSINESS = "BUSINESS"
+from common.enums import ServicePackage
 
 
 class GroupPackage(BaseModel):
     __tablename__ = "group_package"
 
-    id = Column(Integer, primary_key=True)
-    chat_group_id = Column(Integer, ForeignKey("chat_group.id"), unique=True, nullable=False)
-    package = Column(
-        SQLAlchemyEnum(ServicePackage), nullable=False, default=ServicePackage.TRIAL
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    chat_group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_group.id"), unique=True, nullable=False
     )
-    is_paid = Column(Boolean, default=False)
-    package_start_date = Column(DateTime, nullable=True)
-    package_end_date = Column(DateTime, nullable=True)
-    last_paid_date = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=DateUtils.now, nullable=False)
-    updated_at = Column(DateTime, default=DateUtils.now, onupdate=DateUtils.now, nullable=False)
-    
+    package: Mapped[ServicePackage] = mapped_column(
+        Enum(ServicePackage), nullable=False, default=ServicePackage.TRIAL
+    )
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    package_start_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    package_end_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_paid_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # One-to-one relationship with chat_group
-    chat_group = relationship("Chat", backref="group_package", uselist=False)
-
-
-class GroupPackageService:
-    def __init__(self):
-        self._session_factory = SessionLocal
-
-    @contextmanager
-    def _get_db(self) -> Generator[Session, Any, Any]:
-        db = self._session_factory()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    async def _get_chat_group_id_by_chat_id(self, chat_id: int) -> Optional[int]:
-        """Get chat_group.id by chat_id"""
-        with self._get_db() as db:
-            from models.chat_model import Chat
-            chat = db.query(Chat).filter(Chat.chat_id == chat_id).first()
-            return chat.id if chat else None
-
-    async def get_package_by_chat_id(self, chat_id: int) -> Optional[GroupPackage]:
-        """Get group package info for a chat"""
-        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
-        if not chat_group_id:
-            return None
-            
-        with self._get_db() as db:
-            package = db.query(GroupPackage).filter(
-                GroupPackage.chat_group_id == chat_group_id
-            ).first()
-            return package
-
-    async def create_group_package(self, chat_id: int, package: ServicePackage = ServicePackage.TRIAL) -> GroupPackage:
-        """Create a new group package record for a chat"""
-        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
-        if not chat_group_id:
-            raise ValueError(f"Chat with chat_id {chat_id} not found")
-            
-        with self._get_db() as db:
-            group_package = GroupPackage(
-                chat_group_id=chat_group_id,
-                package=package,
-                is_paid=False if package == ServicePackage.TRIAL else True,
-                created_at=DateUtils.now(),
-                updated_at=DateUtils.now()
-            )
-            
-            try:
-                db.add(group_package)
-                db.commit()
-                db.refresh(group_package)
-                return group_package
-            except Exception as e:
-                db.rollback()
-                raise e
-
-    async def update_package(
-        self, 
-        chat_id: int, 
-        package: ServicePackage,
-        package_start_date: Optional[DateTime] = None,
-        package_end_date: Optional[DateTime] = None,
-        last_paid_date: Optional[DateTime] = None
-    ) -> Optional[GroupPackage]:
-        """Update package information for a chat"""
-        chat_group_id = await self._get_chat_group_id_by_chat_id(chat_id)
-        if not chat_group_id:
-            return None
-            
-        with self._get_db() as db:
-            group_package = db.query(GroupPackage).filter(
-                GroupPackage.chat_group_id == chat_group_id
-            ).first()
-            
-            if group_package:
-                group_package.package = package
-                group_package.is_paid = False if package == ServicePackage.TRIAL else True
-                group_package.updated_at = DateUtils.now()
-                
-                if package_start_date:
-                    group_package.package_start_date = package_start_date
-                if package_end_date:
-                    group_package.package_end_date = package_end_date
-                if last_paid_date:
-                    group_package.last_paid_date = last_paid_date
-                    
-                db.commit()
-                db.refresh(group_package)
-                return group_package
-            return None
-
-    async def get_or_create_group_package(self, chat_id: int) -> GroupPackage:
-        """Get existing group package or create a new one with TRIAL package"""
-        existing = await self.get_package_by_chat_id(chat_id)
-        if existing:
-            return existing
-        return await self.create_group_package(chat_id, ServicePackage.TRIAL)
+    chat_group: Mapped[Chat] = relationship(
+        "Chat", backref="group_package", uselist=False
+    )

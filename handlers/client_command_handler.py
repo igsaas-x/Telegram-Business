@@ -5,8 +5,13 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from helper import total_summary_report, DateUtils
-from models import ConversationService, IncomeService, ChatService
-from models.group_package_model import GroupPackageService, ServicePackage
+from common.enums import ServicePackage
+from services import (
+    ConversationService,
+    IncomeService,
+    ChatService,
+    GroupPackageService,
+)
 
 
 class CommandHandler:
@@ -18,7 +23,6 @@ class CommandHandler:
     def format_totals_message(period_text: str, incomes):
         title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, title)
-
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -73,7 +77,6 @@ class CommandHandler:
             print(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
-
     async def close(self, event):
         await self.handle_daily_summary(event)
 
@@ -81,10 +84,10 @@ class CommandHandler:
         """Handle current date summary for basic package users with record limit"""
         chat_id = event.chat_id
         today = DateUtils.now()
-        
+
         # Check package type
         group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
-        
+
         try:
             income_service = IncomeService()
             incomes = await income_service.get_income_by_specific_date_and_chat_id(
@@ -93,7 +96,7 @@ class CommandHandler:
             )
 
             await event.delete()
-            
+
             if not incomes:
                 await event.client.send_message(
                     chat_id,
@@ -102,10 +105,12 @@ class CommandHandler:
                 return
 
             # Check if BASIC package and more than 30 records
-            if (group_package and 
-                group_package.package == ServicePackage.BASIC and 
-                len(incomes) > 30):
-                
+            if (
+                group_package
+                and group_package.package == ServicePackage.BASIC
+                and len(incomes) > 30
+            ):
+
                 contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 30 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
                 await event.client.send_message(chat_id, contact_message)
                 return

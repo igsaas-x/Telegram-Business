@@ -5,7 +5,8 @@ from telethon import TelegramClient, events
 
 from handlers import EventHandler
 from helper.logger_utils import force_log
-from models import UserService, ChatService
+from models import User
+from services import UserService, ChatService
 
 
 class TelegramBotService:
@@ -49,31 +50,47 @@ class TelegramBotService:
                 # Always insert user if not exists, regardless of chat_id existence
                 sender = await event.get_sender()
 
-                user = None
-                
+                registered_user: User | None = None
                 # Check if sender is anonymous
-                if sender and hasattr(sender, 'id') or sender.id is None:
-                    user = await self.user_service.create_user(sender)
-                    force_log(f"Registration request from user {sender.id} in chat {event.chat_id}")
+                if sender and hasattr(sender, "id") or sender.id is None:
+                    registered_user = await self.user_service.create_user(sender)
+                    force_log(
+                        f"Registration request from user {sender.id} in chat {event.chat_id}"
+                    )
 
                 # Check if chat_id already exists
-                existing_chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
+                existing_chat = await self.chat_service.get_chat_by_chat_id(
+                    event.chat_id
+                )
                 if existing_chat:
                     # Update the existing chat with the current user_id
-                    if user and existing_chat.user_id != user.id:
-                        force_log(f"Updated existing chat {event.chat_id} with new user {user.id}")
-                        await self.chat_service.update_chat_user_id(event.chat_id, user.id)
-                        await event.respond(f"Chat ID {event.chat_id} is already registered. Updated with current user.")
+                    if registered_user and existing_chat.user_id != registered_user.id:
+                        force_log(
+                            f"Updated existing chat {event.chat_id} with new user {registered_user.id}"
+                        )
+                        await self.chat_service.update_chat_user_id(
+                            event.chat_id, registered_user.id
+                        )
+                        await event.respond(
+                            f"Chat ID {event.chat_id} is already registered. Updated with current user."
+                        )
                     else:
-                        force_log(f"Chat {event.chat_id} already registered with same user")
-                        await event.respond(f"Chat ID {event.chat_id} is already registered.")
+                        force_log(
+                            f"Chat {event.chat_id} already registered with same user"
+                        )
+                        await event.respond(
+                            f"Chat ID {event.chat_id} is already registered."
+                        )
                     return
 
                 force_log(f"Proceeding with new registration for chat {event.chat_id}")
-                await self.event_handler.register(event, user)
+                await self.event_handler.register(event, registered_user)
             except Exception as e:
+                print(f"Error on registration {e}")
                 force_log(f"Error in register_handler: {e}")
-                await event.respond("An error occurred during registration. Please try again.")
+                await event.respond(
+                    "An error occurred during registration. Please try again."
+                )
 
         # Contact us command handler
         @self.bot.on(events.NewMessage(pattern="/contact_us"))
@@ -91,6 +108,7 @@ class TelegramBotService:
             try:
                 await self.event_handler.callback(event)
             except Exception as e:
+                print(f"Error in callback_handler: {e}")
                 force_log(f"Error in callback_handler: {e}")
                 await event.respond("An error occurred. Please try again.")
 
@@ -99,22 +117,33 @@ class TelegramBotService:
         async def migration_handler(event):
             try:
                 # Only handle migrate_to_chat_id (from old group) to avoid duplicate processing
-                if hasattr(event.message, 'migrate_to_chat_id') and event.message.migrate_to_chat_id:
+                if (
+                    hasattr(event.message, "migrate_to_chat_id")
+                    and event.message.migrate_to_chat_id
+                ):
                     old_chat_id = event.chat_id
                     new_chat_id = event.message.migrate_to_chat_id
-                    
-                    force_log(f"Chat migration detected: {old_chat_id} -> {new_chat_id}")
-                    
+
+                    force_log(
+                        f"Chat migration detected: {old_chat_id} -> {new_chat_id}"
+                    )
+
                     # Migrate the chat_id in the database
-                    success = await self.chat_service.migrate_chat_id(old_chat_id, new_chat_id)
-                    
+                    success = await self.chat_service.migrate_chat_id(
+                        old_chat_id, new_chat_id
+                    )
+
                     if success:
-                        force_log(f"Successfully migrated chat data from {old_chat_id} to {new_chat_id}")
+                        force_log(
+                            f"Successfully migrated chat data from {old_chat_id} to {new_chat_id}"
+                        )
                     else:
-                        force_log(f"Failed to migrate chat data from {old_chat_id} to {new_chat_id}")
-                    
+                        force_log(
+                            f"Failed to migrate chat data from {old_chat_id} to {new_chat_id}"
+                        )
+
                     return  # Don't process this message further
-                
+
                 # If not a migration event, process normally
                 await self.event_handler.message(event)
             except Exception as e:

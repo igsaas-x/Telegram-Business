@@ -1,4 +1,4 @@
-from models.income_balance_model import CurrencyEnum
+from common.enums import CurrencyEnum
 
 
 def total_summary_report(incomes, summary_title: str) -> str:

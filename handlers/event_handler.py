@@ -1,13 +1,19 @@
 from telethon import Button
 
-from helper import DateUtils
-from helper.logger_utils import force_log
-from models import ChatService, ConversationService, IncomeService, UserService
-from models.group_package_model import GroupPackageService, ServicePackage
-from models.user_model import User
+from helper import DateUtils, force_log
+from common.enums import ServicePackage
+from services import (
+    ChatService,
+    ConversationService,
+    IncomeService,
+    UserService,
+    GroupPackageService,
+)
+from models import User
 from .client_command_handler import CommandHandler
 
 contact_message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
+
 
 class EventHandler:
     def __init__(self):
@@ -15,6 +21,7 @@ class EventHandler:
         self.chat_service = ChatService()
         self.income_service = IncomeService()
         self.group_package_service = GroupPackageService()
+        self.conversation_service = ConversationService()
 
     async def _check_and_notify_autosum_missing(self, event):
         """Check if @autosum_kh exists in the group and notify if missing"""
@@ -22,31 +29,37 @@ class EventHandler:
             # Only check for groups, not private chats
             if event.is_private:
                 return None, False
-                
+
             # Get participants to check if @autosum_kh is already in the group
             try:
                 participants = await event.client.get_participants(event.chat_id)
-                autosum_usernames = ['autosum_kh']
-                
+                autosum_usernames = ["autosum_kh"]
+
                 # Check if any of the autosum bots are already in the group
-                existing_usernames = {getattr(p, 'username', '').lower() for p in participants if hasattr(p, 'username') and p.username}
-                
+                existing_usernames = {
+                    getattr(p, "username", "").lower()
+                    for p in participants
+                    if hasattr(p, "username") and p.username
+                }
+
                 for username in autosum_usernames:
                     if username.lower() in existing_usernames:
                         return None, False  # Bot already exists, no need to notify
-                
+
                 # Notify that @autosum_kh should be added with a convenient button
                 notification_message = (
                     "⚠️ សម្រាប់ការប្រើប្រាស់ពេញលេញ សូមបន្ថែម @autosum_kh ចូលក្រុមនេះ។"
                 )
-                
-                force_log(f"Notified group {event.chat_id} to add @autosum_kh with button")
-                return notification_message, True
+
+                force_log(
+                    f"Notified group {event.chat_id} to add @autosum_kh with button"
+                )
+                return notification_message, False
 
             except Exception as e:
                 force_log(f"Error checking participants in group {event.chat_id}: {e}")
                 return None, False
-                
+
         except Exception as e:
             force_log(f"Error in _check_and_notify_autosum_missing: {e}")
             return None, False
@@ -65,64 +78,70 @@ class EventHandler:
 
                 user = None
                 # Check if sender is anonymous
-                if sender and hasattr(sender, 'id') and sender.id is not None:
+                if sender and hasattr(sender, "id") and sender.id is not None:
                     # Create user if not exists
                     user_service = UserService()
                     user = await user_service.create_user(sender)
-                
+
                 # Use our own register method to register the chat
                 await self.register(event, user)
-                
+
                 # Refresh chat information after registration
                 chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
-                
+
                 # If still not available, registration failed
                 if not chat:
                     return  # Register method would have shown appropriate message
-                
+
                 # No need to show success message here since register method already does that
-                
+
             except Exception as e:
                 import logging
+
                 logging.error(f"Error during auto-registration: {e}")
-                message = "⚠️ Auto-registration failed. Please use /register command manually."
+                message = (
+                    "⚠️ Auto-registration failed. Please use /register command manually."
+                )
                 await event.respond(message)
                 return
-        
+
         # Check if chat is not active (needs trial period check)
         if not chat.is_active:
             # Check if it's still within 7-day trial period
             from datetime import timedelta
+
             trial_end = chat.created_at + timedelta(days=7)
-            
+
             # Make trial_end timezone-aware for comparison
             trial_end = DateUtils.localize_datetime(trial_end)
-            
+
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to contact admin
-                
+
                 # Check if this is a callback (return button) or new command
-                if hasattr(event, 'callback_query') and event.callback_query:
+                if hasattr(event, "callback_query") and event.callback_query:
                     await event.edit(contact_message)
                 else:
                     await event.respond(contact_message)
                 return
             # If within trial period, continue to show menu (don't update is_active)
-        
+
         # Chat is either active (is_active=True) or within trial period - show menu
         # Check and notify if @autosum_kh is missing
-        telethon_message, not_added = await self._check_and_notify_autosum_missing(event)
+        telethon_message, not_added = await self._check_and_notify_autosum_missing(
+            event
+        )
         if telethon_message and not_added:
             # Create button to easily add @autosum_kh
-            buttons = [
-                [Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]
-            ]
+            buttons = [[Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]]
             await event.respond(telethon_message, buttons=buttons)
             return
-        
+
         # Check package to determine available options
-        group_package = await self.group_package_service.get_or_create_group_package(event.chat_id)
-        
+        group_package = await self.group_package_service.get_or_create_group_package(
+            event.chat_id
+        )
+
         if group_package.package == ServicePackage.BASIC:
             # Basic package: only current date option
             buttons = [
@@ -142,9 +161,9 @@ class EventHandler:
                 [Button.inline("ប្រចាំខែ", "monthly_summary")],
                 [Button.inline("បិទ", "close_menu")],
             ]
-        
+
         # Check if this is a callback (return button) or new command
-        if hasattr(event, 'callback_query') and event.callback_query:
+        if hasattr(event, "callback_query") and event.callback_query:
             # This is from a return button - edit existing message
             await event.edit("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
         else:
@@ -157,22 +176,29 @@ class EventHandler:
     async def register(self, event, user: User | None):
         chat_id = event.chat_id
         # Handle both group chats (with title) and private chats (without title)
-        group_name = getattr(event.chat, 'title', f"Private Chat {chat_id}")
+        group_name = getattr(event.chat, "title", f"Private Chat {chat_id}")
         chat_service = ChatService()
-        success, message = await chat_service.register_chat_id(chat_id, group_name, user)
-        
+        success, message = await chat_service.register_chat_id(
+            chat_id, group_name, user
+        )
+
         # Add a menu button to the response message for successful registration
         if success:
             # Assign TRIAL package for normal bot registrations
             try:
-                from models.group_package_model import GroupPackageService, ServicePackage
-                package_service = GroupPackageService()
-                await package_service.create_group_package(chat_id, ServicePackage.TRIAL)
+
+                await self.group_package_service.create_group_package(
+                    chat_id, ServicePackage.TRIAL
+                )
                 force_log(f"Assigned TRIAL package to chat_id: {chat_id}")
             except Exception as package_error:
-                force_log(f"Error assigning TRIAL package to chat_id {chat_id}: {package_error}")
+                force_log(
+                    f"Error assigning TRIAL package to chat_id {chat_id}: {package_error}"
+                )
             # Check and notify if @autosum_kh is missing after successful registration
-            telethon_message, not_added = await self._check_and_notify_autosum_missing(event)
+            telethon_message, not_added = await self._check_and_notify_autosum_missing(
+                event
+            )
             if telethon_message and not_added:
                 # Create button to easily add @autosum_kh
                 message = telethon_message
@@ -181,9 +207,7 @@ class EventHandler:
                 ]
             else:
                 # Create menu button
-                buttons = [
-                    [Button.inline("របាយការណ៍", "menu")]
-                ]
+                buttons = [[Button.inline("របាយការណ៍", "menu")]]
             await event.respond(message, buttons=buttons)
         else:
             # For failures, just show the message without buttons
@@ -198,8 +222,7 @@ class EventHandler:
             return
 
         chat_id = event.chat_id
-        conversation_service = ConversationService()
-        question = await conversation_service.get_question_by_message_id(
+        question = await self.conversation_service.get_question_by_message_id(
             chat_id=chat_id, message_id=replied_message.id
         )
 
