@@ -451,14 +451,15 @@ class AutosumBusinessBot:
         await query.answer()
 
         # Try to handle as business callback if it looks like a business operation
-        if query.data in [
+        if (query.data in [
             "close_shift",
             "current_shift_report",
             "previous_shift_report",
             "other_days_report",
             "back_to_menu",
             "close_menu",
-        ]:
+        ] or
+            query.data.startswith("shift_") or query.data.startswith("date_")):
             logger.info(f"Routing fallback callback {query.data} to business handler")
             return await self.handle_business_callback(update, context)
 
