@@ -55,7 +55,7 @@ async def main(loader: CredentialLoader) -> None:
     try:
         telegramBotService = TelegramBotService()
         telethonClientService1 = TelethonClientService()
-        adminBot = TelegramAdminBot(loader.admin_bot_token)
+        # adminBot = TelegramAdminBot(loader.admin_bot_token)
         businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
         autoCloseScheduler = AutoCloseScheduler(bot_service=businessBot)
 
@@ -77,7 +77,7 @@ async def main(loader: CredentialLoader) -> None:
                     loader.phone_number1, loader.api_id1, loader.api_hash1
                 )
             ),
-            asyncio.create_task(adminBot.start_polling()),
+            # asyncio.create_task(adminBot.start_polling()),
             asyncio.create_task(autoCloseScheduler.start_scheduler()),
         ]
         

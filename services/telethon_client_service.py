@@ -1,5 +1,7 @@
 import os
 
+import asyncio
+
 import pytz
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
@@ -16,26 +18,28 @@ class TelethonClientService:
     def __init__(self):
         self.client = None
         self.service = IncomeService()
-        self.scheduler = None
+        self.scheduler: MessageVerificationScheduler | None = None
+        self.chat_service = ChatService()
 
-    async def get_username_by_phone(self, phone_number: str) -> str | None:
+
+async def get_username_by_phone(self, phone_number: str) -> str | None:
         """
         Get Telegram username by phone number.
-        
+
         Args:
             phone_number: The phone number to search for (with or without country code)
-            
+
         Returns:
             Username string if found, None if not found or error occurs
         """
         if not self.client:
             force_log("Client not initialized. Cannot get username by phone.")
             return None
-            
+
         try:
             # Clean phone number - remove spaces, dashes, plus signs
             clean_phone = phone_number.replace(" ", "").replace("-", "").replace("+", "")
-            
+
             # Try to resolve the user by phone number
             try:
                 user = await self.client.get_entity(f"+{clean_phone}")
@@ -58,14 +62,14 @@ class TelethonClientService:
                 except Exception as e2:
                     force_log(f"Could not find user for phone {phone_number}: {e2}")
                     return None
-                    
+
         except Exception as e:
             force_log(f"Error getting username by phone {phone_number}: {e}")
             return None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
-        
+
         # Handle persistent timestamp errors by removing corrupted session
         try:
             self.client = TelegramClient(username, int(api_id), api_hash)
@@ -76,7 +80,7 @@ class TelethonClientService:
             force_log(f"Session corrupted for {username}, removing session file...")
             if os.path.exists(session_file):
                 os.remove(session_file)
-            
+
             # Recreate client with clean session
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
@@ -90,15 +94,13 @@ class TelethonClientService:
             force_log(f"Error starting client for {username}: {e}")
             raise
 
-        chat_service = ChatService()
-
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
-        
+
         # Initialize and start the message verification scheduler
         self.scheduler = MessageVerificationScheduler(self.client)
         force_log("Starting message verification scheduler...")
-        
+
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
@@ -117,7 +119,7 @@ class TelethonClientService:
                 if not is_bot:
                     force_log(f"Message from human user, ignoring")
                     return
-                
+
                 # Ignore specific bot: AutosumBusinessBot
                 if getattr(sender, 'username', '') == 'AutosumBusinessBot':
                     force_log(f"Message from AutosumBusinessBot, ignoring")
@@ -132,7 +134,7 @@ class TelethonClientService:
                 currency, amount = extract_amount_and_currency(event.message.text)
                 message_id: int = event.message.id
                 trx_id: str | None = extract_trx_id(event.message.text)
-                
+
                 force_log(f"Extracted: currency={currency}, amount={amount}, trx_id={trx_id}")
 
                 # Skip if no valid currency/amount (do this check early)
@@ -173,7 +175,7 @@ class TelethonClientService:
 
                 # Get chat info to check registration timestamp
                 force_log(f"Getting chat info for chat_id: {event.chat_id}")
-                chat = await chat_service.get_chat_by_chat_id(event.chat_id)
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
                 if not chat:
                     force_log(f"Chat {event.chat_id} not found in database!")
                     return
@@ -224,7 +226,6 @@ class TelethonClientService:
                 force_log(f"Traceback: {traceback.format_exc()}")
 
         # Start both the client and scheduler concurrently
-        import asyncio
         await asyncio.gather(
             self.client.run_until_disconnected(),  # type: ignore
             self.scheduler.start_scheduler()
