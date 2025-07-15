@@ -8,19 +8,19 @@ from telethon.errors import PersistentTimestampInvalidError
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService
-from schedulers import MessageVerificationScheduler
+from models import ChatService, IncomeService
+from services.message_verification_scheduler import MessageVerificationScheduler
 
 
 class TelethonClientService:
     def __init__(self):
-        self.client: TelegramClient | None = None
+        self.client = None
         self.service = IncomeService()
-        self.scheduler: MessageVerificationScheduler | None = None
+        self.scheduler = None
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
-
+        
         # Handle persistent timestamp errors by removing corrupted session
         try:
             self.client = TelegramClient(username, int(api_id), api_hash)
@@ -31,7 +31,7 @@ class TelethonClientService:
             force_log(f"Session corrupted for {username}, removing session file...")
             if os.path.exists(session_file):
                 os.remove(session_file)
-
+            
             # Recreate client with clean session
             self.client = TelegramClient(username, int(api_id), api_hash)
             await self.client.connect()
@@ -49,11 +49,11 @@ class TelethonClientService:
 
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
-
+        
         # Initialize and start the message verification scheduler
-        self.scheduler = MessageVerificationScheduler(self.client)  # type: ignore
+        self.scheduler = MessageVerificationScheduler(self.client)
         force_log("Starting message verification scheduler...")
-
+        
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
             force_log(f"=== NEW MESSAGE EVENT TRIGGERED ===")
@@ -61,7 +61,7 @@ class TelethonClientService:
 
             try:
                 sender = await event.get_sender()
-                is_bot = getattr(sender, "bot", False)
+                is_bot = getattr(sender, 'bot', False)
                 # Check if this is a private chat (not a group)
                 if event.is_private and not is_bot:
                     force_log(f"Private chat detected, sending auto-response")
@@ -72,9 +72,9 @@ class TelethonClientService:
                 if not is_bot:
                     force_log(f"Message from human user, ignoring")
                     return
-
+                
                 # Ignore specific bot: AutosumBusinessBot
-                if getattr(sender, "username", "") == "AutosumBusinessBot":
+                if getattr(sender, 'username', '') == 'AutosumBusinessBot':
                     force_log(f"Message from AutosumBusinessBot, ignoring")
                     return
 
@@ -83,34 +83,24 @@ class TelethonClientService:
                     force_log("No message text, skipping")
                     return
 
-                force_log(
-                    f"Processing message from chat {event.chat_id}: {event.message.text}"
-                )
+                force_log(f"Processing message from chat {event.chat_id}: {event.message.text}")
                 currency, amount = extract_amount_and_currency(event.message.text)
                 message_id: int = event.message.id
                 trx_id: str | None = extract_trx_id(event.message.text)
-
-                force_log(
-                    f"Extracted: currency={currency}, amount={amount}, trx_id={trx_id}"
-                )
+                
+                force_log(f"Extracted: currency={currency}, amount={amount}, trx_id={trx_id}")
 
                 # Skip if no valid currency/amount (do this check early)
                 if not (currency and amount):
-                    force_log(
-                        f"No valid currency/amount found in message: {event.message.text}"
-                    )
+                    force_log(f"No valid currency/amount found in message: {event.message.text}")
                     return
 
                 force_log(f"Valid currency and amount found, checking duplicates...")
 
                 # Use comprehensive duplicate check (chat_id + trx_id + message_id)
-                is_duplicate = await self.service.check_duplicate_transaction(
-                    event.chat_id, trx_id, message_id
-                )
+                is_duplicate = await self.service.check_duplicate_transaction(event.chat_id, trx_id, message_id)
                 if is_duplicate:
-                    force_log(
-                        f"Duplicate transaction found for chat_id={event.chat_id}, trx_id={trx_id}, message_id={message_id}, skipping"
-                    )
+                    force_log(f"Duplicate transaction found for chat_id={event.chat_id}, trx_id={trx_id}, message_id={message_id}, skipping")
                     return
 
                 force_log(f"No duplicates found - proceeding with income processing...")
@@ -155,22 +145,16 @@ class TelethonClientService:
                     chat_created = DateUtils.localize_datetime(chat_created)
                 chat_created_utc = chat_created.astimezone(pytz.UTC)
 
-                force_log(
-                    f"Message time: {message_time}, Chat created: {chat_created_utc}"
-                )
+                force_log(f"Message time: {message_time}, Chat created: {chat_created_utc}")
                 # Ignore messages sent before chat registration
                 if message_time < chat_created_utc:
-                    force_log(
-                        f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})"
-                    )
+                    force_log(f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})")
                     return
 
                 force_log(f"Message timestamp verified, proceeding to save income...")
 
                 # Let the income service handle shift creation automatically
-                force_log(
-                    f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}"
-                )
+                force_log(f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}")
                 try:
                     result = await self.service.insert_income(
                         event.chat_id,
@@ -180,28 +164,23 @@ class TelethonClientService:
                         message_id,
                         event.message.text,
                         trx_id,
-                        0,  # shift_id
-                        chat.enable_shift,  # enable_shift
+                        None,  # shift_id
+                        chat.enable_shift  # enable_shift
                     )
-                    force_log(
-                        f"Successfully saved income record with id={result.id} for message {message_id}"
-                    )
+                    force_log(f"Successfully saved income record with id={result.id} for message {message_id}")
                 except Exception as income_error:
                     force_log(f"ERROR saving income: {income_error}")
                     import traceback
-
                     force_log(f"Traceback: {traceback.format_exc()}")
 
             except Exception as e:
                 force_log(f"ERROR in message processing: {e}")
                 import traceback
-
                 force_log(f"Traceback: {traceback.format_exc()}")
 
         # Start both the client and scheduler concurrently
         import asyncio
-
         await asyncio.gather(
             self.client.run_until_disconnected(),  # type: ignore
-            self.scheduler.start_scheduler(),
+            self.scheduler.start_scheduler()
         )

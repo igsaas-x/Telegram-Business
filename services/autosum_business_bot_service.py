@@ -11,9 +11,8 @@ from telegram.ext import (
 )
 
 from handlers.business_event_handler import BusinessEventHandler
-from helper import force_log
-from services import ChatService, UserService, GroupPackageService
-from common.enums import ServicePackage
+from helper.logger_utils import force_log
+from models import ChatService, UserService
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -30,37 +29,31 @@ class AutosumBusinessBot:
     """
     Specialized business bot with different event handling and features
     """
-
     def __init__(self, bot_token: str):
         self.bot_token = bot_token
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
         self.event_handler = BusinessEventHandler()
-        self.group_package_service = GroupPackageService()
         logger.info("AutosumBusinessBot initialized with token")
 
     def _convert_buttons_to_keyboard(self, buttons):
         """Convert tuple buttons to InlineKeyboardButton objects"""
         if not buttons:
             return None
-
+        
         keyboard_buttons = []
         for row in buttons:
             button_row = []
             for button in row:
                 if isinstance(button, tuple) and len(button) == 2:
                     text, callback_data = button
-                    button_row.append(
-                        InlineKeyboardButton(text, callback_data=callback_data)
-                    )
+                    button_row.append(InlineKeyboardButton(text, callback_data=callback_data))
             keyboard_buttons.append(button_row)
-
+        
         return InlineKeyboardMarkup(keyboard_buttons)
 
-    async def business_start(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def business_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business bot start command with specialized welcome message"""
         welcome_message = """
 🏢 ស្វាគមន៍មកកាន់ Autosum Business!
@@ -81,84 +74,66 @@ class AutosumBusinessBot:
 
 វាយ /menu ដើម្បីចាប់ផ្តើមគ្រប់គ្រងហិរញ្ញវត្ថុអាជីវកម្មរបស់អ្នក!
         """
-
+        
         await update.message.reply_text(welcome_message)
 
-    async def business_menu(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def business_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Business-specific menu handler"""
-        logger.error(
-            f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}"
-        )
-
+        logger.error(f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}")
         # Create a mock event object for the business event handler
         class MockEvent:
             def __init__(self, update, parent):
                 self.chat_id = update.effective_chat.id
                 self.chat = update.effective_chat
                 self.parent = parent
-
+                
             async def respond(self, message, buttons=None):
-                keyboard = (
-                    self.parent._convert_buttons_to_keyboard(buttons)
-                    if buttons
-                    else None
-                )
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
                 await update.message.reply_text(message, reply_markup=keyboard)
-
+                    
             async def get_sender(self):
                 return update.effective_user
 
         mock_event = MockEvent(update, self)
-
+        
         try:
             await self.event_handler.menu(mock_event)
             return BUSINESS_MENU_CODE
         except Exception as e:
             logger.error(f"Error in business menu: {e}")
             import traceback
-
             logger.error(f"Full traceback: {traceback.format_exc()}")
-            await update.message.reply_text(
-                "❌ Error loading business menu. Please try again."
-            )
+            await update.message.reply_text("❌ Error loading business menu. Please try again.")
             return ConversationHandler.END
 
-    async def handle_business_callback(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def handle_business_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle business-specific callback queries"""
         query = update.callback_query
         logger.error(f"CRITICAL: handle_business_callback received: {query.data}")
         await query.answer()
-
+        
         # Create a mock event for the business handler
         class MockCallbackEvent:
             def __init__(self, query, parent):
                 self.chat_id = query.message.chat_id
-                self.data = query.data.encode("utf-8")
+                self.data = query.data.encode('utf-8')
                 self.query = query
                 self.parent = parent
                 self.chat = query.message.chat
-
+                
             async def edit(self, message, buttons=None):
-                keyboard = (
-                    self.parent._convert_buttons_to_keyboard(buttons)
-                    if buttons
-                    else None
-                )
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
                 await self.query.edit_message_text(message, reply_markup=keyboard)
-
+                
             async def respond(self, message, buttons=None):
                 # For callback events, we should edit instead of respond
                 await self.edit(message, buttons)
-
+                
             async def get_sender(self):
                 return query.from_user
 
         mock_event = MockCallbackEvent(query, self)
-
+        
         try:
             # Handle business callbacks through event handler
             logger.info(f"Delegating callback to event handler: {query.data}")
@@ -167,16 +142,11 @@ class AutosumBusinessBot:
         except Exception as e:
             logger.error(f"Error handling business callback: {e}")
             import traceback
-
             logger.error(f"Full traceback: {traceback.format_exc()}")
-            await query.edit_message_text(
-                "❌ Error processing request. Please try again."
-            )
+            await query.edit_message_text("❌ Error processing request. Please try again.")
             return ConversationHandler.END
 
-    async def business_support(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def business_support(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Business support command"""
         support_message = """
 📞 មជ្ឈមណ្ឌលការគាំទ្រអាជីវកម្ម
@@ -205,15 +175,13 @@ class AutosumBusinessBot:
 • ផ្ទាំងគ្រប់គ្រង: /menu
 • សំណើលក្ខណៈពិសេស: ទាក់ទងក្រុមការគាំទ្រ
         """
-
+        
         await update.message.reply_text(support_message)
 
-    async def register_chat(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def register_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Register chat command - registers chat and asks about shift enablement"""
         chat_id = int(update.effective_chat.id)
-
+        
         try:
             # Check if chat is already registered
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
@@ -225,21 +193,21 @@ class AutosumBusinessBot:
 
 តើអ្នកចង់ប្រើវេនទេ?
                 """
-
+                
                 # Create buttons for shift choice
                 buttons = [
                     [("✅ បើកវេន", "register_enable_shift")],
                     [("❌ មិនបើកវេនទេ", "register_skip_shift")],
-                    [("🏠 ទៅមីនុយ", "back_to_menu")],
+                    [("🏠 ទៅមីនុយ", "back_to_menu")]
                 ]
-
+                
                 keyboard = self._convert_buttons_to_keyboard(buttons)
                 await update.message.reply_text(message, reply_markup=keyboard)
                 return
 
             # Get user information for registration
             user = update.effective_user
-            if not user or not hasattr(user, "id") or user.id is None:
+            if not user or not hasattr(user, 'id') or user.id is None:
                 message = """
 ⚠️ ការចុះឈ្មោះបរាជ័យ
 
@@ -255,10 +223,7 @@ class AutosumBusinessBot:
             # Get chat title
             chat_title = "Business Chat"
             try:
-                if (
-                    hasattr(update.effective_chat, "title")
-                    and update.effective_chat.title
-                ):
+                if hasattr(update.effective_chat, 'title') and update.effective_chat.title:
                     chat_title = update.effective_chat.title
             except:
                 pass
@@ -271,14 +236,12 @@ class AutosumBusinessBot:
             if success:
                 # Assign BUSINESS package for business bot registrations
                 try:
-                    await self.group_package_service.create_group_package(
-                        chat_id, ServicePackage.BUSINESS
-                    )
+                    from models.group_package_model import GroupPackageService, ServicePackage
+                    package_service = GroupPackageService()
+                    await package_service.create_group_package(chat_id, ServicePackage.BUSINESS)
                     logger.info(f"Assigned BUSINESS package to chat_id: {chat_id}")
                 except Exception as package_error:
-                    logger.error(
-                        f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}"
-                    )
+                    logger.error(f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}")
                 # Registration successful, now ask about shift
                 message = f"""
 ✅ ការចុះឈ្មោះជជែកបានជោគជ័យ!
@@ -289,29 +252,27 @@ class AutosumBusinessBot:
 
 🔧 តើអ្នកចង់បើកវេនដើម្បីចាប់ផ្តើមតាមដានប្រតិបត្តិការឥឡូវនេះទេ?
                 """
-
+                
                 # Create buttons for shift choice
                 buttons = [
                     [("✅ បាទ/ចាស បើកវេន", "register_enable_shift")],
                     [("❌ ទេ មិនបើកវេនទេ", "register_skip_shift")],
-                    [("🏠 ទៅមីនុយ", "back_to_menu")],
+                    [("🏠 ទៅមីនុយ", "back_to_menu")]
                 ]
-
+                
                 keyboard = self._convert_buttons_to_keyboard(buttons)
                 await update.message.reply_text(message, reply_markup=keyboard)
             else:
                 await update.message.reply_text(f"❌ ការចុះឈ្មោះបរាជ័យ: {reg_message}")
-
+                
         except Exception as e:
             logger.error(f"Error registering chat: {e}")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការចុះឈ្មោះ។ សូមសាកល្បងម្តងទៀត។")
 
-    async def enable_shift(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Enable shift command - starts a new shift"""
         chat_id = int(update.effective_chat.id)
-
+        
         try:
             # Check if chat is registered
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
@@ -323,12 +284,10 @@ class AutosumBusinessBot:
                 """
                 await update.message.reply_text(message)
                 return
-
+            
             # Check if there's already an active shift
-            current_shift = await self.event_handler.shift_service.get_current_shift(
-                chat_id
-            )
-
+            current_shift = await self.event_handler.shift_service.get_current_shift(chat_id)
+            
             if current_shift:
                 message = f"""
 ⚠️ មានវេនសកម្មរួចហើយ
@@ -340,10 +299,10 @@ class AutosumBusinessBot:
                 """
                 await update.message.reply_text(message)
                 return
-
+            
             # Create new shift
             new_shift = await self.event_handler.shift_service.create_shift(chat_id)
-
+            
             message = f"""
 ✅ វេនថ្មីត្រូវបានបើកដោយជោគជ័យ!
 
@@ -354,124 +313,97 @@ class AutosumBusinessBot:
 💡 ឥឡូវនេះប្រតិបត្តិការថ្មីទាំងអស់នឹងត្រូវបានកត់ត្រាក្នុងវេននេះ។
 🔧 ប្រើ /menu ដើម្បីគ្រប់គ្រងវេននិងមើលរបាយការណ៍។
             """
-
+            
             await update.message.reply_text(message)
-
+            
         except Exception as e:
             logger.error(f"Error enabling shift: {e}")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
 
-    async def handle_register_enable_shift(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def handle_register_enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle register flow - enable shift option"""
         query = update.callback_query
         await query.answer()
-
+        
         chat_id = query.message.chat_id
-
+        
         try:
             # Simple database update
             await self.chat_service.update_chat_enable_shift(chat_id, True)
-
+            
             # Simple response with menu button
             buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
             keyboard = self._convert_buttons_to_keyboard(buttons)
             await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=keyboard)
-
+            
         except Exception as e:
             logger.error(f"Error: {e}")
             await query.edit_message_text("❌ Error", reply_markup=None)
 
-    async def handle_register_skip_shift(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def handle_register_skip_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle register flow - skip shift option"""
         query = update.callback_query
         await query.answer()
-
+        
         buttons = [[("🏠 ទៅមីនុយ", "back_to_menu")]]
         keyboard = self._convert_buttons_to_keyboard(buttons)
-        await query.edit_message_text(
-            "✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!", reply_markup=keyboard
-        )
+        await query.edit_message_text("✅ ការចុះឈ្មោះបានបញ្ចប់ដោយជោគជ័យ!", reply_markup=keyboard)
 
-    async def handle_back_to_menu(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def handle_back_to_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle back to menu button"""
         query = update.callback_query
         await query.answer()
-
+        
         # Create a mock event to call the menu handler
         class MockEvent:
             def __init__(self, update, parent):
                 self.chat_id = update.callback_query.message.chat_id
                 self.chat = update.callback_query.message.chat
                 self.parent = parent
-
+                
             async def edit(self, message, buttons=None):
-                keyboard = (
-                    self.parent._convert_buttons_to_keyboard(buttons)
-                    if buttons
-                    else None
-                )
+                keyboard = self.parent._convert_buttons_to_keyboard(buttons) if buttons else None
                 await query.edit_message_text(message, reply_markup=keyboard)
-
+                
             async def respond(self, message, buttons=None):
                 await self.edit(message, buttons)
-
+                
             async def get_sender(self):
                 return query.from_user
 
         mock_event = MockEvent(update, self)
         await self.event_handler.menu(mock_event)
 
-    async def handle_close_menu(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def handle_close_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle close menu button"""
         query = update.callback_query
         await query.answer()
-
+        
         try:
             await query.delete_message()
         except Exception as e:
             # Fallback to editing the message if delete fails
             await query.edit_message_text("បានបិទ", reply_markup=None)
 
-    async def handle_fallback_callback(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def handle_fallback_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle any callbacks not caught by other handlers"""
         query = update.callback_query
-        logger.error(
-            f"CRITICAL: Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}"
-        )
+        logger.error(f"CRITICAL: Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}")
         await query.answer()
-
+        
         # Try to handle as business callback if it looks like a business operation
-        if query.data in [
-            "close_shift",
-            "current_shift_report",
-            "previous_shift_report",
-            "other_days_report",
-            "back_to_menu",
-            "close_menu",
-        ]:
+        if query.data in ["close_shift", "current_shift_report", "previous_shift_report", "other_days_report", "back_to_menu", "close_menu"]:
             logger.info(f"Routing fallback callback {query.data} to business handler")
             return await self.handle_business_callback(update, context)
-
+        
         # Unknown callback
-        await query.edit_message_text(
-            "❌ Unknown action. Please try again.", reply_markup=None
-        )
+        await query.edit_message_text("❌ Unknown action. Please try again.", reply_markup=None)
 
     def setup(self):
         """Setup the business bot with specialized handlers"""
         if not self.bot_token:
             raise ValueError("Business bot token is required")
-
+            
         self.app = ApplicationBuilder().token(self.bot_token).build()
 
         # Business-specific command handlers
@@ -496,22 +428,12 @@ class AutosumBusinessBot:
         )
 
         self.app.add_handler(business_menu_handler)
-
+        
         # Add separate callback handlers for registration flow
-        self.app.add_handler(
-            CallbackQueryHandler(
-                self.handle_register_enable_shift, pattern="^register_enable_shift$"
-            )
-        )
-        self.app.add_handler(
-            CallbackQueryHandler(
-                self.handle_register_skip_shift, pattern="^register_skip_shift$"
-            )
-        )
-        self.app.add_handler(
-            CallbackQueryHandler(self.handle_back_to_menu, pattern="^back_to_menu$")
-        )
-
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_enable_shift, pattern="^register_enable_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_register_skip_shift, pattern="^register_skip_shift$"))
+        self.app.add_handler(CallbackQueryHandler(self.handle_back_to_menu, pattern="^back_to_menu$"))
+        
         # Add fallback callback handler for any unhandled callbacks
         self.app.add_handler(CallbackQueryHandler(self.handle_fallback_callback))
 
@@ -520,12 +442,10 @@ class AutosumBusinessBot:
 
         logger.info("AutosumBusinessBot setup completed")
 
-    async def error_handler(
-        self, update: object, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def error_handler(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle errors in the business bot"""
         logger.error(f"Business bot error: {context.error}")
-
+        
         if isinstance(update, Update) and update.effective_message:
             await update.effective_message.reply_text(
                 "❌ An error occurred in the business bot. Please try again or contact support."
@@ -536,23 +456,22 @@ class AutosumBusinessBot:
         try:
             self.setup()
             logger.info("Starting AutosumBusinessBot polling...")
-
+            
             await self.app.initialize()
             await self.app.start()
             await self.app.updater.start_polling()
-
+            
             logger.info("AutosumBusinessBot is running and polling for updates...")
-
+            
             # Keep the bot running indefinitely
             try:
                 await self.app.updater.idle()
             except Exception:
                 # If idle fails, just wait indefinitely
                 import asyncio
-
                 while True:
                     await asyncio.sleep(3600)  # Sleep for 1 hour at a time
-
+            
         except Exception as e:
             logger.error(f"Error starting AutosumBusinessBot: {e}")
             raise

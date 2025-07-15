@@ -9,7 +9,8 @@ from telethon.tl.types import Message
 
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService, ShiftService
+from models import ChatService, IncomeService
+from models.shift_model import ShiftService
 
 
 class MessageVerificationScheduler:
@@ -65,9 +66,7 @@ class MessageVerificationScheduler:
                         force_log(f"Skipping inactive chat {chat_id}")
                         continue
 
-                    force_log(
-                        f"Verifying messages for chat {chat_id} ({chat.group_name})"
-                    )
+                    force_log(f"Verifying messages for chat {chat_id} ({chat.group_name})")
 
                     # Read messages from the chat within the time range
                     messages = await self._get_bot_messages_in_timeframe(
@@ -84,9 +83,7 @@ class MessageVerificationScheduler:
                     # 200ms delay between chats, longer delay every 20 chats
                     if i < len(chat_ids) - 1:  # Don't delay after the last chat
                         if (i + 1) % 20 == 0:
-                            force_log(
-                                f"Processed {i + 1} chats, taking longer break to prevent rate limits..."
-                            )
+                            force_log(f"Processed {i + 1} chats, taking longer break to prevent rate limits...")
                             await asyncio.sleep(2)  # 2 seconds break every 20 chats
                         else:
                             await asyncio.sleep(0.2)  # 200ms between each chat
@@ -96,26 +93,26 @@ class MessageVerificationScheduler:
                     continue
 
             force_log(
-                f"Verification job completed. Checked {verification_count} messages, processed {new_messages_found} new messages"
-            )
+                f"Verification job completed. Checked {verification_count} messages, processed {new_messages_found} new messages")
 
         except Exception as e:
             force_log(f"Error in verify_messages: {e}")
             import traceback
-
             force_log(f"Traceback: {traceback.format_exc()}")
 
     async def _get_bot_messages_in_timeframe(
-        self, chat_id: int, start_time: datetime.datetime, end_time: datetime.datetime
+            self, chat_id: int, start_time: datetime.datetime, end_time: datetime.datetime
     ) -> List[Message]:
         """Get bot messages from a specific chat within the given timeframe"""
         messages = []
 
         try:
             # Get messages from the chat starting from 30 minutes ago
-            all_messages = await self.client.get_messages(
-                chat_id, offset_date=start_time, reverse=True, limit=100, wait_time=0.5
-            )
+            all_messages = await self.client.get_messages(chat_id,
+                    offset_date=start_time,
+                    reverse=True,
+                    limit=100,
+                    wait_time=0.5)
             force_log(f"Found {len(all_messages)} messages from {chat_id}")
 
             for message in all_messages:
@@ -131,27 +128,21 @@ class MessageVerificationScheduler:
                 if start_time <= message_time <= end_time:
                     # Check if message is from a bot
                     sender = await message.get_sender()
-                    is_bot = getattr(sender, "bot", False)
+                    is_bot = getattr(sender, 'bot', False)
 
                     if is_bot and message.text:
                         # Skip AutosumBusinessBot messages
-                        if getattr(sender, "username", "") != "AutosumBusinessBot":
+                        if getattr(sender, 'username', '') != 'AutosumBusinessBot':
                             messages.append(message)
-                            force_log(
-                                f"Found bot message in timeframe: {message.id} from {message_time}"
-                            )
+                            force_log(f"Found bot message in timeframe: {message.id} from {message_time}")
         except FloodWaitError as e:
             force_log(f"FloodWaitError for chat {chat_id}: waiting {e.seconds} seconds")
             await asyncio.sleep(e.seconds + 1)
             # Recursively retry after waiting
-            return await self._get_bot_messages_in_timeframe(
-                chat_id, start_time, end_time
-            )
+            return await self._get_bot_messages_in_timeframe(chat_id, start_time, end_time)
         except RPCError as e:
             force_log(f"RPCError for chat {chat_id}: {e}")
-            force_log(
-                f"Chat {chat_id} appears to be inaccessible or deactivated, marking as inactive"
-            )
+            force_log(f"Chat {chat_id} appears to be inaccessible or deactivated, marking as inactive")
             try:
                 # Mark the chat as inactive in the database
                 await self.chat_service.update_chat_status(chat_id, False)
@@ -160,13 +151,11 @@ class MessageVerificationScheduler:
                 force_log(f"Failed to mark chat {chat_id} as inactive: {db_error}")
         except Exception as e:
             force_log(f"General error getting messages for chat {chat_id}: {e}")
-
+            
             # Fallback string check for other exception types
             error_msg = str(e)
             if "Could not find the input entity" in error_msg:
-                force_log(
-                    f"Chat {chat_id} entity not found (fallback detection), marking as inactive"
-                )
+                force_log(f"Chat {chat_id} entity not found (fallback detection), marking as inactive")
                 try:
                     await self.chat_service.update_chat_status(chat_id, False)
                     force_log(f"Successfully marked chat {chat_id} as inactive")
@@ -191,7 +180,6 @@ class MessageVerificationScheduler:
 
             # Convert chat created_at to UTC for comparison
             from helper import DateUtils
-
             chat_created = chat.created_at
             if chat_created.tzinfo is None:
                 chat_created = DateUtils.localize_datetime(chat_created)
@@ -199,34 +187,25 @@ class MessageVerificationScheduler:
 
             if message_time < chat_created_utc:
                 force_log(
-                    f"Message {message_id} timestamp {message_time} is before chat registration {chat_created_utc}, skipping"
-                )
+                    f"Message {message_id} timestamp {message_time} is before chat registration {chat_created_utc}, skipping")
                 return
 
             # Check if this message already exists in database (using both chat_id and message_id)
-            exists = await self.income_service.get_income_by_chat_and_message_id(
-                chat_id, message_id
-            )
+            exists = await self.income_service.get_income_by_chat_and_message_id(chat_id, message_id)
             if exists:
-                force_log(
-                    f"Message {message_id} from chat {chat_id} already exists in database, skipping"
-                )
+                force_log(f"Message {message_id} from chat {chat_id} already exists in database, skipping")
                 return
 
             # Extract currency and amount from message
             currency, amount = extract_amount_and_currency(message_text)
             if not (currency and amount):
-                force_log(
-                    f"No valid currency/amount found in message {message_id}, skipping"
-                )
+                force_log(f"No valid currency/amount found in message {message_id}, skipping")
                 return
 
             # Extract transaction ID
             trx_id = extract_trx_id(message_text)
 
-            force_log(
-                f"Processing new message {message_id}: currency={currency}, amount={amount}, trx_id={trx_id}"
-            )
+            force_log(f"Processing new message {message_id}: currency={currency}, amount={amount}, trx_id={trx_id}")
 
             # Check for duplicates using comprehensive check
             # Not check for now, suppose chat_id + message_id is unique
@@ -248,15 +227,13 @@ class MessageVerificationScheduler:
                 message_text,
                 trx_id,
                 None,  # shift_id
-                chat.enable_shift,  # enable_shift
+                chat.enable_shift  # enable_shift
             )
 
-            force_log(
-                f"Successfully stored income record with id={result.id} for message {message_id}"
-            )
+            force_log(f"Successfully stored income record with id={result.id} for message {message_id}")
 
         except Exception as e:
             force_log(f"Error verifying/storing message {message.id}: {e}")
             import traceback
-
             force_log(f"Traceback: {traceback.format_exc()}")
+

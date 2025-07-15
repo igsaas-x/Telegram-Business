@@ -1,4 +1,3 @@
-from datetime import datetime
 import json
 from contextlib import contextmanager
 from typing import Optional, Generator, Any, List
@@ -12,7 +11,7 @@ from sqlalchemy import (
     Text,
     DateTime,
 )
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Session
 
 from config.database_config import SessionLocal
 from models.base_model import BaseModel
@@ -21,31 +20,23 @@ from models.base_model import BaseModel
 class ShiftConfiguration(BaseModel):
     __tablename__ = "shift_configurations"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
-    auto_close_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
-    auto_close_times: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )  # JSON array of times (e.g., ["08:00", "16:00", "23:59"])
-
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(BigInteger, nullable=False, unique=True)
+    
+    # Auto close configuration
+    auto_close_enabled = Column(Boolean, nullable=False, default=False)
+    auto_close_times = Column(Text, nullable=True)  # JSON array of times (e.g., ["08:00", "16:00", "23:59"])
+    
     # Shift naming/numbering preferences
-    shift_name_prefix: Mapped[str] = mapped_column(
-        String(50), nullable=True, default="Shift"
-    )
-    reset_numbering_daily: Mapped[bool | None] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
-
+    shift_name_prefix = Column(String(50), nullable=True, default="Shift")
+    reset_numbering_daily = Column(Boolean, nullable=False, default=True)
+    
     # Timezone for this chat (optional)
-    timezone: Mapped[str | None] = mapped_column(
-        String(50), nullable=True, default="Asia/Phnom_Penh"
-    )
-
+    timezone = Column(String(50), nullable=True, default="Asia/Phnom_Penh")
+    
     # Last job run tracking
-    last_job_run: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-
+    last_job_run = Column(DateTime, nullable=True)
+    
     def get_auto_close_times_list(self) -> List[str]:
         """Get auto close times as a list of time strings"""
         if not self.auto_close_times:
@@ -54,7 +45,7 @@ class ShiftConfiguration(BaseModel):
             return json.loads(self.auto_close_times)
         except (json.JSONDecodeError, TypeError):
             return []
-
+    
     def set_auto_close_times_list(self, times: List[str]) -> None:
         """Set auto close times from a list of time strings"""
         if times:
@@ -78,28 +69,29 @@ class ShiftConfigurationService:
     async def get_configuration(self, chat_id: int) -> Optional[ShiftConfiguration]:
         """Get configuration if exists"""
         with self._get_db() as db:
-            config = (
-                db.query(ShiftConfiguration)
-                .filter(ShiftConfiguration.chat_id == chat_id)
-                .first()
-            )
-
+            config = db.query(ShiftConfiguration).filter(
+                ShiftConfiguration.chat_id == chat_id
+            ).first()
+            
             return config
 
     async def update_auto_close_settings(
-        self, chat_id: int, enabled: bool, auto_close_times: Optional[List[str]] = None
+        self, 
+        chat_id: int, 
+        enabled: bool, 
+        auto_close_times: Optional[List[str]] = None
     ) -> Optional[ShiftConfiguration]:
         """Update auto close settings for a chat"""
         with self._get_db() as db:
             config = await self.get_configuration(chat_id)
             if not config:
                 return None
-
+            
             # Refresh the object in this session
             config = db.merge(config)
-
+            
             config.auto_close_enabled = enabled
-
+            
             # Set multiple auto close times
             if auto_close_times:
                 # Validate time formats and set the times
@@ -112,23 +104,21 @@ class ShiftConfigurationService:
                             time_parts.append("00")  # Add seconds if not provided
                         elif len(time_parts) != 3:
                             continue  # Skip invalid format
-
+                        
                         # Validate ranges
                         hour = int(time_parts[0])
                         minute = int(time_parts[1])
                         second = int(time_parts[2])
-
+                        
                         if 0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59:
-                            validated_times.append(
-                                f"{hour:02d}:{minute:02d}:{second:02d}"
-                            )
+                            validated_times.append(f"{hour:02d}:{minute:02d}:{second:02d}")
                     except (ValueError, IndexError):
                         continue  # Skip invalid times
-
+                
                 config.set_auto_close_times_list(validated_times)
             else:
                 config.set_auto_close_times_list([])
-
+            
             db.commit()
             db.refresh(config)
             return config
@@ -138,24 +128,24 @@ class ShiftConfigurationService:
         chat_id: int,
         shift_name_prefix: Optional[str] = None,
         reset_numbering_daily: Optional[bool] = None,
-        timezone: Optional[str] = None,
+        timezone: Optional[str] = None
     ) -> Optional[ShiftConfiguration]:
         """Update shift naming and numbering preferences"""
         with self._get_db() as db:
             config = await self.get_configuration(chat_id)
             if not config:
                 return None
-
+            
             # Refresh the object in this session
             config = db.merge(config)
-
+            
             if shift_name_prefix is not None:
                 config.shift_name_prefix = shift_name_prefix
             if reset_numbering_daily is not None:
                 config.reset_numbering_daily = reset_numbering_daily
             if timezone is not None:
                 config.timezone = timezone
-
+                
             db.commit()
             db.refresh(config)
             return config
@@ -163,21 +153,17 @@ class ShiftConfigurationService:
     async def get_chats_with_auto_close_enabled(self) -> list[ShiftConfiguration]:
         """Get all chats that have auto close enabled"""
         with self._get_db() as db:
-            return (
-                db.query(ShiftConfiguration)
-                .filter(ShiftConfiguration.auto_close_enabled == True)
-                .all()
-            )
+            return db.query(ShiftConfiguration).filter(
+                ShiftConfiguration.auto_close_enabled == True
+            ).all()
 
     async def update_last_job_run(self, chat_id: int, job_run_time) -> None:
         """Update the last job run timestamp for a chat configuration"""
         with self._get_db() as db:
-            config = (
-                db.query(ShiftConfiguration)
-                .filter(ShiftConfiguration.chat_id == chat_id)
-                .first()
-            )
-
+            config = db.query(ShiftConfiguration).filter(
+                ShiftConfiguration.chat_id == chat_id
+            ).first()
+            
             if config:
                 config.last_job_run = job_run_time
                 db.commit()
