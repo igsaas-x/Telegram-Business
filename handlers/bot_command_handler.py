@@ -10,7 +10,7 @@ from services import (
     GroupPackageService,
 )
 from models import User
-from .client_command_handler import CommandHandler
+from .bot_event_handler import CommandHandler
 
 contact_message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
 

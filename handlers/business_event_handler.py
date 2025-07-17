@@ -8,7 +8,7 @@ from services.shift_service import ShiftService
 from services.shift_configuration_service import ShiftConfigurationService
 from services.user_service import UserService
 from services.group_package_service import GroupPackageService
-from .client_command_handler import CommandHandler
+from .bot_event_handler import CommandHandler
 from common.enums import ServicePackage
 from models import User
 
