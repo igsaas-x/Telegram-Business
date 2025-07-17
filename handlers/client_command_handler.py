@@ -1,5 +1,4 @@
 import json
-from calendar import monthrange
 from datetime import datetime, timedelta
 
 from telethon import Button
@@ -136,31 +135,34 @@ class CommandHandler:
 
     async def handle_weekly_summary(self, event):
         now = DateUtils.now()
-        year, month = now.year, now.month
-
-        first_day = datetime(year, month, 1)
-        days_to_monday = (first_day.weekday() - 0) % 7
-        first_monday = first_day - timedelta(days=days_to_monday)
-
-        _, last_day = monthrange(year, month)
-        last_date = datetime(year, month, last_day)
-
+        
+        # Get this week's Monday (start of current week)
+        this_week_monday = now - timedelta(days=now.weekday())
+        
+        # Get last week's Monday (start of previous week)
+        last_week_monday = this_week_monday - timedelta(days=7)
+        
         buttons = []
-        current_monday = first_monday
-
-        while current_monday <= last_date:
-            sunday = current_monday + timedelta(days=6)
-            if current_monday.month != sunday.month:
-                label = f"{current_monday.strftime('%d %b')} - {sunday.strftime('%d %b %Y')}"
-            else:
-                label = (
-                    f"{current_monday.strftime('%d')} - {sunday.strftime('%d %b %Y')}"
-                )
-
-            callback_value = current_monday.strftime("%Y-%m-%d")
-            buttons.append([Button.inline(label, f"summary_week_{callback_value}")])
-
-            current_monday += timedelta(days=7)
+        
+        # Add this week button
+        this_week_sunday = this_week_monday + timedelta(days=6)
+        if this_week_monday.month != this_week_sunday.month:
+            this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d %b')} - {this_week_sunday.strftime('%d %b %Y')})"
+        else:
+            this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d')} - {this_week_sunday.strftime('%d %b %Y')})"
+        
+        this_week_callback = this_week_monday.strftime("%Y-%m-%d")
+        buttons.append([Button.inline(this_week_label, f"summary_week_{this_week_callback}")])
+        
+        # Add last week button
+        last_week_sunday = last_week_monday + timedelta(days=6)
+        if last_week_monday.month != last_week_sunday.month:
+            last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d %b')} - {last_week_sunday.strftime('%d %b %Y')})"
+        else:
+            last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d')} - {last_week_sunday.strftime('%d %b %Y')})"
+        
+        last_week_callback = last_week_monday.strftime("%Y-%m-%d")
+        buttons.append([Button.inline(last_week_label, f"summary_week_{last_week_callback}")])
 
         buttons.append([Button.inline("ត្រឡប់ក្រោយ", "menu")])
         await event.edit("ជ្រើសរើសសប្តាហ៍:", buttons=buttons)
