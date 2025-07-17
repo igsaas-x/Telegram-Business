@@ -56,7 +56,7 @@ class CommandHandler:
                     end_date=selected_date + timedelta(days=1),
                 )
 
-                await event.delete()
+                # Don't delete user's reply message
                 if not incomes:
                     await event.respond(
                         f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
