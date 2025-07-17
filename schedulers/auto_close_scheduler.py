@@ -71,6 +71,9 @@ class AutoCloseScheduler:
             shift_id = shift_info["id"]
             shift_number = shift_info["number"]
 
+            # Get shift details for timing information
+            shift = await self.shift_service.get_shift_by_id(shift_id)
+            
             # Get shift summary
             summary = await self.shift_service.get_shift_income_summary(
                 shift_id, chat_id
@@ -80,14 +83,15 @@ class AutoCloseScheduler:
             if summary["transaction_count"] > 0:
                 # Format currency breakdown
                 currency_details = []
-                for currency, data in summary["currencies"].items():
-                    currency_symbol = (
-                        currency if currency in ["$", "៛"] else f"{currency}"
-                    )
-                    currency_details.append(
-                        f"• {currency_symbol}{data['amount']:,.2f} ({data['count']} transactions)"
-                    )
-
+                for currency, data in summary['currencies'].items():
+                    if currency == 'USD':
+                        currency_details.append(f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
+                    elif currency == 'KHR':
+                        khr_amount = int(data['amount'])
+                        currency_details.append(f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)")
+                    else:
+                        currency_details.append(f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
+                
                 currency_text = "\n".join(currency_details)
 
                 message = f"""
@@ -97,8 +101,8 @@ class AutoCloseScheduler:
 {currency_text}
 
 📝 **ព័ត៌មានលម្អិត:**
-• ចំនួនប្រតិបត្តិការសរុប: {summary['transaction_count']}
-• តម្លៃសរុប: {summary['total_amount']:,.2f}
+• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
+• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
                 """.strip()
@@ -108,6 +112,10 @@ class AutoCloseScheduler:
 
 📊 **សរុបចំណូល:**
 • មិនមានប្រតិបត្តិការ
+
+📝 **ព័ត៌មានលម្អិត:**
+• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
+• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
                 """.strip()

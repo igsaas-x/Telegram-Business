@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from helper import total_summary_report, DateUtils
+from helper.logger_utils import force_log
 from common.enums import ServicePackage
 from services import (
     ConversationService,
@@ -73,7 +74,7 @@ class CommandHandler:
         except ValueError:
             await event.respond("សូមវាយថ្ងៃជាលេខពី 1 ដល់ 31")
         except Exception as e:
-            print(f"Error in handle_date_input_response: {e}")
+            force_log(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
     async def close(self, event):
