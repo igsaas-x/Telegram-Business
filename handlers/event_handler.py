@@ -163,7 +163,7 @@ class EventHandler:
             ]
 
         # Check if this is a callback (return button) or new command
-        if hasattr(event, "callback_query") and event.callback_query:
+        if hasattr(event, 'data'):
             # This is from a return button - edit existing message
             await event.edit("ជ្រើសរើសរបាយការណ៍ប្រចាំ:", buttons=buttons)
         else:
