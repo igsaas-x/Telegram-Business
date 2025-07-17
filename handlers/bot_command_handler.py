@@ -5,7 +5,7 @@ from helper.logger_utils import force_log
 from models import ChatService, ConversationService, IncomeService, UserService
 from models.group_package_model import GroupPackageService, ServicePackage
 from models.user_model import User
-from .client_command_handler import CommandHandler
+from .bot_event_handler import CommandHandler
 
 contact_message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
 

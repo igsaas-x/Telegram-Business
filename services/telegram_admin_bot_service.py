@@ -12,7 +12,7 @@ from telegram.ext import (
     filters,
 )
 
-from handlers.event_handler import EventHandler
+from handlers.bot_command_handler import EventHandler
 from models import ChatService, Chat, UserService
 from models.group_package_model import GroupPackageService, ServicePackage
 

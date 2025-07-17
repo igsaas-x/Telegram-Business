@@ -8,7 +8,7 @@ from models.shift_configuration_model import ShiftConfigurationService
 from models.shift_model import ShiftService
 from models.user_model import User
 from models.user_model import UserService
-from .client_command_handler import CommandHandler
+from .bot_event_handler import CommandHandler
 
 
 class BusinessEventHandler:
