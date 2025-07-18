@@ -21,6 +21,51 @@ class TelethonClientService:
         self.scheduler: MessageVerificationScheduler | None = None
         self.chat_service = ChatService()
 
+    async def get_username_by_phone(self, phone_number: str) -> str | None:
+        """
+        Get Telegram username by phone number.
+        
+        Args:
+            phone_number: The phone number to search for (with or without country code)
+            
+        Returns:
+            Username string if found, None if not found or error occurs
+        """
+        if not self.client:
+            force_log("Client not initialized. Cannot get username by phone.")
+            return None
+            
+        try:
+            # Clean phone number - remove spaces, dashes, plus signs
+            clean_phone = phone_number.replace(" ", "").replace("-", "").replace("+", "")
+            
+            # Try to resolve the user by phone number
+            try:
+                user = await self.client.get_entity(f"+{clean_phone}")
+                if hasattr(user, 'username') and user.username:
+                    force_log(f"Found username '{user.username}' for phone {phone_number}")
+                    return user.username
+                else:
+                    force_log(f"User found for phone {phone_number} but no username set")
+                    return None
+            except Exception as e:
+                # Try without the plus sign if the first attempt failed
+                try:
+                    user = await self.client.get_entity(clean_phone)
+                    if hasattr(user, 'username') and user.username:
+                        force_log(f"Found username '{user.username}' for phone {phone_number}")
+                        return user.username
+                    else:
+                        force_log(f"User found for phone {phone_number} but no username set")
+                        return None
+                except Exception as e2:
+                    force_log(f"Could not find user for phone {phone_number}: {e2}")
+                    return None
+                    
+        except Exception as e:
+            force_log(f"Error getting username by phone {phone_number}: {e}")
+            return None
+
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
 

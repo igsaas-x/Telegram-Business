@@ -76,6 +76,9 @@ async def main(loader: CredentialLoader) -> None:
         loop = asyncio.get_running_loop()
         handle_signals(loop)
 
+        # Set telethon client reference in admin bot for username lookup
+        adminBot.set_telethon_client(telethonClientService1)
+        
         # Start all services
         service_tasks = [
             asyncio.create_task(telegramBotService.start(loader.bot_token)),
