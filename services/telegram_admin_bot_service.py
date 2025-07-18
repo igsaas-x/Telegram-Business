@@ -27,6 +27,7 @@ USER_CONFIRMATION_CODE = 1005
 ENABLE_SHIFT_COMMAND_CODE = 1006
 MENU_COMMAND_CODE = 1007
 CALLBACK_QUERY_CODE = 1008
+GET_USERNAME_COMMAND_CODE = 1009
 
 
 class TelegramAdminBot:
@@ -40,6 +41,7 @@ class TelegramAdminBot:
         self.default_question = (
             "Please provide the chat ID by replying to this message."
         )
+        self.telethon_client = None
         logger.info("TelegramAdminBot initialized with token")
 
     async def validate_user_identifier(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -366,6 +368,10 @@ class TelegramAdminBot:
         await update.message.reply_text(self.default_question)  # type: ignore
         return ENABLE_SHIFT_COMMAND_CODE
 
+    async def get_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("Please provide the phone number (with country code, e.g., +85512345678) by replying to this message.")  # type: ignore
+        return GET_USERNAME_COMMAND_CODE
+
     async def process_chat_id(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
@@ -459,6 +465,46 @@ class TelegramAdminBot:
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
+
+    async def process_phone_number(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        if not update.message:
+            return ConversationHandler.END
+
+        try:
+            phone_number: str = update.message.text.strip()  # type: ignore
+            
+            # Validate phone number format
+            if not phone_number:
+                await update.message.reply_text("Please provide a valid phone number.")
+                return ConversationHandler.END
+            
+            # Check if telethon client is available
+            if not self.telethon_client:
+                await update.message.reply_text("❌ Telethon client not available. Please make sure the service is running.")
+                return ConversationHandler.END
+
+            await update.message.reply_text(f"🔍 Looking up username for phone number: {phone_number}")
+            
+            # Use the telethon client to get username by phone
+            username = await self.telethon_client.get_username_by_phone(phone_number)
+            
+            if username:
+                await update.message.reply_text(f"✅ Username found: @{username}")
+            else:
+                await update.message.reply_text(f"❌ No username found for phone number: {phone_number}\n\nPossible reasons:\n- User not found\n- User has no username set\n- Phone number format incorrect")
+
+        except Exception as e:
+            logger.error(f"Error processing phone number: {e}")
+            await update.message.reply_text(f"❌ Error: {str(e)}")
+
+        return ConversationHandler.END
+
+    def set_telethon_client(self, telethon_client):
+        """Set the telethon client reference for username lookup"""
+        self.telethon_client = telethon_client
+        logger.info("Telethon client reference set for admin bot")
 
     async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
@@ -831,11 +877,25 @@ class TelegramAdminBot:
             per_message=False
         )
 
+        get_username_handler = ConversationHandler(
+            entry_points=[CommandHandler("get_username", self.get_username)],
+            states={
+                GET_USERNAME_COMMAND_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_phone_number)
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_chat=True,
+            per_user=True,
+            per_message=False
+        )
+
         self.app.add_handler(activate_command_handler)
         self.app.add_handler(deactivate_command_handler)
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
+        self.app.add_handler(get_username_handler)
         
         # Remove the global callback query handler to avoid duplicate handling
         # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
