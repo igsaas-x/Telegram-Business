@@ -281,9 +281,9 @@ class AutosumBusinessBot:
                     )
                 # Registration successful, now ask about shift
                 message = f"""
-✅ ការចុះឈ្មោះជជែកបានជោគជ័យ!
+✅ ការចុះឈ្មោះបានជោគជ័យ!
 
-🏢 ជជែក: {chat_title}
+🆔 Chat ID: {chat_id}
 📊 ប្រភេទ: សេវាអាជីវកម្ម
 👤 ចុះឈ្មោះដោយ: {user.first_name}
 
