@@ -95,12 +95,12 @@ class AutoCloseScheduler:
                 currency_text = "\n".join(currency_details)
 
                 message = f"""
-🔒 **វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ**
+🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
 
-📊 **សរុបចំណូល:**
+📊 សរុបចំណូល:
 {currency_text}
 
-📝 **ព័ត៌មានលម្អិត:**
+📝 ព័ត៌មានលម្អិត:
 • ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
 • ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
@@ -108,12 +108,12 @@ class AutoCloseScheduler:
                 """.strip()
             else:
                 message = f"""
-🔒 **វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ**
+🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
 
-📊 **សរុបចំណូល:**
+📊 សរុបចំណូល:
 • មិនមានប្រតិបត្តិការ
 
-📝 **ព័ត៌មានលម្អិត:**
+📝 ព័ត៌មានលម្អិត:
 • ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
 • ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
