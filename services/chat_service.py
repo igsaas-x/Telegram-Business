@@ -160,6 +160,29 @@ class ChatService:
                 session.close()
 
     @staticmethod
+    async def get_all_active_chat_ids_excluding_free():
+        """Get all active chat IDs excluding those with FREE packages"""
+        from models.group_package_model import GroupPackage
+        from common.enums import ServicePackage
+        
+        with get_db_session() as session:
+            try:
+                # Join Chat with GroupPackage and filter out FREE package
+                chats = (
+                    session.query(Chat.chat_id)
+                    .join(GroupPackage, Chat.id == GroupPackage.chat_id)
+                    .filter(Chat.is_active == True)
+                    .filter(GroupPackage.package != ServicePackage.FREE)
+                    .all()
+                )
+                return [int(c[0]) for c in chats]
+            except Exception as e:
+                force_log(f"Error fetching non-free chat IDs: {e}")
+                return []
+            finally:
+                session.close()
+
+    @staticmethod
     async def chat_exists(chat_id: int) -> bool:
         """
         Check if a chat with the given chat_id exists.

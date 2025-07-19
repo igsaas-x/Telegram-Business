@@ -45,9 +45,9 @@ class MessageVerificationScheduler:
         force_log("Starting message verification job...")
 
         try:
-            # Get all chat IDs from database
-            chat_ids = await self.chat_service.get_all_active_chat_ids()
-            force_log(f"Found {len(chat_ids)} chats to verify")
+            # Get all chat IDs from database (excluding FREE package chats)
+            chat_ids = await self.chat_service.get_all_active_chat_ids_excluding_free()
+            force_log(f"Found {len(chat_ids)} non-free chats to verify")
 
             # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)
