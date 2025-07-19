@@ -1,6 +1,5 @@
-import os
-
 import asyncio
+import os
 
 import pytz
 from telethon import TelegramClient, events
@@ -10,8 +9,8 @@ from telethon.errors import PersistentTimestampInvalidError
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService
 from schedulers import MessageVerificationScheduler
+from services import ChatService, IncomeService
 
 
 class TelethonClientService:
@@ -160,27 +159,6 @@ class TelethonClientService:
                     return
 
                 force_log(f"No duplicates found - proceeding with income processing...")
-
-                # Check if chat exists, auto-register if not
-                # force_log(f"Checking if chat {event.chat_id} exists...")
-                # if not await chat_service.chat_exists(event.chat_id):
-                #     force_log(f"Chat {event.chat_id} not registered, auto-registering...")
-                #     try:
-                #         # Get chat title for registration
-                #         chat_entity = await self.client.get_entity(event.chat_id)
-                #         chat_title = getattr(chat_entity, 'title', f"Chat {event.chat_id}")
-                #
-                #         # Register the chat without a specific user (user=None)
-                #         success, err_message = await chat_service.register_chat_id(event.chat_id, chat_title, None)
-                #
-                #         if not success:
-                #             force_log(f"Failed to auto-register chat {event.chat_id}: {err_message}")
-                #             return
-                #
-                #         force_log(f"Auto-registered chat: {event.chat_id} ({chat_title})")
-                #     except Exception as e:
-                #         force_log(f"Error during chat auto-registration: {e}")
-                #         return
 
                 # Get chat info to check registration timestamp
                 force_log(f"Getting chat info for chat_id: {event.chat_id}")
