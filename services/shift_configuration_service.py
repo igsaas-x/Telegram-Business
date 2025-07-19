@@ -82,14 +82,6 @@ class ShiftConfigurationService:
             db.refresh(config)
             return config
 
-    async def get_chats_with_auto_close_enabled(self) -> list[ShiftConfiguration]:
-        with get_db_session() as db:
-            return (
-                db.query(ShiftConfiguration)
-                .filter(ShiftConfiguration.auto_close_enabled == True)
-                .all()
-            )
-
     async def update_last_job_run(self, chat_id: int, job_run_time) -> None:
         with get_db_session() as db:
             config = (

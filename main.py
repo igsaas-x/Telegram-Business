@@ -64,11 +64,11 @@ async def main(loader: CredentialLoader) -> None:
     Main function
     """
     try:
-        telegramBotService = TelegramBotService()
-        telethonClientService1 = TelethonClientService()
-        adminBot = TelegramAdminBot(loader.admin_bot_token)
-        businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
-        autoCloseScheduler = AutoCloseScheduler(bot_service=businessBot)
+        telegram_bot_service = TelegramBotService()
+        telethon_client_service = TelethonClientService()
+        admin_bot = TelegramAdminBot(loader.admin_bot_token)
+        business_bot = AutosumBusinessBot(loader.autosum_business_bot_token)
+        auto_close_scheduler = AutoCloseScheduler(bot_service=business_bot)
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -77,24 +77,24 @@ async def main(loader: CredentialLoader) -> None:
         handle_signals(loop)
 
         # Set telethon client reference in admin bot for username lookup
-        adminBot.set_telethon_client(telethonClientService1)
+        admin_bot.set_telethon_client(telethon_client_service)
         
         # Start all services
         service_tasks = [
-            asyncio.create_task(telegramBotService.start(loader.bot_token)),
+            asyncio.create_task(telegram_bot_service.start(loader.bot_token)),
             asyncio.create_task(
-                telethonClientService1.start(
+                telethon_client_service.start(
                     loader.phone_number1, loader.api_id1, loader.api_hash1
                 )
             ),
-            # asyncio.create_task(adminBot.start_polling()),
-            asyncio.create_task(autoCloseScheduler.start_scheduler()),
+            # asyncio.create_task(admin_bot.start_polling()),
+            asyncio.create_task(auto_close_scheduler.start_scheduler()),
         ]
 
         # Add business bot only if token is provided
         if loader.autosum_business_bot_token:
             logger.info("Starting business bot...")
-            service_tasks.append(asyncio.create_task(businessBot.start_polling()))
+            service_tasks.append(asyncio.create_task(business_bot.start_polling()))
         else:
             logger.warning("Business bot token not provided, skipping business bot")
 

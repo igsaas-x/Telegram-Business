@@ -1,11 +1,10 @@
-from datetime import datetime
 import json
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Optional, Generator, Any, List
 
 from sqlalchemy import (
     Boolean,
-    Column,
     Integer,
     BigInteger,
     String,
@@ -159,15 +158,6 @@ class ShiftConfigurationService:
             db.commit()
             db.refresh(config)
             return config
-
-    async def get_chats_with_auto_close_enabled(self) -> list[ShiftConfiguration]:
-        """Get all chats that have auto close enabled"""
-        with self._get_db() as db:
-            return (
-                db.query(ShiftConfiguration)
-                .filter(ShiftConfiguration.auto_close_enabled == True)
-                .all()
-            )
 
     async def update_last_job_run(self, chat_id: int, job_run_time) -> None:
         """Update the last job run timestamp for a chat configuration"""
