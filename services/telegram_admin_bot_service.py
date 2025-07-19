@@ -14,7 +14,7 @@ from telegram.ext import (
 
 from common.enums import ServicePackage
 from handlers.bot_command_handler import EventHandler
-from helper import DateUtils, total_summary_report
+from helper import DateUtils, total_summary_report, daily_transaction_report
 from helper.logger_utils import force_log
 from models import Chat
 from services import ChatService, UserService, IncomeService
@@ -1286,15 +1286,18 @@ class TelegramAdminBot:
             keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
+            # Get the user who clicked the button
+            requesting_user = query.from_user if query else None
+
             if report_type == "daily":
                 # Call report generation logic or reuse from event_handler
-                report = await self._generate_report(chat_id, "daily")
+                report = await self._generate_report(chat_id, "daily", requesting_user)
                 await query.edit_message_text(report, reply_markup=reply_markup)
             elif report_type == "weekly":
-                report = await self._generate_report(chat_id, "weekly")
+                report = await self._generate_report(chat_id, "weekly", requesting_user)
                 await query.edit_message_text(report, reply_markup=reply_markup)
             elif report_type == "monthly":
-                report = await self._generate_report(chat_id, "monthly")
+                report = await self._generate_report(chat_id, "monthly", requesting_user)
                 await query.edit_message_text(report, reply_markup=reply_markup)
 
             return True
@@ -1331,9 +1334,18 @@ class TelegramAdminBot:
                     f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
                 )
             else:
-                period_text = f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}"
-                formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
-                message = total_summary_report(incomes, formatted_title)
+                # Get username from the requesting user (who clicked the button)
+                telegram_username = "Admin"
+                if hasattr(query, 'from_user') and query.from_user:
+                    requesting_user = query.from_user
+                    if hasattr(requesting_user, 'username') and requesting_user.username:
+                        telegram_username = requesting_user.username
+                    elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                        telegram_username = requesting_user.first_name
+                    # If user is anonymous, username will remain "Admin"
+                
+                # Use new daily report format
+                message = daily_transaction_report(incomes, selected_date, telegram_username)
 
             await query.edit_message_text(message, reply_markup=reply_markup)
             return True
@@ -1386,7 +1398,7 @@ class TelegramAdminBot:
             return False
 
     @staticmethod
-    async def _generate_report(chat_id: int, report_type: str) -> str:
+    async def _generate_report(chat_id: int, report_type: str, requesting_user=None) -> str:
         """Generate report text by calling appropriate service methods"""
 
         income_service = IncomeService()
@@ -1424,7 +1436,20 @@ class TelegramAdminBot:
         if not incomes:
             return f"គ្មានប្រតិបត្តិការសម្រាប់ {title} ទេ។"
 
-        # Use the same formatting as normal bot
+        # For daily reports, use the new format
+        if report_type == "daily":
+            # Get username from the requesting user (who clicked the button)
+            telegram_username = "Admin"
+            if requesting_user:
+                if hasattr(requesting_user, 'username') and requesting_user.username:
+                    telegram_username = requesting_user.username
+                elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                    telegram_username = requesting_user.first_name
+                # If user is anonymous, username will remain "Admin"
+            
+            return daily_transaction_report(incomes, now, telegram_username)
+        
+        # For other reports, use the old format
         period_text = title
         formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, formatted_title)

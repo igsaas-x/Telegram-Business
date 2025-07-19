@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from common.enums import ServicePackage
-from helper import total_summary_report, DateUtils
+from helper import total_summary_report, daily_transaction_report, DateUtils
 from helper.logger_utils import force_log
 from services import (
     ConversationService,
@@ -19,10 +19,28 @@ class CommandHandler:
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
 
-    @staticmethod
-    def format_totals_message(period_text: str, incomes):
-        title = f"សរុបប្រតិបត្តិការ {period_text}"
-        return total_summary_report(incomes, title)
+    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None):
+        # Check if this is a daily report (contains "ថ្ងៃទី")
+        if "ថ្ងៃទី" in period_text:
+            # This is a daily report, use the new format
+            if not report_date:
+                # Try to extract date from period_text or use today
+                report_date = DateUtils.now()
+            
+            # Get username from the requesting user (who triggered the request)
+            telegram_username = "Admin"
+            if requesting_user:
+                if hasattr(requesting_user, 'username') and requesting_user.username:
+                    telegram_username = requesting_user.username
+                elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                    telegram_username = requesting_user.first_name
+                # If user is anonymous, username will remain "Admin"
+            
+            return daily_transaction_report(incomes, report_date, telegram_username)
+        else:
+            # This is a period report (weekly/monthly), use the old format
+            title = f"សរុបប្រតិបត្តិការ {period_text}"
+            return total_summary_report(incomes, title)
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -63,8 +81,8 @@ class CommandHandler:
                     )
                     return
 
-                message = self.format_totals_message(
-                    f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
+                message = await self.format_totals_message(
+                    f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
                 )
                 await event.client.send_message(event.chat_id, message)
 
@@ -110,8 +128,8 @@ class CommandHandler:
                 await event.client.send_message(chat_id, contact_message)
                 return
 
-            message = self.format_totals_message(
-                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes
+            message = await self.format_totals_message(
+                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, chat_id, today, event.sender
             )
             await event.client.send_message(chat_id, message)
 
@@ -225,8 +243,8 @@ class CommandHandler:
                 )
                 return
 
-            message = self.format_totals_message(
-                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
+            message = await self.format_totals_message(
+                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, chat_id, selected_date, event.sender
             )
             await event.client.send_message(chat_id, message)
 
@@ -269,7 +287,7 @@ class CommandHandler:
                 )
                 return
 
-            message = self.format_totals_message(period_text, incomes)
+            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender)
             await event.client.send_message(chat_id, message)
 
         except ValueError:
