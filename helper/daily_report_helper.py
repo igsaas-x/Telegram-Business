@@ -63,7 +63,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     # Build the report
     report = "សរុបប្រតិបត្តិការ\n"
     report += f"ថ្ងៃ {day} {month_khmer} {year} — ម៉ោងបូកសរុប {total_hours} (ដោយ: {telegram_username})\n"
-    report += "- - - - - - - - - - - - - -- - - - - - - \n"
+    report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     # KHR line
     khr_amount = totals["KHR"]
