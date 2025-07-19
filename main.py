@@ -87,7 +87,7 @@ async def main(loader: CredentialLoader) -> None:
                     loader.phone_number1, loader.api_id1, loader.api_hash1
                 )
             ),
-            # asyncio.create_task(admin_bot.start_polling()),
+            asyncio.create_task(admin_bot.start_polling()),
             asyncio.create_task(auto_close_scheduler.start_scheduler()),
         ]
 

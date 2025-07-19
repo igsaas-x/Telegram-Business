@@ -33,6 +33,8 @@ CHAT_SELECTION_CODE = 1010
 ACTIVATE_SELECTION_CODE = 1011
 DEACTIVATE_SELECTION_CODE = 1012
 ENABLE_SHIFT_SELECTION_CODE = 1013
+PACKAGE_START_DATE_CODE = 1014
+PACKAGE_END_DATE_CODE = 1015
 
 
 class TelegramAdminBot:
@@ -73,8 +75,7 @@ class TelegramAdminBot:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             return ConversationHandler.END
 
-    @staticmethod
-    async def package(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "package"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -86,9 +87,8 @@ class TelegramAdminBot:
         )
         return PACKAGE_SELECTION_CODE
 
-    @staticmethod
     async def package_selection_handler(
-            update: Update, context: ContextTypes.DEFAULT_TYPE
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         query = update.callback_query
         try:
@@ -276,9 +276,8 @@ class TelegramAdminBot:
             await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    @staticmethod
     async def shared_selection_handler(
-            update: Update, context: ContextTypes.DEFAULT_TYPE
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         """Shared handler for chat selection across all commands"""
         query = update.callback_query
@@ -577,7 +576,7 @@ class TelegramAdminBot:
 
     @staticmethod
     async def user_confirmation_handler(
-            update: Update
+            update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         query = update.callback_query
         try:
@@ -648,7 +647,7 @@ class TelegramAdminBot:
 
                 # Handle user confirmation buttons
                 if selected_package in ["confirm_user", "cancel_user"]:
-                    return await self.user_confirmation_handler(update)
+                    return await self.user_confirmation_handler(update, context)
 
                 # Handle package selection buttons
                 if selected_package in ["TRIAL", "FREE", "BASIC", "UNLIMITED", "BUSINESS"]:
@@ -658,42 +657,148 @@ class TelegramAdminBot:
                         await query.edit_message_text("Chat ID not found.")
                         return ConversationHandler.END
 
-                    # Update group package
-                    await self.group_package_service.get_or_create_group_package(
-                        chat_id
-                    )
+                    # Store selected package for later processing
+                    context.user_data["selected_package"] = selected_package
 
-                    updated_package = await self.group_package_service.update_package(
-                        chat_id, ServicePackage(selected_package)
-                    )
-
-                    if not updated_package:
-                        await query.edit_message_text("Failed to update group package.")
-                        return ConversationHandler.END
-
-                    # Update shift settings based on package change
-                    if ServicePackage(selected_package) == ServicePackage.BUSINESS:
-                        # When upgrading to business, automatically enable shift
-                        await self.chat_service.update_chat_enable_shift(chat_id, True)
-                    elif ServicePackage(selected_package) in [ServicePackage.TRIAL, ServicePackage.FREE]:
-                        # When downgrading to trial or free, disable shift
-                        await self.chat_service.update_chat_enable_shift(chat_id, False)
-
-                    # Get user info for confirmation message
-                    found_user = context.user_data.get("found_user")
-                    username = found_user.username if found_user and found_user.username else "N/A"  # type: ignore
-
-                    # Confirm to user
+                    # Ask for start date
                     await query.edit_message_text(
-                        f"✅ Successfully updated package to {selected_package} for chat {chat_id} (user @{username})."
+                        f"Selected package: {selected_package}\n\n"
+                        "Please enter the start date for this package (YYYY-MM-DD format):\n"
+                        "Example: 2024-01-15"
                     )
-                    return ConversationHandler.END
+                    return PACKAGE_START_DATE_CODE
 
             return PACKAGE_COMMAND_CODE
         except Exception as e:
             force_log(f"Error in package_button: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error updating user package: {str(e)}")
+            return ConversationHandler.END
+
+    async def process_package_start_date(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle start date input for package"""
+        try:
+            start_date_str = update.message.text.strip()  # type: ignore
+            
+            # Validate date format
+            from datetime import datetime
+            try:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                context.user_data["package_start_date"] = start_date_str
+                
+                # Ask for end date
+                await update.message.reply_text(  # type: ignore
+                    f"Start date set: {start_date_str}\n\n"
+                    "Please enter the end date for this package (YYYY-MM-DD format):\n"
+                    "Example: 2024-12-31"
+                )
+                return PACKAGE_END_DATE_CODE
+                
+            except ValueError:
+                await update.message.reply_text(  # type: ignore
+                    "Invalid date format. Please use YYYY-MM-DD format (e.g., 2024-01-15):"
+                )
+                return PACKAGE_START_DATE_CODE
+                
+        except Exception as e:
+            force_log(f"Error in process_package_start_date: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing start date.")  # type: ignore
+            return ConversationHandler.END
+
+    async def process_package_end_date(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle end date input and finalize package update"""
+        try:
+            end_date_str = update.message.text.strip()  # type: ignore
+            
+            # Validate date format
+            from datetime import datetime
+            try:
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+                start_date = datetime.strptime(context.user_data["package_start_date"], "%Y-%m-%d")
+                
+                # Validate end date is after start date
+                if end_date <= start_date:
+                    await update.message.reply_text(  # type: ignore
+                        "End date must be after start date. Please enter a valid end date:"
+                    )
+                    return PACKAGE_END_DATE_CODE
+                
+                # Store end date
+                context.user_data["package_end_date"] = end_date_str
+                
+                # Now process the package update with dates
+                return await self.finalize_package_update(update, context)
+                
+            except ValueError:
+                await update.message.reply_text(  # type: ignore
+                    "Invalid date format. Please use YYYY-MM-DD format (e.g., 2024-12-31):"
+                )
+                return PACKAGE_END_DATE_CODE
+                
+        except Exception as e:
+            force_log(f"Error in process_package_end_date: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing end date.")  # type: ignore
+            return ConversationHandler.END
+
+    async def finalize_package_update(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Finalize the package update with selected dates"""
+        try:
+            # Get stored data
+            chat_id = context.user_data.get("chat_id_input")
+            selected_package = context.user_data.get("selected_package")
+            start_date_str = context.user_data.get("package_start_date")
+            end_date_str = context.user_data.get("package_end_date")
+            
+            if not all([chat_id, selected_package, start_date_str, end_date_str]):
+                await update.message.reply_text("Missing required information.")  # type: ignore
+                return ConversationHandler.END
+            
+            # Convert dates
+            from datetime import datetime
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+
+            # Update group package with dates
+            await self.group_package_service.get_or_create_group_package(chat_id)
+
+            updated_package = await self.group_package_service.update_package(
+                chat_id, 
+                ServicePackage(selected_package),
+                package_start_date=start_date,
+                package_end_date=end_date
+            )
+
+            if not updated_package:
+                await update.message.reply_text("Failed to update group package.")  # type: ignore
+                return ConversationHandler.END
+
+            # Update shift settings based on package change
+            if ServicePackage(selected_package) == ServicePackage.BUSINESS:
+                # When upgrading to business, automatically enable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, True)
+            elif ServicePackage(selected_package) in [ServicePackage.TRIAL, ServicePackage.FREE]:
+                # When downgrading to trial or free, disable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, False)
+
+            # Confirm to user
+            await update.message.reply_text(  # type: ignore
+                f"✅ Successfully updated package:\n"
+                f"• Package: {selected_package}\n"
+                f"• Chat ID: {chat_id}\n"
+                f"• Start Date: {start_date_str}\n"
+                f"• End Date: {end_date_str}"
+            )
+            return ConversationHandler.END
+            
+        except Exception as e:
+            force_log(f"Error in finalize_package_update: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error finalizing package update.")  # type: ignore
             return ConversationHandler.END
 
     async def callback_query_handler(
@@ -808,8 +913,7 @@ class TelegramAdminBot:
             return None
         return chat
 
-    @staticmethod
-    async def deactivate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def deactivate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "deactivate"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -821,8 +925,7 @@ class TelegramAdminBot:
         )
         return DEACTIVATE_SELECTION_CODE
 
-    @staticmethod
-    async def activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def activate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "activate"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -834,8 +937,7 @@ class TelegramAdminBot:
         )
         return ACTIVATE_SELECTION_CODE
 
-    @staticmethod
-    async def enable_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "enable_shift"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -1376,6 +1478,8 @@ class TelegramAdminBot:
                 ],
                 USER_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_button)],
                 CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
+                PACKAGE_START_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_start_date)],
+                PACKAGE_END_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_end_date)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
