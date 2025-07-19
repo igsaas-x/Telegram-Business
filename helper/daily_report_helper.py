@@ -75,15 +75,15 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     usd_count = transaction_counts["USD"]
     usd_formatted = f"{usd_amount:.2f}"
     
-    # Calculate spacing to align the pipes
-    # Find the longer formatted amount and pad the shorter one
+    # Calculate spacing to align the pipes regardless of amount length
     max_amount_length = max(len(khr_formatted), len(usd_formatted))
     
-    # Use consistent total width for the amount section (amount + padding before pipe)
-    total_width_before_pipe = max_amount_length + 2  # 2 spaces before pipe
+    # Calculate exact spacing needed to align pipes
+    khr_spaces_needed = max_amount_length - len(khr_formatted) + 8  # 8 base spaces
+    usd_spaces_needed = max_amount_length - len(usd_formatted) + 8  # 8 base spaces
     
-    report += f"(៛): {khr_formatted:<{max_amount_length}} |  ប្រតិបត្តិការណ៍: {khr_count}\n"
-    report += f"($): {usd_formatted:<{max_amount_length}} | ប្រតិបត្តិការណ៍: {usd_count}\n"
+    report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការណ៍: {khr_count}\n"
+    report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការណ៍: {usd_count}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     

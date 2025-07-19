@@ -1,16 +1,16 @@
 from typing import List
 
-from helper import DateUtils
-from helper.logger_utils import force_log
-from services.chat_service import ChatService
-from services.income_balance_service import IncomeService
-from services.shift_service import ShiftService
-from services.shift_configuration_service import ShiftConfigurationService
-from services.user_service import UserService
-from services.group_package_service import GroupPackageService
-from .bot_event_handler import CommandHandler
 from common.enums import ServicePackage
+from helper import DateUtils, shift_report_format, current_shift_report_format
+from helper.logger_utils import force_log
 from models import User
+from services.chat_service import ChatService
+from services.group_package_service import GroupPackageService
+from services.income_balance_service import IncomeService
+from services.shift_configuration_service import ShiftConfigurationService
+from services.shift_service import ShiftService
+from services.user_service import UserService
+from .bot_event_handler import CommandHandler
 
 
 class BusinessEventHandler:
@@ -238,27 +238,15 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
 
-                # Currency breakdown
-                currency_text = ""
-                for currency, data in shift_summary["currencies"].items():
-                    if currency == "USD":
-                        currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                    elif currency == "KHR":
-                        khr_amount = int(data["amount"])
-                        currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
-                    else:
-                        currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-
-                message = f"""
-📊 របាយការណ៍វេនបច្ចុប្បន្ន #{current_shift.number}
-
-⏱️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-⏰ ចាប់ផ្តើម: {current_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-🟢 កំពុងបន្ត
-
-💰 សង្ខេបចំណូលសរុប:
-{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-"""
+                # Use new shift report format
+                message = current_shift_report_format(
+                    current_shift.number,
+                    current_shift.start_time,
+                    current_shift.start_time,
+                    shift_summary,
+                    hours,
+                    minutes
+                )
 
                 buttons = [
                     [("🛑 បិទបញ្ជី", "close_shift")],
@@ -302,28 +290,15 @@ class BusinessEventHandler:
                 hours = int(total_seconds // 3600)
                 minutes = int((total_seconds % 3600) // 60)
 
-                # Currency breakdown
-                currency_text = ""
-                for currency, data in shift_summary["currencies"].items():
-                    if currency == "USD":
-                        currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                    elif currency == "KHR":
-                        khr_amount = int(data["amount"])
-                        currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
-                    else:
-                        currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-
-                message = f"""
-📈 របាយការណ៍វេនមុន #{shift.number}
-
-🔴 ស្ថានភាព: បានបិទ
-⏰ ចាប់ផ្តើម: {shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-⏱️ បញ្ចប់: {shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
-⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-
-💰 ចំណូលសរុប:
-{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-"""
+                # Use new shift report format for closed shift
+                message = shift_report_format(
+                    shift.number,
+                    shift.start_time,
+                    shift.start_time,
+                    shift.end_time,
+                    shift_summary,
+                    auto_closed=False  # We don't know if it was auto-closed from this context
+                )
 
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
@@ -550,28 +525,17 @@ class BusinessEventHandler:
                     hours = int(total_seconds // 3600)
                     minutes = int((total_seconds % 3600) // 60)
 
-                    # Currency breakdown same as current shift report
-                    currency_text = ""
-                    for currency, data in shift_summary["currencies"].items():
-                        if currency == "USD":
-                            currency_text += f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-                        elif currency == "KHR":
-                            khr_amount = int(data["amount"])
-                            currency_text += f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)\n"
-                        else:
-                            currency_text += f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)\n"
-
-                    message = f"""
-✅ វេនត្រូវបានបិទដោយជោគជ័យ!
-
-📊 សង្ខេបវេន #{closed_shift.number}:
-⏰ ចាប់ផ្តើម: {closed_shift.start_time.strftime('%Y-%m-%d %I:%M %p')}
-⏱️ បញ្ចប់: {closed_shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
-⏲️ រយៈពេល: {hours}ម៉ោង {minutes}នាទី
-
-💰 សង្ខេបចំណូលសរុប:
-{currency_text if currency_text else '• មិនទាន់មានប្រតិបត្តិការទេ'}
-"""
+                    # Use new shift report format for closed shift
+                    shift_report = shift_report_format(
+                        closed_shift.number,
+                        closed_shift.start_time,
+                        closed_shift.start_time,
+                        closed_shift.end_time,
+                        shift_summary,
+                        auto_closed=False  # Manual close
+                    )
+                    
+                    message = f"✅ វេនត្រូវបានបិទដោយជោគជ័យ!\n\n{shift_report}"
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 

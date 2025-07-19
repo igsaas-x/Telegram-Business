@@ -76,6 +76,6 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
         report += f"{row['day']:2}  {row['khr']:>{max_khr_width}}  {row['usd']:>{max_usd_width}}  {row['count']:>2}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"សរុប: {total_khr_formatted:>{max_khr_width-2}}  {total_usd_formatted:>{max_usd_width}}  {total_transactions}"
+    report += f"សរុប: {total_khr_formatted:>{max_khr_width}}  {total_usd_formatted:>{max_usd_width}}  {total_transactions}"
     
     return report
