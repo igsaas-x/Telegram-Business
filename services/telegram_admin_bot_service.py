@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
@@ -14,8 +15,10 @@ from telegram.ext import (
 
 from common.enums import ServicePackage
 from handlers.bot_command_handler import EventHandler
+from helper import DateUtils, total_summary_report
+from helper.logger_utils import force_log
 from models import Chat
-from services import ChatService, UserService
+from services import ChatService, UserService, IncomeService
 from .group_package_service import GroupPackageService
 
 # Get logger (logging configured in main or telegram_bot_service)
@@ -44,7 +47,7 @@ class TelegramAdminBot:
             "Please provide the chat ID by replying to this message."
         )
         self.telethon_client = None
-        logger.info("TelegramAdminBot initialized with token")
+        force_log("TelegramAdminBot initialized with token", "TelegramAdminBot")
 
     async def validate_user_identifier(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -56,7 +59,7 @@ class TelegramAdminBot:
                 return ConversationHandler.END
 
             identifier: str = chat.user.identifier if chat.user else ""  # type: ignore
-            logger.debug(f"Identifier: {identifier}")
+            force_log(f"Identifier: {identifier}", "TelegramAdminBot")
             user = await self.user_service.get_user_by_identifier(identifier)
             if not user:
                 await update.message.reply_text("User not found.")  # type: ignore
@@ -105,7 +108,7 @@ class TelegramAdminBot:
 
             return PACKAGE_SELECTION_CODE
         except Exception as e:
-            logger.error(f"Error in package_selection_handler: {e}")
+            force_log(f"Error in package_selection_handler: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -170,7 +173,7 @@ class TelegramAdminBot:
             await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            logger.error(f"Error in show_user_confirmation: {e}")
+            force_log(f"Error in show_user_confirmation: {e}", "TelegramAdminBot")
             await update.message.reply_text("Error displaying user information.")  # type: ignore
             return ConversationHandler.END
 
@@ -239,7 +242,7 @@ class TelegramAdminBot:
 
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            logger.error(f"Error in user_confirmation_handler: {e}")
+            force_log(f"Error in user_confirmation_handler: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -303,7 +306,7 @@ class TelegramAdminBot:
 
             return PACKAGE_COMMAND_CODE
         except Exception as e:
-            logger.error(f"Error in package_button: {e}")
+            force_log(f"Error in package_button: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error updating user package: {str(e)}")
             return ConversationHandler.END
@@ -391,7 +394,7 @@ class TelegramAdminBot:
                     else:
                         await query.message.reply_text(text)
 
-            # Create pseudo event
+            # Create pseudo-event
             pseudo_event = PseudoCallbackEvent(query, callback_data)
 
             # Call the event_handler's callback method
@@ -400,14 +403,14 @@ class TelegramAdminBot:
             return CALLBACK_QUERY_CODE
 
         except Exception as e:
-            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
+            force_log(f"Error in callback_query_handler: {e}", "TelegramAdminBot")
             await query.message.reply_text(f"Error processing button action: {str(e)}")
             return ConversationHandler.END
 
     async def _get_chat_with_validation(
         self,
         update: Update,
-        chat_id: str,
+        chat_id: int,
     ) -> Chat | None:
         chat = await self.chat_service.get_chat_by_chat_id(chat_id)
         if not chat:
@@ -439,7 +442,7 @@ class TelegramAdminBot:
 
         try:
             # Validate not found
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -489,7 +492,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
         try:
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -565,7 +568,7 @@ class TelegramAdminBot:
                 await update.message.reply_text(f"❌ No username found for phone number: {phone_number}\n\nPossible reasons:\n- User not found\n- User has no username set\n- Phone number format incorrect")
 
         except Exception as e:
-            logger.error(f"Error processing phone number: {e}")
+            force_log(f"Error processing phone number: {e}", "TelegramAdminBot")
             await update.message.reply_text(f"❌ Error: {str(e)}")
 
         return ConversationHandler.END
@@ -573,7 +576,7 @@ class TelegramAdminBot:
     def set_telethon_client(self, telethon_client):
         """Set the telethon client reference for username lookup"""
         self.telethon_client = telethon_client
-        logger.info("Telethon client reference set for admin bot")
+        force_log("Telethon client reference set for admin bot", "TelegramAdminBot")
 
     async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
@@ -609,7 +612,7 @@ class TelegramAdminBot:
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
-            logger.error(f"Error in process_menu_chat_id: {e}", exc_info=True)
+            force_log(f"Error in process_menu_chat_id: {e}", "TelegramAdminBot")
 
         return CALLBACK_QUERY_CODE
 
@@ -681,7 +684,7 @@ class TelegramAdminBot:
             return CALLBACK_QUERY_CODE
 
         except Exception as e:
-            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
+            force_log(f"Error in callback_query_handler: {e}", "TelegramAdminBot")
             try:
                 await query.message.reply_text(
                     f"Error processing button action: {str(e)}"
@@ -748,7 +751,7 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_daily_summary_menu: {e}", exc_info=True)
+            force_log(f"Error in _handle_daily_summary_menu: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error showing daily menu: {str(e)}")
             return False
 
@@ -777,7 +780,7 @@ class TelegramAdminBot:
 
             return True
         except Exception as e:
-            logger.error(f"Error in _handle_report: {e}", exc_info=True)
+            force_log(f"Error in _handle_report: {e}", "TelegramAdminBot")
             await query.edit_message_text(
                 f"Error generating {report_type} report: {str(e)}"
             )
@@ -819,7 +822,7 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_date_summary: {e}", exc_info=True)
+            force_log(f"Error in _handle_date_summary: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error generating date summary: {str(e)}")
             return False
 
@@ -839,7 +842,7 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_shift_report: {e}", exc_info=True)
+            force_log(f"Error in _handle_shift_report: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return False
 
@@ -859,15 +862,12 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_other_dates: {e}", exc_info=True)
+            force_log(f"Error in _handle_other_dates: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return False
 
     async def _generate_report(self, chat_id: str, report_type: str) -> str:
         """Generate report text by calling appropriate service methods"""
-        from datetime import timedelta
-        from models import IncomeService
-        from helper import total_summary_report, DateUtils
 
         income_service = IncomeService()
 
@@ -1015,7 +1015,7 @@ class TelegramAdminBot:
 
         # Remove the global callback query handler to avoid duplicate handling
         # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
-        logger.info("TelegramAdminBot handlers set up")
+        force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 
     async def start_polling(self) -> None:
         if not self.app:
@@ -1025,4 +1025,4 @@ class TelegramAdminBot:
         await self.app.initialize()
         await self.app.start()
         await self.app.updater.start_polling()  # type: ignore
-        logger.info("TelegramAdminBot started polling")
+        force_log("TelegramAdminBot started polling", "TelegramAdminBot")

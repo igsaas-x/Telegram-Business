@@ -38,7 +38,7 @@ class AutosumBusinessBot:
         self.user_service = UserService()
         self.event_handler = BusinessEventHandler()
         self.group_package_service = GroupPackageService()
-        logger.info("AutosumBusinessBot initialized with token")
+        force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")
 
     def _convert_buttons_to_keyboard(self, buttons):
         """Convert tuple buttons to InlineKeyboardButton objects"""
@@ -88,8 +88,8 @@ class AutosumBusinessBot:
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         """Business-specific menu handler"""
-        logger.error(
-            f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}"
+        force_log(
+            f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}", "AutosumBusinessBot"
         )
 
         # Create a mock event object for the business event handler
@@ -116,10 +116,10 @@ class AutosumBusinessBot:
             await self.event_handler.menu(mock_event)
             return BUSINESS_MENU_CODE
         except Exception as e:
-            logger.error(f"Error in business menu: {e}")
+            force_log(f"Error in business menu: {e}", "AutosumBusinessBot")
             import traceback
 
-            logger.error(f"Full traceback: {traceback.format_exc()}")
+            force_log(f"Full traceback: {traceback.format_exc()}", "AutosumBusinessBot")
             await update.message.reply_text(
                 "❌ Error loading business menu. Please try again."
             )
@@ -130,7 +130,7 @@ class AutosumBusinessBot:
     ) -> int:
         """Handle business-specific callback queries"""
         query = update.callback_query
-        logger.error(f"CRITICAL: handle_business_callback received: {query.data}")
+        force_log(f"CRITICAL: handle_business_callback received: {query.data}", "AutosumBusinessBot")
         await query.answer()
 
         # Create a mock event for the business handler
@@ -161,14 +161,14 @@ class AutosumBusinessBot:
 
         try:
             # Handle business callbacks through event handler
-            logger.info(f"Delegating callback to event handler: {query.data}")
+            force_log(f"Delegating callback to event handler: {query.data}", "AutosumBusinessBot")
             await self.event_handler.handle_business_callback(mock_event)
             return BUSINESS_CALLBACK_CODE
         except Exception as e:
-            logger.error(f"Error handling business callback: {e}")
+            force_log(f"Error handling business callback: {e}", "AutosumBusinessBot")
             import traceback
 
-            logger.error(f"Full traceback: {traceback.format_exc()}")
+            force_log(f"Full traceback: {traceback.format_exc()}", "AutosumBusinessBot")
             await query.edit_message_text(
                 "❌ Error processing request. Please try again."
             )
@@ -274,10 +274,10 @@ class AutosumBusinessBot:
                     await self.group_package_service.create_group_package(
                         chat_id, ServicePackage.BUSINESS
                     )
-                    logger.info(f"Assigned BUSINESS package to chat_id: {chat_id}")
+                    force_log(f"Assigned BUSINESS package to chat_id: {chat_id}", "AutosumBusinessBot")
                 except Exception as package_error:
-                    logger.error(
-                        f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}"
+                    force_log(
+                        f"Error assigning BUSINESS package to chat_id {chat_id}: {package_error}", "AutosumBusinessBot"
                     )
                 # Registration successful, now ask about shift
                 message = f"""
@@ -303,7 +303,7 @@ class AutosumBusinessBot:
                 await update.message.reply_text(f"❌ ការចុះឈ្មោះបរាជ័យ: {reg_message}")
 
         except Exception as e:
-            logger.error(f"Error registering chat: {e}")
+            force_log(f"Error registering chat: {e}", "AutosumBusinessBot")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការចុះឈ្មោះ។ សូមសាកល្បងម្តងទៀត។")
 
     async def enable_shift(
@@ -358,7 +358,7 @@ class AutosumBusinessBot:
             await update.message.reply_text(message)
 
         except Exception as e:
-            logger.error(f"Error enabling shift: {e}")
+            force_log(f"Error enabling shift: {e}", "AutosumBusinessBot")
             await update.message.reply_text("❌ មានបញ្ហាក្នុងការបើកវេន។ សូមសាកល្បងម្តងទៀត។")
 
     async def handle_register_enable_shift(
@@ -380,7 +380,7 @@ class AutosumBusinessBot:
             await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=keyboard)
 
         except Exception as e:
-            logger.error(f"Error: {e}")
+            force_log(f"Error: {e}", "AutosumBusinessBot")
             await query.edit_message_text("❌ Error", reply_markup=None)
 
     async def handle_register_skip_shift(
@@ -445,8 +445,8 @@ class AutosumBusinessBot:
     ):
         """Handle any callbacks not caught by other handlers"""
         query = update.callback_query
-        logger.error(
-            f"CRITICAL: Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}"
+        force_log(
+            f"CRITICAL: Fallback callback handler received: {query.data} from chat_id: {query.message.chat_id}", "AutosumBusinessBot"
         )
         await query.answer()
 
@@ -460,7 +460,7 @@ class AutosumBusinessBot:
             "close_menu",
         ] or
             query.data.startswith("shift_") or query.data.startswith("date_")):
-            logger.info(f"Routing fallback callback {query.data} to business handler")
+            force_log(f"Routing fallback callback {query.data} to business handler", "AutosumBusinessBot")
             return await self.handle_business_callback(update, context)
 
         # Unknown callback
@@ -519,13 +519,13 @@ class AutosumBusinessBot:
         # Add error handler
         self.app.add_error_handler(self.error_handler)
 
-        logger.info("AutosumBusinessBot setup completed")
+        force_log("AutosumBusinessBot setup completed", "AutosumBusinessBot")
 
     async def error_handler(
         self, update: object, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         """Handle errors in the business bot"""
-        logger.error(f"Business bot error: {context.error}")
+        force_log(f"Business bot error: {context.error}", "AutosumBusinessBot")
 
         if isinstance(update, Update) and update.effective_message:
             await update.effective_message.reply_text(
@@ -536,13 +536,13 @@ class AutosumBusinessBot:
         """Start the business bot polling"""
         try:
             self.setup()
-            logger.info("Starting AutosumBusinessBot polling...")
+            force_log("Starting AutosumBusinessBot polling...", "AutosumBusinessBot")
 
             await self.app.initialize()
             await self.app.start()
             await self.app.updater.start_polling()
 
-            logger.info("AutosumBusinessBot is running and polling for updates...")
+            force_log("AutosumBusinessBot is running and polling for updates...", "AutosumBusinessBot")
 
             # Keep the bot running indefinitely
             try:
@@ -555,7 +555,7 @@ class AutosumBusinessBot:
                     await asyncio.sleep(3600)  # Sleep for 1 hour at a time
 
         except Exception as e:
-            logger.error(f"Error starting AutosumBusinessBot: {e}")
+            force_log(f"Error starting AutosumBusinessBot: {e}", "AutosumBusinessBot")
             raise
 
     async def send_message(self, chat_id: int, message: str) -> bool:

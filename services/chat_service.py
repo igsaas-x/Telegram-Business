@@ -1,11 +1,11 @@
-from .income_balance_service import IncomeService
-from .group_package_service import GroupPackageService
-from common.enums import ServicePackage
-from models import User, IncomeBalance
-from helper.logger_utils import force_log
-from config import get_db_session
 from sqlalchemy.orm import joinedload
+
+from config import get_db_session
+from helper.logger_utils import force_log
 from models import Chat
+from models import User, IncomeBalance
+from .group_package_service import GroupPackageService
+from .income_balance_service import IncomeService
 from .shift_service import ShiftService
 
 
@@ -15,22 +15,8 @@ class ChatService:
         self.shift_service = ShiftService()
         self.group_package_service = GroupPackageService()
 
-    async def is_unlimited_package(self, chat_id: int) -> int | None:
-        try:
-            chat = await self.get_chat_by_chat_id(chat_id)
-            if chat and chat.enable_shift:
-                group_package = await self.group_package_service.get_package_by_chat_id(
-                    chat_id
-                )
-
-                if group_package and group_package.package in [ServicePackage.BUSINESS]:
-                    last_shift = await self.income_service.get_last_shift_id(chat_id)
-                    return last_shift.number if last_shift else None
-
-        except Exception as e:
-            force_log(f"Error checking unlimited package: {e}")
-
-    async def register_chat_id(self, chat_id, group_name, user: User | None):
+    @staticmethod
+    async def register_chat_id(chat_id, group_name, user: User | None):
         with get_db_session() as session:
             try:
                 new_chat = Chat(
@@ -78,7 +64,8 @@ class ChatService:
             finally:
                 session.close()
 
-    async def update_chat_status(self, chat_id: int, status: bool):
+    @staticmethod
+    async def update_chat_status(chat_id: int, status: bool):
         with get_db_session() as session:
             try:
                 session.query(Chat).filter_by(chat_id=chat_id).update(
@@ -93,7 +80,8 @@ class ChatService:
             finally:
                 session.close()
 
-    async def update_chat_user_id(self, chat_id: int, user_id: int):
+    @staticmethod
+    async def update_chat_user_id(chat_id: int, user_id: int):
         with get_db_session() as session:
             try:
                 session.query(Chat).filter_by(chat_id=chat_id).update(
@@ -108,7 +96,8 @@ class ChatService:
             finally:
                 session.close()
 
-    async def get_chat_by_chat_id(self, chat_id: int) -> Chat | None:
+    @staticmethod
+    async def get_chat_by_chat_id(chat_id: int) -> Chat | None:
         with get_db_session() as session:
             try:
                 chat = (
@@ -124,7 +113,8 @@ class ChatService:
             finally:
                 session.close()
 
-    async def get_all_active_chat_ids(self):
+    @staticmethod
+    async def get_all_active_chat_ids():
         with get_db_session() as session:
             try:
                 chats = session.query(Chat.chat_id).filter_by(is_active=True).all()
@@ -135,7 +125,8 @@ class ChatService:
             finally:
                 session.close()
 
-    async def chat_exists(self, chat_id: int) -> bool:
+    @staticmethod
+    async def chat_exists(chat_id: int) -> bool:
         """
         Check if a chat with the given chat_id exists.
         Much more efficient than fetching all chat IDs and checking if it's in the list.
@@ -160,7 +151,8 @@ class ChatService:
             force_log(f"Error checking shift enabled: {e}")
             return False
 
-    async def migrate_chat_id(self, old_chat_id: int, new_chat_id: int) -> bool:
+    @staticmethod
+    async def migrate_chat_id(old_chat_id: int, new_chat_id: int) -> bool:
         """Migrate chat_id from old to new (for group migrations)"""
         with get_db_session() as session:
             try:
