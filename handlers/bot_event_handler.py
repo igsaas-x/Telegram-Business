@@ -36,7 +36,12 @@ class CommandHandler:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
             
-            return daily_transaction_report(incomes, report_date, telegram_username)
+            # For daily reports, if no start/end date provided, calculate them from report_date
+            if not start_date:
+                start_date = report_date
+            if not end_date:
+                end_date = report_date + timedelta(days=1)
+            return daily_transaction_report(incomes, report_date, telegram_username, start_date, end_date)
         elif is_weekly and start_date and end_date:
             # This is a weekly report, use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)

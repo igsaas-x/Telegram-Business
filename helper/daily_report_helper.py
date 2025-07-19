@@ -16,7 +16,7 @@ def format_time_12hour(dt: datetime) -> str:
     return dt.strftime("%I:%M%p").replace("AM", "AM").replace("PM", "PM")
 
 
-def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin") -> str:
+def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin", start_date: datetime = None, end_date: datetime = None) -> str:
     """Generate daily transaction report in the new format"""
     
     # Calculate totals and transaction counts
@@ -32,24 +32,28 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
             transaction_counts[currency] += 1
             transaction_times.append(income.income_date)
     
-    # Get working hours from first and last transactions
+    # Get working hours from query time range (start_date to end_date)
     working_hours = ""
-    if transaction_times:
+    if start_date and end_date:
+        start_time = format_time_12hour(start_date)
+        end_time = format_time_12hour(end_date)
+        working_hours = f"{start_time} ➝ {end_time}"
+    elif transaction_times:
+        # Fallback to transaction times if no query range provided
         transaction_times.sort()
         start_time = format_time_12hour(transaction_times[0])
         end_time = format_time_12hour(transaction_times[-1])
         working_hours = f"{start_time} ➝ {end_time}"
     
-    # Get total working time (simplified calculation)
+    # Get total working time (use query end time or last transaction time)
     total_hours = "0:00PM"
-    if transaction_times and len(transaction_times) > 1:
-        duration = transaction_times[-1] - transaction_times[0]
-        hours = duration.seconds // 3600
-        minutes = (duration.seconds % 3600) // 60
-        # Use end time format for total hours display
-        total_hours = format_time_12hour(transaction_times[-1])
+    if end_date:
+        # Use the query end time
+        total_hours = format_time_12hour(end_date)
     elif transaction_times:
-        total_hours = format_time_12hour(transaction_times[0])
+        # Fallback to last transaction time
+        transaction_times.sort()
+        total_hours = format_time_12hour(transaction_times[-1])
     
     # Format date in Khmer
     day = report_date.day
@@ -76,12 +80,12 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     max_amount_length = max(len(khr_formatted), len(usd_formatted))
     
     # Use consistent total width for the amount section (amount + padding before pipe)
-    total_width_before_pipe = max_amount_length + 8  # 8 spaces before pipe
+    total_width_before_pipe = max_amount_length + 2  # 2 spaces before pipe
     
-    report += f"(៛): {khr_formatted:<{max_amount_length}}        |  ប្រតិបត្តិការណ៍: {khr_count}\n"
-    report += f"($): {usd_formatted:<{max_amount_length}}        | ប្រតិបត្តិការណ៍: {usd_count}\n"
+    report += f"(៛): {khr_formatted:<{max_amount_length}} |  ប្រតិបត្តិការណ៍: {khr_count}\n"
+    report += f"($): {usd_formatted:<{max_amount_length}} | ប្រតិបត្តិការណ៍: {usd_count}\n"
     
-    report += "- - - - - - - - - - - - - -- - - - - - - \n"
+    report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     if working_hours:
         report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
