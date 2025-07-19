@@ -8,11 +8,11 @@ from alembic.config import Config
 
 from config import load_environment
 from helper.credential_loader import CredentialLoader
-from services.telegram_bot_service import TelegramBotService
-from services.telethon_client_service import TelethonClientService
 from schedulers import AutoCloseScheduler
 from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
+from services.telegram_bot_service import TelegramBotService
+from services.telethon_client_service import TelethonClientService
 
 load_environment()
 
@@ -66,7 +66,7 @@ async def main(loader: CredentialLoader) -> None:
     try:
         telegramBotService = TelegramBotService()
         telethonClientService1 = TelethonClientService()
-        # adminBot = TelegramAdminBot(loader.admin_bot_token)
+        adminBot = TelegramAdminBot(loader.admin_bot_token)
         businessBot = AutosumBusinessBot(loader.autosum_business_bot_token)
         autoCloseScheduler = AutoCloseScheduler(bot_service=businessBot)
 
