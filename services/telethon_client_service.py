@@ -1,5 +1,7 @@
 import os
 
+import asyncio
+
 import pytz
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
@@ -17,6 +19,7 @@ class TelethonClientService:
         self.client: TelegramClient | None = None
         self.service = IncomeService()
         self.scheduler: MessageVerificationScheduler | None = None
+        self.chat_service = ChatService()
 
     async def start(self, username, api_id, api_hash):
         session_file = f"{username}.session"
@@ -44,8 +47,6 @@ class TelethonClientService:
         except Exception as e:
             force_log(f"Error starting client for {username}: {e}")
             raise
-
-        chat_service = ChatService()
 
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
@@ -138,7 +139,7 @@ class TelethonClientService:
 
                 # Get chat info to check registration timestamp
                 force_log(f"Getting chat info for chat_id: {event.chat_id}")
-                chat = await chat_service.get_chat_by_chat_id(event.chat_id)
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
                 if not chat:
                     force_log(f"Chat {event.chat_id} not found in database!")
                     return
@@ -199,8 +200,6 @@ class TelethonClientService:
                 force_log(f"Traceback: {traceback.format_exc()}")
 
         # Start both the client and scheduler concurrently
-        import asyncio
-
         await asyncio.gather(
             self.client.run_until_disconnected(),  # type: ignore
             self.scheduler.start_scheduler(),

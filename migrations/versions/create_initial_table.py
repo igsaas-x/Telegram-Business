@@ -24,12 +24,6 @@ def upgrade() -> None:
         "chats",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("chat_id", sa.BigInteger(), unique=True, nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime, nullable=False, server_default=sa.func.now()
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime, nullable=False, server_default=sa.func.now()
-        ),
         sa.PrimaryKeyConstraint("id"),
     )
 
