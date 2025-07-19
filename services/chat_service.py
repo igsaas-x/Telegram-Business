@@ -1,5 +1,3 @@
-from sqlalchemy.orm import joinedload
-
 from config import get_db_session
 from helper.logger_utils import force_log
 from models import Chat
@@ -102,7 +100,7 @@ class ChatService:
             try:
                 chat = (
                     session.query(Chat)
-                    .options(joinedload(Chat.user))
+                    # .options(joinedload(Chat.user))
                     .filter_by(chat_id=chat_id)
                     .first()
                 )
@@ -110,6 +108,42 @@ class ChatService:
             except Exception as e:
                 force_log(f"Error fetching chat by chat ID: {e}")
                 return None
+            finally:
+                session.close()
+
+    @staticmethod
+    async def search_chats_by_chat_id_or_name(search_term: str, limit: int = 5) -> list[Chat]:
+        """Search chats by chat_id or group_name, return up to 'limit' results"""
+        with get_db_session() as session:
+            try:
+                # Try to convert search_term to int for chat_id search
+                try:
+                    chat_id_search = int(search_term)
+                    # Search by exact chat_id match first
+                    exact_match = (
+                        session.query(Chat)
+                        # .options(joinedload(Chat.user))
+                        .filter_by(chat_id=chat_id_search)
+                        .first()
+                    )
+                    if exact_match:
+                        return [exact_match]
+                except ValueError:
+                    # Not a valid integer, skip chat_id search
+                    pass
+                
+                # Search by group_name (partial match, case insensitive)
+                results = (
+                    session.query(Chat)
+                    # .options(joinedload(Chat.user))
+                    .filter(Chat.group_name.ilike(f"%{search_term}%"))
+                    .limit(limit)
+                    .all()
+                )
+                return results
+            except Exception as e:
+                force_log(f"Error searching chats: {e}")
+                return []
             finally:
                 session.close()
 
