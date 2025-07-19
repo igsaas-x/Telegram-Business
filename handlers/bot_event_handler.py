@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from telethon import Button
 
 from common.enums import ServicePackage
-from helper import total_summary_report, daily_transaction_report, weekly_transaction_report, DateUtils
+from helper import total_summary_report, daily_transaction_report, weekly_transaction_report, \
+    monthly_transaction_report, DateUtils
 from helper.logger_utils import force_log
 from services import (
     ConversationService,
@@ -19,7 +20,7 @@ class CommandHandler:
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
 
-    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None, start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False):
+    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None, start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False, is_monthly: bool = False):
         # Check if this is a daily report (contains "ថ្ងៃទី")
         if "ថ្ងៃទី" in period_text:
             # This is a daily report, use the new format
@@ -45,8 +46,11 @@ class CommandHandler:
         elif is_weekly and start_date and end_date:
             # This is a weekly report, use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)
+        elif is_monthly and start_date and end_date:
+            # This is a monthly report, use the new monthly format
+            return monthly_transaction_report(incomes, start_date, end_date)
         else:
-            # This is a period report (monthly), use the old format
+            # This is other period report, use the old format
             title = f"សរុបប្រតិបត្តិការ {period_text}"
             return total_summary_report(incomes, title)
 
@@ -295,9 +299,10 @@ class CommandHandler:
                 )
                 return
 
-            # Check if this is a weekly report
+            # Check if this is a weekly or monthly report
             is_weekly = data.startswith("summary_week_")
-            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly)
+            is_monthly = data.startswith("summary_month_")
+            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly, is_monthly)
             await event.client.send_message(chat_id, message)
 
         except ValueError:

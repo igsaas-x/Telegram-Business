@@ -14,7 +14,8 @@ from telegram.ext import (
 
 from common.enums import ServicePackage
 from handlers.bot_command_handler import EventHandler
-from helper import DateUtils, total_summary_report, daily_transaction_report, weekly_transaction_report
+from helper import DateUtils, total_summary_report, daily_transaction_report, weekly_transaction_report, \
+    monthly_transaction_report
 from helper.logger_utils import force_log
 from models import Chat
 from services import ChatService, UserService, IncomeService
@@ -1453,6 +1454,9 @@ class TelegramAdminBot:
         elif report_type == "weekly":
             # Use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)
+        elif report_type == "monthly":
+            # Use the new monthly format
+            return monthly_transaction_report(incomes, start_date, end_date)
         
         # For other reports, use the old format
         period_text = title
