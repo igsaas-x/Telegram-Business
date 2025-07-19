@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from common.enums import ServicePackage
+from config import get_db_session
 from helper import DateUtils
 from models import GroupPackage
-from config import get_db_session
 
 
 class GroupPackageService:
@@ -38,7 +38,7 @@ class GroupPackageService:
             group_package = GroupPackage(
                 chat_group_id=chat_group_id,
                 package=package,
-                is_paid=False if package == ServicePackage.TRIAL else True,
+                is_paid=False if package in [ServicePackage.TRIAL, ServicePackage.FREE] else True,
                 created_at=DateUtils.now(),
                 updated_at=DateUtils.now(),
             )
@@ -74,7 +74,7 @@ class GroupPackageService:
             if group_package:
                 group_package.package = package
                 group_package.is_paid = (
-                    False if package == ServicePackage.TRIAL else True
+                    False if package in [ServicePackage.TRIAL, ServicePackage.FREE] else True
                 )
 
                 if package_start_date:

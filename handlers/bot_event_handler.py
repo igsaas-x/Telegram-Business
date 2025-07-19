@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 
 from telethon import Button
 
+from common.enums import ServicePackage
 from helper import total_summary_report, DateUtils
 from helper.logger_utils import force_log
-from common.enums import ServicePackage
 from services import (
     ConversationService,
     IncomeService,
@@ -104,14 +104,9 @@ class CommandHandler:
                 )
                 return
 
-            # Check if BASIC package and more than 30 records
-            if (
-                group_package
-                and group_package.package == ServicePackage.BASIC
-                and len(incomes) > 30
-            ):
-
-                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 30 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
+            # Check package limits
+            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 20:
+                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 20 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ BASIC ឬប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
                 await event.client.send_message(chat_id, contact_message)
                 return
 

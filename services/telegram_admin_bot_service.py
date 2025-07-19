@@ -12,11 +12,11 @@ from telegram.ext import (
     filters,
 )
 
+from common.enums import ServicePackage
 from handlers.bot_command_handler import EventHandler
+from models import Chat
 from services import ChatService, UserService
 from .group_package_service import GroupPackageService
-from common.enums import ServicePackage
-from models import Chat
 
 # Get logger (logging configured in main or telegram_bot_service)
 logger = logging.getLogger(__name__)
@@ -206,6 +206,11 @@ class TelegramAdminBot:
                         ],
                         [
                             InlineKeyboardButton(
+                                ServicePackage.FREE.value, callback_data="FREE"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
                                 ServicePackage.BASIC.value, callback_data="BASIC"
                             )
                         ],
@@ -257,7 +262,7 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
 
                 # Handle package selection buttons
-                if selected_package in ["TRIAL", "BASIC", "UNLIMITED", "BUSINESS"]:
+                if selected_package in ["TRIAL", "FREE", "BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:
@@ -282,8 +287,8 @@ class TelegramAdminBot:
                     if ServicePackage(selected_package) == ServicePackage.BUSINESS:
                         # When upgrading to business, automatically enable shift
                         await self.chat_service.update_chat_enable_shift(chat_id, True)
-                    elif ServicePackage(selected_package) == ServicePackage.TRIAL:
-                        # When downgrading to trial, disable shift
+                    elif ServicePackage(selected_package) in [ServicePackage.TRIAL, ServicePackage.FREE]:
+                        # When downgrading to trial or free, disable shift
                         await self.chat_service.update_chat_enable_shift(chat_id, False)
 
                     # Get user info for confirmation message
