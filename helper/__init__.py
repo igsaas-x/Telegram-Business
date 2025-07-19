@@ -4,6 +4,7 @@ from .dateutils import DateUtils
 from .logger_utils import force_log
 from .message_parser import extract_amount_and_currency, extract_trx_id
 from .total_summary_report_helper import total_summary_report
+from .weekly_report_helper import weekly_transaction_report
 
 __all__ = [
     "CredentialLoader",
@@ -11,6 +12,7 @@ __all__ = [
     "extract_trx_id",
     "total_summary_report",
     "daily_transaction_report",
+    "weekly_transaction_report",
     "DateUtils",
     "force_log",
 ]

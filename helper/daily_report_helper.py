@@ -64,12 +64,21 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     # KHR line
     khr_amount = totals["KHR"]
     khr_count = transaction_counts["KHR"]
-    report += f"(៛): {khr_amount:,.0f}            |  ប្រតិបត្តិការណ៍​​: {khr_count}\n"
+    khr_formatted = f"{khr_amount:,.0f}"
     
     # USD line  
     usd_amount = totals["USD"]
     usd_count = transaction_counts["USD"]
-    report += f"($): {usd_amount:.2f}    | ប្រតិបត្តិការណ៍: {usd_count}\n"
+    usd_formatted = f"{usd_amount:.2f}"
+    
+    # Calculate spacing to align the pipes
+    # Find the longer formatted amount and pad the shorter one
+    max_amount_length = max(len(khr_formatted), len(usd_formatted))
+    khr_padding = max_amount_length - len(khr_formatted)
+    usd_padding = max_amount_length - len(usd_formatted)
+    
+    report += f"(៛): {khr_formatted}{' ' * khr_padding}        |  ប្រតិបត្តិការណ៍: {khr_count}\n"
+    report += f"($): {usd_formatted}{' ' * usd_padding}        | ប្រតិបត្តិការណ៍: {usd_count}\n"
     
     report += "- - - - - - - - - - - - - -- - - - - - - \n"
     
