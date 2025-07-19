@@ -663,8 +663,8 @@ class TelegramAdminBot:
                     # Ask for start date
                     await query.edit_message_text(
                         f"Selected package: {selected_package}\n\n"
-                        "Please enter the start date for this package (YYYY-MM-DD format):\n"
-                        "Example: 2024-01-15"
+                        "Please enter the start date for this package (dd-mm-yyyy format):\n"
+                        "Example: 15-01-2024"
                     )
                     return PACKAGE_START_DATE_CODE
 
@@ -685,20 +685,20 @@ class TelegramAdminBot:
             # Validate date format
             from datetime import datetime
             try:
-                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
                 context.user_data["package_start_date"] = start_date_str
                 
                 # Ask for end date
                 await update.message.reply_text(  # type: ignore
                     f"Start date set: {start_date_str}\n\n"
-                    "Please enter the end date for this package (YYYY-MM-DD format):\n"
-                    "Example: 2024-12-31"
+                    "Please enter the end date for this package (dd-mm-yyyy format):\n"
+                    "Example: 31-12-2024"
                 )
                 return PACKAGE_END_DATE_CODE
                 
             except ValueError:
                 await update.message.reply_text(  # type: ignore
-                    "Invalid date format. Please use YYYY-MM-DD format (e.g., 2024-01-15):"
+                    "Invalid date format. Please use dd-mm-yyyy format (e.g., 15-01-2024):"
                 )
                 return PACKAGE_START_DATE_CODE
                 
@@ -717,8 +717,8 @@ class TelegramAdminBot:
             # Validate date format
             from datetime import datetime
             try:
-                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-                start_date = datetime.strptime(context.user_data["package_start_date"], "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
+                start_date = datetime.strptime(context.user_data["package_start_date"], "%d-%m-%Y")
                 
                 # Validate end date is after start date
                 if end_date <= start_date:
@@ -735,7 +735,7 @@ class TelegramAdminBot:
                 
             except ValueError:
                 await update.message.reply_text(  # type: ignore
-                    "Invalid date format. Please use YYYY-MM-DD format (e.g., 2024-12-31):"
+                    "Invalid date format. Please use dd-mm-yyyy format (e.g., 31-12-2024):"
                 )
                 return PACKAGE_END_DATE_CODE
                 
@@ -761,8 +761,8 @@ class TelegramAdminBot:
             
             # Convert dates
             from datetime import datetime
-            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+            start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+            end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
 
             # Update group package with dates
             await self.group_package_service.get_or_create_group_package(chat_id)
@@ -1504,7 +1504,7 @@ class TelegramAdminBot:
                     MessageHandler(
                         filters.TEXT & filters.REPLY, self.shared_process_input
                     ),
-                    CallbackQueryHandler(self.shared_selection_handler),
+                    CallbackQueryHandler(self.package_button),
                 ],
                 USER_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_button)],
                 CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
