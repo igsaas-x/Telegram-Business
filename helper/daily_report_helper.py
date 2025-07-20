@@ -32,14 +32,9 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
             transaction_counts[currency] += 1
             transaction_times.append(income.income_date)
     
-    # Get working hours from query time range (start_date to end_date)
+    # Get working hours from actual transaction times (first to last transaction)
     working_hours = ""
-    if start_date and end_date:
-        start_time = format_time_12hour(start_date)
-        end_time = format_time_12hour(end_date)
-        working_hours = f"{start_time} ➝ {end_time}"
-    elif transaction_times:
-        # Fallback to transaction times if no query range provided
+    if transaction_times:
         transaction_times.sort()
         start_time = format_time_12hour(transaction_times[0])
         end_time = format_time_12hour(transaction_times[-1])
@@ -82,8 +77,8 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     khr_spaces_needed = max_amount_length - len(khr_formatted) + 4  # 4 base spaces
     usd_spaces_needed = max_amount_length - len(usd_formatted) + 5
     
-    report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការណ៍: {khr_count}\n"
-    report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការណ៍: {usd_count}\n"
+    report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+    report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     

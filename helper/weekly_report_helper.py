@@ -5,9 +5,11 @@ from .daily_report_helper import get_khmer_month_name
 
 def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
     """Generate weekly transaction report in the specified format"""
+    from .daily_report_helper import format_time_12hour
     
     # Group transactions by date
     daily_data = {}
+    transaction_times = []
     
     for income in incomes:
         income_date = income.income_date.date()
@@ -17,11 +19,20 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
         currency = income.currency
         daily_data[income_date][currency] += income.amount
         daily_data[income_date]["count"] += 1
+        transaction_times.append(income.income_date)
     
     # Calculate totals
     total_khr = sum(day_data["KHR"] for day_data in daily_data.values())
     total_usd = sum(day_data["USD"] for day_data in daily_data.values())
     total_transactions = sum(day_data["count"] for day_data in daily_data.values())
+    
+    # Get working hours from actual transaction times (first to last transaction)
+    working_hours = ""
+    if transaction_times:
+        transaction_times.sort()
+        start_time = format_time_12hour(transaction_times[0])
+        end_time = format_time_12hour(transaction_times[-1])
+        working_hours = f"{start_time} ➝ {end_time}"
     
     # Format date range for title
     start_day = start_date.day
@@ -68,7 +79,7 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     max_usd_width = max(max_usd_width, len(total_usd_formatted))
     
     # Create header with proper spacing
-    report += f"ថ្ងៃ  {'(៛)':<{max_khr_width}}  {'($)':<{max_usd_width}}  សរុប(Trans.)\n"
+    report += f"ថ្ងៃ   {'(៛)':<{max_khr_width+4}}  {'($)':<{max_usd_width+4}}  សរុប(Trans.)\n"
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     # Generate daily rows with proper alignment
@@ -76,6 +87,11 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
         report += f"{row['day']:<2}  {row['khr']:<{max_khr_width}}  {row['usd']:<{max_usd_width}}  {row['count']}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}"
+    report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}\n"
+    
+    if working_hours:
+        report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
+    else:
+        report += "ម៉ោងប្រតិបត្តិការ: គ្មាន"
     
     return report
