@@ -65,8 +65,8 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     
     # Use HTML table for better alignment
     report += "<pre>\n"
-    report += f"(៛): {khr_formatted:<15} | ប្រតិបត្តិការ: {khr_count}\n"
-    report += f"($): {usd_formatted:<16} | ប្រតិបត្តិការ: {usd_count}\n"
+    report += f"(៛): {khr_formatted:<10} | ប្រតិបត្តិការ: {khr_count}\n"
+    report += f"($): {usd_formatted:<10} | ប្រតិបត្តិការ: {usd_count}\n"
     report += "</pre>"
     
 

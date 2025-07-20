@@ -39,7 +39,7 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     year = start_date.year
     
     # Build the report using HTML formatting
-    report = f"<b>សរុបប្រតិបត្តិការ {month_khmer} {year}</b>\n\n"
+    report = f"<b>សរុបប្រតិបត្តិការ {month_khmer} {year}</b>\n"
     
     # Determine the actual end date for the report
     # If the month hasn't ended yet, only show up to current date
@@ -77,20 +77,15 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
         # Move to next day using timedelta (much simpler and more reliable)
         from datetime import timedelta
         current_date = current_date + timedelta(days=1)
-    
-    # Calculate maximum widths for alignment
-    max_khr_width = max(len(row['khr']) for row in daily_rows) if daily_rows else 8
-    max_usd_width = max(len(row['usd']) for row in daily_rows) if daily_rows else 6
+
     
     # Also consider the totals for width calculation
     total_khr_formatted = f"{total_khr:,.0f}"
     total_usd_formatted = f"{total_usd:,.2f}"
-    max_khr_width = max(max_khr_width, len(total_khr_formatted))
-    max_usd_width = max(max_usd_width, len(total_usd_formatted))
     
     # Create header and table using HTML formatting
     report += "<pre>\n"
-    report += f"{'ថ្ងៃ':<3} {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
+    report += f"{'ថ្ងៃ':<3}  {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
     report += "------------------------------\n"
     
     # Generate daily rows with proper alignment

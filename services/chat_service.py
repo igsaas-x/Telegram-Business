@@ -170,7 +170,7 @@ class ChatService:
                 # Join Chat with GroupPackage and filter out FREE package
                 chats = (
                     session.query(Chat.chat_id)
-                    .join(GroupPackage, Chat.id == GroupPackage.chat_id)
+                    .join(GroupPackage, Chat.id == GroupPackage.chat_group_id)
                     .filter(Chat.is_active == True)
                     .filter(GroupPackage.package != ServicePackage.FREE)
                     .all()

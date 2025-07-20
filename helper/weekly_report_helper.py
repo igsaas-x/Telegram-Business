@@ -40,7 +40,7 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     year = end_date.year
     
     # Build the report using HTML formatting
-    report = f"<b>សរុបប្រតិបត្តិការ ថ្ងៃទី {start_day}-{end_day} {month_khmer} {year}</b>\n\n"
+    report = f"<b>សរុបប្រតិបត្តិការ ថ្ងៃទី {start_day}-{end_day} {month_khmer} {year}</b>\n"
     
     # Calculate column widths for proper alignment
     # First pass: collect all formatted amounts to determine max widths
@@ -74,12 +74,10 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     # Also consider the totals for width calculation
     total_khr_formatted = f"{total_khr:,.0f}"
     total_usd_formatted = f"{total_usd:,.2f}"
-    max_khr_width = max(max_khr_width, len(total_khr_formatted))
-    max_usd_width = max(max_usd_width, len(total_usd_formatted))
-    
+
     # Create header and table using HTML formatting
     report += "<pre>\n"
-    report += f"{'ថ្ងៃ':<3} {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
+    report += f"{'ថ្ងៃ':<3}  {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
     report += "------------------------------\n"
     
     # Generate daily rows with proper alignment
