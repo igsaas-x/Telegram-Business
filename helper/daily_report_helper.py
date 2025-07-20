@@ -40,15 +40,9 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
         end_time = format_time_12hour(transaction_times[-1])
         working_hours = f"{start_time} ➝ {end_time}"
     
-    # Get total working time (use query end time or last transaction time)
-    total_hours = "0:00PM"
-    if end_date:
-        # Use the query end time
-        total_hours = format_time_12hour(end_date)
-    elif transaction_times:
-        # Fallback to last transaction time
-        transaction_times.sort()
-        total_hours = format_time_12hour(transaction_times[-1])
+    # Get current time for total hours display
+    current_time = datetime.now()
+    trigger_time = format_time_12hour(current_time)
     
     # Format date in Khmer
     day = report_date.day
@@ -57,7 +51,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     
     # Build the report
     report = "សរុបប្រតិបត្តិការ\n"
-    report += f"ថ្ងៃ {day} {month_khmer} {year} — ម៉ោងបូកសរុប {total_hours} \n(ដោយ: {telegram_username})\n"
+    report += f"ថ្ងៃ {day} {month_khmer} {year} — ម៉ោងបូកសរុប {trigger_time} \n(ដោយ: {telegram_username})\n"
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     # KHR line

@@ -6,8 +6,7 @@ from .daily_report_helper import get_khmer_month_name
 def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
     """Generate monthly transaction report in format similar to weekly report"""
     from datetime import date
-    from .daily_report_helper import format_time_12hour
-    
+
     # Group transactions by date
     daily_data = {}
     transaction_times = []
@@ -28,12 +27,12 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     total_transactions = sum(day_data["count"] for day_data in daily_data.values())
     
     # Get working hours from actual transaction times (first to last transaction)
-    working_hours = ""
-    if transaction_times:
-        transaction_times.sort()
-        start_time = format_time_12hour(transaction_times[0])
-        end_time = format_time_12hour(transaction_times[-1])
-        working_hours = f"{start_time} ➝ {end_time}"
+    # working_hours = ""
+    # if transaction_times:
+    #     transaction_times.sort()
+    #     start_time = format_time_12hour(transaction_times[0])
+    #     end_time = format_time_12hour(transaction_times[-1])
+    #     working_hours = f"{start_time} ➝ {end_time}"
     
     # Format date range for title
     month_khmer = get_khmer_month_name(start_date.month)
@@ -100,9 +99,9 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}\n"
     
-    if working_hours:
-        report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
-    else:
-        report += "ម៉ោងប្រតិបត្តិការ: គ្មាន"
+    # if working_hours:
+    #     report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
+    # else:
+    #     report += "ម៉ោងប្រតិបត្តិការ: គ្មាន"
     
     return report
