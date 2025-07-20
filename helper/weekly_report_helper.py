@@ -5,8 +5,7 @@ from .daily_report_helper import get_khmer_month_name
 
 def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
     """Generate weekly transaction report in the specified format"""
-    from .daily_report_helper import format_time_12hour
-    
+
     # Group transactions by date
     daily_data = {}
     transaction_times = []
@@ -28,11 +27,11 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     
     # Get working hours from actual transaction times (first to last transaction)
     working_hours = ""
-    if transaction_times:
-        transaction_times.sort()
-        start_time = format_time_12hour(transaction_times[0])
-        end_time = format_time_12hour(transaction_times[-1])
-        working_hours = f"{start_time} ➝ {end_time}"
+    # if transaction_times:
+    #     transaction_times.sort()
+    #     start_time = format_time_12hour(transaction_times[0])
+    #     end_time = format_time_12hour(transaction_times[-1])
+    #     working_hours = f"{start_time} ➝ {end_time}"
     
     # Format date range for title
     start_day = start_date.day
@@ -80,20 +79,20 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     
     # Create header and table using HTML formatting
     report += "<pre>\n"
-    report += f"{'ថ្ងៃ':<3} {'(៛)':<12} {'($)':<8} {'សរុប(Trans.)':<12}\n"
-    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    report += f"{'ថ្ងៃ':<3} {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
+    report += "------------------------------\n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:<3} {row['khr']:<12} {row['usd']:<8} {row['count']:<12}\n"
+        report += f"{row['day']:<3} {row['khr']:<8} {row['usd']:<8} {row['count']:<4}\n"
     
-    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    report += f"{'សរុប:':<3} {total_khr_formatted:<12} {total_usd_formatted:<8} {total_transactions:<12}\n"
+    report += "------------------------------\n"
+    report += f"{'សរុប:':<3} {total_khr_formatted:<8} {total_usd_formatted:<8} {total_transactions:<12}\n"
     report += "</pre>"
     
-    if working_hours:
-        report += f"<b>ម៉ោងប្រតិបត្តិការ:</b> <code>{working_hours}</code>"
-    else:
-        report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
+    # if working_hours:
+    #     report += f"<b>ម៉ោងប្រតិបត្តិការ:</b> <code>{working_hours}</code>"
+    # else:
+    #     report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
     
     return report

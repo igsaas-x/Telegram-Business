@@ -53,8 +53,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     report = "<b>សរុបប្រតិបត្តិការ</b>\n"
     report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b> — ម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
     report += f"<i>(ដោយ: {telegram_username})</i>\n"
-    report += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-    
+
     # KHR and USD amounts
     khr_amount = totals["KHR"]
     khr_count = transaction_counts["KHR"]
@@ -70,8 +69,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     report += f"($): {usd_formatted:<16} | ប្រតិបត្តិការ: {usd_count}\n"
     report += "</pre>"
     
-    report += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-    
+
     if working_hours:
         report += f"<b>ម៉ោងប្រតិបត្តិការ:</b> <code>{working_hours}</code>"
     else:

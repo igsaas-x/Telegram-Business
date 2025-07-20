@@ -90,15 +90,15 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     
     # Create header and table using HTML formatting
     report += "<pre>\n"
-    report += f"{'ថ្ងៃ':<3} {'(៛)':<12} {'($)':<8} {'សរុប(Trans.)':<12}\n"
-    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    report += f"{'ថ្ងៃ':<3} {'(៛)':<8} {'($)':<8} {'សរុប(Trans.)':<4}\n"
+    report += "------------------------------\n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:<3} {row['khr']:<12} {row['usd']:<8} {row['count']:<12}\n"
+        report += f"{row['day']:<3} {row['khr']:<8} {row['usd']:<8} {row['count']:<4}\n"
     
-    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    report += f"{'សរុប:':<3} {total_khr_formatted:<12} {total_usd_formatted:<8} {total_transactions:<12}\n"
+    report += "------------------------------\n"
+    report += f"{'សរុប:':<3} {total_khr_formatted:<8} {total_usd_formatted:<8} {total_transactions:<4}\n"
     report += "</pre>"
     
     return report
