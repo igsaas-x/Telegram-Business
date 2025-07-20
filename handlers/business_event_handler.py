@@ -38,7 +38,7 @@ class BusinessEventHandler:
 
                 if not sender or not hasattr(sender, "id") or sender.id is None:
                     message = "⚠️ Business Registration failed: You must be a non-anonymous user to register this chat for business services."
-                    await event.respond(message)
+                    await event.respond(message, parse_mode='html')
                     return
 
                 # Create user for business service
@@ -57,7 +57,7 @@ class BusinessEventHandler:
             except Exception as e:
                 force_log(f"Error during business auto-registration: {e}", "ERROR")
                 message = "⚠️ Business auto-registration failed. Please contact support."
-                await event.respond(message)
+                await event.respond(message, parse_mode='html')
                 return
 
         # Create menu buttons based on shift status
@@ -90,10 +90,10 @@ class BusinessEventHandler:
         # Check if this is a callback query (edit existing message) or new message (respond)
         if hasattr(event, "data") and hasattr(event, "edit"):
             # This is a callback query, edit the existing message
-            await event.edit(message, buttons=buttons)
+            await event.edit(message, buttons=buttons, parse_mode='html')
         else:
             # This is a regular message, respond with new message
-            await event.respond(message, buttons=buttons)
+            await event.respond(message, buttons=buttons, parse_mode='html')
 
     async def register_business(self, event, user: User):
         """Register chat for business services with special configuration"""
@@ -134,7 +134,7 @@ class BusinessEventHandler:
         else:
             response = f"❌ Business registration failed: {message}"
 
-        await event.respond(response)
+        await event.respond(response, parse_mode='html')
 
     async def handle_business_callback(self, event):
         """Handle business-specific callback queries"""
@@ -197,9 +197,8 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
                     except Exception:
-                        from datetime import datetime
 
-                        now = datetime.now()
+                        now = DateUtils.now()
                         duration = now - current_shift.start_time
                         total_seconds = abs(duration.total_seconds())
                         hours = int(total_seconds // 3600)
@@ -229,9 +228,8 @@ class BusinessEventHandler:
                     except Exception as e:
                         force_log(f"Error in duration calculation: {e}", "ERROR")
                         # Fallback to simple calculation
-                        from datetime import datetime
 
-                        now = datetime.now()
+                        now = DateUtils.now()
 
                         duration = now - current_shift.start_time
                         total_seconds = abs(duration.total_seconds())
@@ -258,7 +256,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def show_previous_shift_report(self, event):
         """Show previous shift report (last closed shift)"""
@@ -307,7 +305,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def show_other_days_report(self, event):
         """Show other days with shifts (last 3 days with data)"""
@@ -344,7 +342,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def show_date_shifts(self, event, data):
         """Show shifts for a specific date"""
@@ -407,7 +405,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def show_specific_shift_report(self, event, data):
         """Show report for a specific shift"""
@@ -441,9 +439,8 @@ class BusinessEventHandler:
                             f"Error calculating duration for active shift: {e}", "ERROR"
                         )
                         # Fallback to naive datetime calculation
-                        from datetime import datetime
 
-                        now = datetime.now()
+                        now = DateUtils.now()
                         duration = now - shift.start_time
                     end_text = "បច្ចុប្បន្ន (វេនកំពុងសកម្ម)"
                     status = "🟢 🟢 កំពុងបន្ត"
@@ -485,7 +482,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def close_current_shift(self, event):
         """Close the current active shift or create new shift if none exists"""
@@ -543,7 +540,7 @@ class BusinessEventHandler:
             force_log(f"Error closing shift: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
-        await event.edit(message, buttons=None)
+        await event.edit(message, buttons=None, parse_mode='html')
 
     async def close_menu(self, event):
         """Close the menu (delete message)"""
@@ -570,7 +567,7 @@ Telegram: https://t.me/HK_688
 """
 
         buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode='html')
 
     async def check_auto_close_shift(self, chat_id: int) -> bool:
         """Check if the current shift should be auto-closed and close it if needed"""
@@ -591,7 +588,7 @@ Telegram: https://t.me/HK_688
         try:
             if not times_list:
                 message = "❌ សូមផ្តល់បញ្ជីម៉ោងបិទវេន (ឧ. 08:00, 16:00, 23:59)។"
-                await event.respond(message)
+                await event.respond(message, parse_mode='html')
                 return
 
             # Enable auto close with multiple times
@@ -616,7 +613,7 @@ Telegram: https://t.me/HK_688
             force_log(f"Error configuring auto close: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការកំណត់ការបិទដោយស្វ័យប្រវត្តិ។"
 
-        await event.respond(message)
+        await event.respond(message, parse_mode='html')
 
     async def disable_auto_close(self, event):
         """Disable auto close for a chat"""
@@ -636,7 +633,7 @@ Telegram: https://t.me/HK_688
             force_log(f"Error disabling auto close: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទការកំណត់ស្វ័យប្រវត្តិ។"
 
-        await event.respond(message)
+        await event.respond(message, parse_mode='html')
 
     async def show_auto_close_status(self, event):
         """Show current auto close configuration for a chat"""
@@ -675,4 +672,4 @@ Telegram: https://t.me/HK_688
             force_log(f"Error showing auto close status: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយកស្ថានភាពការកំណត់។"
 
-        await event.respond(message)
+        await event.respond(message, parse_mode='html')

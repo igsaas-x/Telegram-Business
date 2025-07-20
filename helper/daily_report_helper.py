@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from helper import DateUtils
+
 
 def get_khmer_month_name(month_num: int) -> str:
     """Convert month number to Khmer month name"""
@@ -41,7 +43,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
         working_hours = f"{start_time} ➝ {end_time}"
     
     # Get current time for total hours display
-    current_time = datetime.now()
+    current_time = DateUtils.now()
     trigger_time = format_time_12hour(current_time)
     
     # Format date in Khmer
