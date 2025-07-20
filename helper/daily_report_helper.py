@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from helper import DateUtils
+from helper.dateutils import DateUtils
 
 
 def get_khmer_month_name(month_num: int) -> str:
@@ -53,7 +53,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     
     # Build the report using HTML formatting
     report = "<b>សរុបប្រតិបត្តិការ</b>\n"
-    report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b> — ម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
+    report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
     report += f"<i>(ដោយ: {telegram_username})</i>\n"
 
     # KHR and USD amounts
