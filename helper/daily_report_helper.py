@@ -52,9 +52,9 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     year = report_date.year
     
     # Build the report using HTML formatting
-    report = "<b>សរុបប្រតិបត្តិការ</b>\n"
+    report = "<b>សរុបប្រតិបត្តិការ</b>"
     report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
-    report += f"<i>(ដោយ: {telegram_username})</i>\n"
+    report += f"<i>(ដោយ: @{telegram_username})</i>\n"
 
     # KHR and USD amounts
     khr_amount = totals["KHR"]
