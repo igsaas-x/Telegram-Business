@@ -70,15 +70,15 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
 
     # Create header and table using HTML formatting
     report += "<pre>\n"
-    report += f"{'ថ្ងៃ':<3}  {'(៛)':<10} {'($)':<8} {'សរុបចំនួន':<3}\n"
+    report += f"{'ថ្ងៃ':<3}  {'(៛)':<10} {'($)':<9} {'សរុបចំនួន':<3}\n"
     report += "------------------------------\n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:<3} {row['khr']:<10} {row['usd']:<8} {row['count']:<3}\n"
+        report += f"{row['day']:<3} {row['khr']:<10} {row['usd']:<9} {row['count']:<3}\n"
     
     report += "------------------------------\n"
-    report += f"{'សរុប:':<3} {total_khr_formatted:<10} {total_usd_formatted:<8} {total_transactions:<12}\n"
+    report += f"{'សរុប:':<3} {total_khr_formatted:<10} {total_usd_formatted:<9} {total_transactions:<12}\n"
     report += "</pre>"
     
     return report
