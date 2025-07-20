@@ -1293,13 +1293,13 @@ class TelegramAdminBot:
             if report_type == "daily":
                 # Call report generation logic or reuse from event_handler
                 report = await self._generate_report(chat_id, "daily", requesting_user)
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
             elif report_type == "weekly":
                 report = await self._generate_report(chat_id, "weekly", requesting_user)
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
             elif report_type == "monthly":
                 report = await self._generate_report(chat_id, "monthly", requesting_user)
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
 
             return True
         except Exception as e:

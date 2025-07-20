@@ -38,8 +38,8 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     month_khmer = get_khmer_month_name(start_date.month)
     year = start_date.year
     
-    # Build the report
-    report = f"សរុបប្រតិបត្តិការ {month_khmer} {year}\n\n"
+    # Build the report using HTML formatting
+    report = f"<b>សរុបប្រតិបត្តិការ {month_khmer} {year}</b>\n\n"
     
     # Determine the actual end date for the report
     # If the month hasn't ended yet, only show up to current date
@@ -88,20 +88,17 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     max_khr_width = max(max_khr_width, len(total_khr_formatted))
     max_usd_width = max(max_usd_width, len(total_usd_formatted))
     
-    # Create header with proper spacing
-    report += f"ថ្ងៃ  {'(៛)':<{max_khr_width}}  {'($)':<{max_usd_width}}  សរុប(Trans.)\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
+    # Create header and table using HTML formatting
+    report += "<pre>\n"
+    report += f"{'ថ្ងៃ':<3} {'(៛)':<12} {'($)':<8} {'សរុប(Trans.)':<12}\n"
+    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:<2}  {row['khr']:<{max_khr_width+4}}  {row['usd']:<{max_usd_width+4}}  {row['count']}\n"
+        report += f"{row['day']:<3} {row['khr']:<12} {row['usd']:<8} {row['count']:<12}\n"
     
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}\n"
-    
-    # if working_hours:
-    #     report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
-    # else:
-    #     report += "ម៉ោងប្រតិបត្តិការ: គ្មាន"
+    report += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    report += f"{'សរុប:':<3} {total_khr_formatted:<12} {total_usd_formatted:<8} {total_transactions:<12}\n"
+    report += "</pre>"
     
     return report

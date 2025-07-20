@@ -49,36 +49,32 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     month_khmer = get_khmer_month_name(report_date.month)
     year = report_date.year
     
-    # Build the report
-    report = "សរុបប្រតិបត្តិការ\n"
-    report += f"ថ្ងៃ {day} {month_khmer} {year} — ម៉ោងបូកសរុប {trigger_time} \n(ដោយ: {telegram_username})\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
+    # Build the report using HTML formatting
+    report = "<b>សរុបប្រតិបត្តិការ</b>\n"
+    report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b> — ម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
+    report += f"<i>(ដោយ: {telegram_username})</i>\n"
+    report += "━━━━━━━━━━━━━━━━━━━━━━━\n"
     
-    # KHR line
+    # KHR and USD amounts
     khr_amount = totals["KHR"]
     khr_count = transaction_counts["KHR"]
     khr_formatted = f"{khr_amount:,.0f}"
     
-    # USD line  
     usd_amount = totals["USD"]
     usd_count = transaction_counts["USD"]
     usd_formatted = f"{usd_amount:.2f}"
     
-    # Calculate spacing to align the pipes regardless of amount length
-    max_amount_length = max(len(khr_formatted), len(usd_formatted))
+    # Use HTML table for better alignment
+    report += "<pre>\n"
+    report += f"(៛): {khr_formatted:<15} | ប្រតិបត្តិការ: {khr_count}\n"
+    report += f"($): {usd_formatted:<16} | ប្រតិបត្តិការ: {usd_count}\n"
+    report += "</pre>"
     
-    # Calculate exact spacing needed to align pipes
-    khr_spaces_needed = max_amount_length - len(khr_formatted) + 4  # 4 base spaces
-    usd_spaces_needed = max_amount_length - len(usd_formatted) + 5
-    
-    report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
-    report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
-    
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
+    report += "━━━━━━━━━━━━━━━━━━━━━━━\n"
     
     if working_hours:
-        report += f"ម៉ោងប្រតិបត្តិការ: {working_hours}"
+        report += f"<b>ម៉ោងប្រតិបត្តិការ:</b> <code>{working_hours}</code>"
     else:
-        report += "ម៉ោងប្រតិបត្តិការ: គ្មាន"
+        report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
     
     return report

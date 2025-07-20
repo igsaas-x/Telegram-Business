@@ -96,7 +96,7 @@ class CommandHandler:
                 message = await self.format_totals_message(
                     f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
                 )
-                await event.client.send_message(event.chat_id, message)
+                await event.client.send_message(event.chat_id, message, parse_mode='html')
 
             except ValueError:
                 await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -143,7 +143,7 @@ class CommandHandler:
             message = await self.format_totals_message(
                 f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, chat_id, today, event.sender
             )
-            await event.client.send_message(chat_id, message)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -258,7 +258,7 @@ class CommandHandler:
             message = await self.format_totals_message(
                 f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, chat_id, selected_date, event.sender
             )
-            await event.client.send_message(chat_id, message)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -303,7 +303,7 @@ class CommandHandler:
             is_weekly = data.startswith("summary_week_")
             is_monthly = data.startswith("summary_month_")
             message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly, is_monthly)
-            await event.client.send_message(chat_id, message)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
