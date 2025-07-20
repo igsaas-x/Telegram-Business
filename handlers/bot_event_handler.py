@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 
 from telethon import Button
 
-from helper import total_summary_report, DateUtils
-from helper.logger_utils import force_log
 from common.enums import ServicePackage
+from helper import total_summary_report, daily_transaction_report, weekly_transaction_report, \
+    monthly_transaction_report, DateUtils
+from helper.logger_utils import force_log
 from services import (
     ConversationService,
     IncomeService,
@@ -19,10 +20,39 @@ class CommandHandler:
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
 
-    @staticmethod
-    def format_totals_message(period_text: str, incomes):
-        title = f"សរុបប្រតិបត្តិការ {period_text}"
-        return total_summary_report(incomes, title)
+    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None, start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False, is_monthly: bool = False):
+        # Check if this is a daily report (contains "ថ្ងៃទី")
+        if "ថ្ងៃទី" in period_text:
+            # This is a daily report, use the new format
+            if not report_date:
+                # Try to extract date from period_text or use today
+                report_date = DateUtils.now()
+            
+            # Get username from the requesting user (who triggered the request)
+            telegram_username = "Admin"
+            if requesting_user:
+                if hasattr(requesting_user, 'username') and requesting_user.username:
+                    telegram_username = requesting_user.username
+                elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                    telegram_username = requesting_user.first_name
+                # If user is anonymous, username will remain "Admin"
+            
+            # For daily reports, if no start/end date provided, calculate them from report_date
+            if not start_date:
+                start_date = report_date
+            if not end_date:
+                end_date = report_date + timedelta(days=1)
+            return daily_transaction_report(incomes, report_date, telegram_username, start_date, end_date)
+        elif is_weekly and start_date and end_date:
+            # This is a weekly report, use the new weekly format
+            return weekly_transaction_report(incomes, start_date, end_date)
+        elif is_monthly and start_date and end_date:
+            # This is a monthly report, use the new monthly format
+            return monthly_transaction_report(incomes, start_date, end_date)
+        else:
+            # This is other period report, use the old format
+            title = f"សរុបប្រតិបត្តិការ {period_text}"
+            return total_summary_report(incomes, title)
 
     async def handle_date_input_response(self, event, question):
         try:
@@ -63,10 +93,10 @@ class CommandHandler:
                     )
                     return
 
-                message = self.format_totals_message(
-                    f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
+                message = await self.format_totals_message(
+                    f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
                 )
-                await event.client.send_message(event.chat_id, message)
+                await event.client.send_message(event.chat_id, message, parse_mode='html')
 
             except ValueError:
                 await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -104,21 +134,16 @@ class CommandHandler:
                 )
                 return
 
-            # Check if BASIC package and more than 30 records
-            if (
-                group_package
-                and group_package.package == ServicePackage.BASIC
-                and len(incomes) > 30
-            ):
-
-                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 30 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
+            # Check package limits
+            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 20:
+                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 20 កំណត់ត្រា។ សម្រាប់មើលទិន្នន័យពេញលេញ សូមប្រើប្រាស់កញ្ចប់ BASIC ឬប្រើប្រាស់កញ្ចប់ឥតកំណត់។\n\nសូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
                 await event.client.send_message(chat_id, contact_message)
                 return
 
-            message = self.format_totals_message(
-                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes
+            message = await self.format_totals_message(
+                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, chat_id, today, event.sender
             )
-            await event.client.send_message(chat_id, message)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -230,10 +255,10 @@ class CommandHandler:
                 )
                 return
 
-            message = self.format_totals_message(
-                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes
+            message = await self.format_totals_message(
+                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, chat_id, selected_date, event.sender
             )
-            await event.client.send_message(chat_id, message)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
@@ -274,8 +299,11 @@ class CommandHandler:
                 )
                 return
 
-            message = self.format_totals_message(period_text, incomes)
-            await event.client.send_message(chat_id, message)
+            # Check if this is a weekly or monthly report
+            is_weekly = data.startswith("summary_week_")
+            is_monthly = data.startswith("summary_month_")
+            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly, is_monthly)
+            await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
             await event.client.send_message(chat_id, "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")

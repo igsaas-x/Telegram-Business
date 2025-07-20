@@ -1,4 +1,4 @@
-import logging
+from datetime import timedelta, datetime
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
@@ -12,14 +12,14 @@ from telegram.ext import (
     filters,
 )
 
-from handlers.bot_command_handler import EventHandler
-from services import ChatService, UserService
-from .group_package_service import GroupPackageService
 from common.enums import ServicePackage
+from handlers.bot_command_handler import EventHandler
+from helper import DateUtils, total_summary_report, daily_transaction_report, weekly_transaction_report, \
+    monthly_transaction_report
+from helper.logger_utils import force_log
 from models import Chat
-
-# Get logger (logging configured in main or telegram_bot_service)
-logger = logging.getLogger(__name__)
+from services import ChatService, UserService, IncomeService
+from .group_package_service import GroupPackageService
 
 ACTIVATE_COMMAND_CODE = 1001
 DEACTIVATE_COMMAND_CODE = 1002
@@ -30,6 +30,12 @@ ENABLE_SHIFT_COMMAND_CODE = 1006
 MENU_COMMAND_CODE = 1007
 CALLBACK_QUERY_CODE = 1008
 GET_USERNAME_COMMAND_CODE = 1009
+CHAT_SELECTION_CODE = 1010
+ACTIVATE_SELECTION_CODE = 1011
+DEACTIVATE_SELECTION_CODE = 1012
+ENABLE_SHIFT_SELECTION_CODE = 1013
+PACKAGE_START_DATE_CODE = 1014
+PACKAGE_END_DATE_CODE = 1015
 
 
 class TelegramAdminBot:
@@ -44,19 +50,19 @@ class TelegramAdminBot:
             "Please provide the chat ID by replying to this message."
         )
         self.telethon_client = None
-        logger.info("TelegramAdminBot initialized with token")
+        force_log("TelegramAdminBot initialized with token", "TelegramAdminBot")
 
     async def validate_user_identifier(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         try:
-            chat_id = update.message.text.strip()  # type: ignore
+            chat_id = int(update.message.text.strip())  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
 
             identifier: str = chat.user.identifier if chat.user else ""  # type: ignore
-            logger.debug(f"Identifier: {identifier}")
+            force_log(f"Identifier: {identifier}", "TelegramAdminBot")
             user = await self.user_service.get_user_by_identifier(identifier)
             if not user:
                 await update.message.reply_text("User not found.")  # type: ignore
@@ -71,9 +77,10 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
     async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        context.user_data["command_type"] = "package"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
-            [InlineKeyboardButton("Use Username", callback_data="use_username")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(  # type: ignore
@@ -96,39 +103,420 @@ class TelegramAdminBot:
                         "Please provide the chat ID by replying to this message."
                     )
                     return PACKAGE_COMMAND_CODE
-                elif selection == "use_username":
-                    context.user_data["selection_type"] = "username"
+                elif selection == "use_group_name":
+                    context.user_data["selection_type"] = "group_name"
                     await query.edit_message_text(
-                        "Please provide the username by replying to this message."
+                        "Please provide the group name to search. You can enter partial group name (up to 5 results will be shown)."
                     )
                     return PACKAGE_COMMAND_CODE
 
             return PACKAGE_SELECTION_CODE
         except Exception as e:
-            logger.error(f"Error in package_selection_handler: {e}")
+            force_log(f"Error in package_selection_handler: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def validate_user_by_username(
+    async def search_and_show_chats(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         try:
-            username = update.message.text.strip()  # type: ignore
-            # Remove @ if user included it
-            if username.startswith("@"):
-                username = username[1:]
-
-            user = await self.user_service.get_user_by_username(username)
-            if not user:
-                await update.message.reply_text("User not found.")  # type: ignore
+            search_term = update.message.text.strip()  # type: ignore
+            force_log(f"Searching for chats with term: {search_term}", "TelegramAdminBot")
+            
+            # Search for chats using the new search method
+            matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
+            
+            if not matching_chats:
+                await update.message.reply_text("No chats found matching your search.")  # type: ignore
                 return ConversationHandler.END
+            
+            if len(matching_chats) == 1:
+                # If only one result, proceed directly with that chat
+                chat = matching_chats[0]
+                context.user_data["chat_id_input"] = str(chat.chat_id)  # type: ignore
+                context.user_data["found_user"] = chat.user  # type: ignore
+                if chat.user:
+                    return await self.show_user_confirmation(update, context, chat.user)
+                else:
+                    await update.message.reply_text("No user associated with this chat.")  # type: ignore
+                    return ConversationHandler.END
+            
+            # Multiple results - show selection buttons
+            keyboard = []
+            for chat in matching_chats:
+                button_text = f"{chat.group_name} (ID: {chat.chat_id})"
+                callback_data = f"select_chat_{chat.chat_id}"
+                keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+            
+            # Add cancel button
+            keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel_chat_selection")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(  # type: ignore
+                f"Found {len(matching_chats)} matching chats. Please select one:",
+                reply_markup=reply_markup
+            )
+            
+            return CHAT_SELECTION_CODE
+            
+        except Exception as e:
+            force_log(f"Error in search_and_show_chats: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error searching for chats.")  # type: ignore
+            return ConversationHandler.END
 
-            context.user_data["user_identifier"] = user.identifier  # type: ignore
-            context.user_data["found_user"] = user  # type: ignore
-            return await self.show_user_confirmation(update, context, user)
-        except ValueError:
-            await update.message.reply_text("Invalid username.")  # type: ignore
+    async def handle_chat_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        query = update.callback_query
+        try:
+            if query:
+                await query.answer()
+                callback_data = query.data
+                
+                if callback_data == "cancel_chat_selection":
+                    await query.edit_message_text("Chat selection cancelled.")
+                    return ConversationHandler.END
+                
+                if callback_data.startswith("select_chat_"):
+                    chat_id = callback_data.replace("select_chat_", "")
+                    command_type = context.user_data.get("command_type")  # type: ignore
+                    force_log(f"Selected chat_id: {chat_id} for command: {command_type}", "TelegramAdminBot")
+                    
+                    # Get the selected chat
+                    chat = await self.chat_service.get_chat_by_chat_id(int(chat_id))
+                    if not chat:
+                        await query.edit_message_text("Selected chat not found.")
+                        return ConversationHandler.END
+                    
+                    context.user_data["chat_id_input"] = chat_id  # type: ignore
+                    
+                    # For package command, proceed directly to package selection
+                    if command_type == "package" or not command_type:
+                        # Show package selection
+                        keyboard = [
+                            [
+                                InlineKeyboardButton(
+                                    ServicePackage.TRIAL.value, callback_data="TRIAL"
+                                )
+                            ],
+                            [
+                                InlineKeyboardButton(
+                                    ServicePackage.FREE.value, callback_data="FREE"
+                                )
+                            ],
+                            [
+                                InlineKeyboardButton(
+                                    ServicePackage.BASIC.value, callback_data="BASIC"
+                                )
+                            ],
+                            [
+                                InlineKeyboardButton(
+                                    ServicePackage.UNLIMITED.value,
+                                    callback_data="UNLIMITED",
+                                )
+                            ],
+                            [
+                                InlineKeyboardButton(
+                                    ServicePackage.BUSINESS.value, callback_data="BUSINESS"
+                                )
+                            ],
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await query.edit_message_text(
+                            f"Selected chat: {chat.group_name} (ID: {chat_id})\n\nPlease choose a subscription package:",
+                            reply_markup=reply_markup,
+                        )
+                        return PACKAGE_COMMAND_CODE
+                    
+                    # For other commands, execute directly
+                    elif command_type == "activate":
+                        await query.edit_message_text(f"Executing activate for chat: {chat.group_name}")
+                        return await self.execute_activate_command_from_query(query, int(chat_id))
+                    elif command_type == "deactivate":
+                        await query.edit_message_text(f"Executing deactivate for chat: {chat.group_name}")
+                        return await self.execute_deactivate_command_from_query(query, int(chat_id))
+                    elif command_type == "enable_shift":
+                        await query.edit_message_text(f"Executing enable shift for chat: {chat.group_name}")
+                        return await self.execute_enable_shift_command_from_query(query, int(chat_id))
+                        
+        except Exception as e:
+            force_log(f"Error in handle_chat_selection: {e}", "TelegramAdminBot")
+            if query:
+                await query.edit_message_text("Error processing selection.")
+            return ConversationHandler.END
+        
+        return ConversationHandler.END
+
+    @staticmethod
+    async def show_user_confirmation_from_query(
+            query, user
+    ) -> int:
+        try:
+            # Display user information with username
+            username = user.username if user.username else "N/A"  # type: ignore
+            first_name = user.first_name if user.first_name else "N/A"  # type: ignore
+            last_name = user.last_name if user.last_name else "N/A"  # type: ignore
+            user_info = f"User Found:\n"
+            user_info += f"Username: @{username}\n"
+            user_info += f"First Name: {first_name}\n"
+            user_info += f"Last Name: {last_name}\n"
+            user_info += f"User ID: {user.identifier}\n\n"
+            user_info += "Do you want to proceed with this user?"
+
+            keyboard = [
+                [InlineKeyboardButton("✅ Confirm", callback_data="confirm_user")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_user")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(user_info, reply_markup=reply_markup)
+            return USER_CONFIRMATION_CODE
+        except Exception as e:
+            force_log(f"Error in show_user_confirmation_from_query: {e}", "TelegramAdminBot")
+            await query.edit_message_text(f"Error: {str(e)}")
+            return ConversationHandler.END
+
+    async def shared_selection_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Shared handler for chat selection across all commands"""
+        query = update.callback_query
+        try:
+            if query:
+                await query.answer()
+                selection = query.data
+                command_type = context.user_data.get("command_type")  # type: ignore
+
+                if selection == "use_chat_id":
+                    context.user_data["selection_type"] = "chat_id"  # type: ignore
+                    await query.edit_message_text(
+                        "Please provide the chat ID or group name to search. You can search by exact chat ID or partial group name (up to 5 results will be shown)."
+                    )
+                    # Return appropriate command code based on command type
+                    if command_type == "activate":
+                        return ACTIVATE_COMMAND_CODE
+                    elif command_type == "deactivate":
+                        return DEACTIVATE_COMMAND_CODE
+                    elif command_type == "enable_shift":
+                        return ENABLE_SHIFT_COMMAND_CODE
+                    else:
+                        return PACKAGE_COMMAND_CODE
+
+                elif selection == "use_group_name":
+                    context.user_data["selection_type"] = "group_name"  # type: ignore
+                    await query.edit_message_text(
+                        "Please provide the group name to search. You can enter partial group name (up to 5 results will be shown)."
+                    )
+                    # Return appropriate command code based on command type
+                    if command_type == "activate":
+                        return ACTIVATE_COMMAND_CODE
+                    elif command_type == "deactivate":
+                        return DEACTIVATE_COMMAND_CODE
+                    elif command_type == "enable_shift":
+                        return ENABLE_SHIFT_COMMAND_CODE
+                    else:
+                        return PACKAGE_COMMAND_CODE
+
+        except Exception as e:
+            force_log(f"Error in shared_selection_handler: {e}", "TelegramAdminBot")
+            if query:
+                await query.edit_message_text(f"Error: {str(e)}")
+            return ConversationHandler.END
+        
+        return ConversationHandler.END
+
+    async def shared_process_input(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Shared handler for processing chat search input across all commands"""
+        selection_type = context.user_data.get("selection_type")  # type: ignore
+
+        if selection_type == "chat_id":
+            # All commands now use the search method for consistency
+            return await self.search_and_show_chats_for_command(update, context)
+        elif selection_type == "group_name":
+            return await self.search_and_show_chats_for_command(update, context)
+        else:
+            await update.message.reply_text("Invalid selection type.")  # type: ignore
+            return ConversationHandler.END
+
+    async def search_and_show_chats_for_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Search and show chats for activate/deactivate/enable_shift commands"""
+        try:
+            search_term = update.message.text.strip()  # type: ignore
+            command_type = context.user_data.get("command_type")  # type: ignore
+            force_log(f"Searching for chats with term: {search_term} for command: {command_type}", "TelegramAdminBot")
+            
+            # Search for chats using the new search method
+            matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
+            
+            if not matching_chats:
+                await update.message.reply_text("No chats found matching your search.")  # type: ignore
+                return ConversationHandler.END
+            
+            if len(matching_chats) == 1:
+                # If only one result, proceed directly with the command
+                chat = matching_chats[0]
+                context.user_data["chat_id_input"] = str(chat.chat_id)  # type: ignore
+                
+                # Execute the command directly
+                if command_type == "activate":
+                    return await self.execute_activate_command(update, context, chat.chat_id)
+                elif command_type == "deactivate":
+                    return await self.execute_deactivate_command(update, context)
+                elif command_type == "enable_shift":
+                    return await self.execute_enable_shift_command(update, context)
+                elif command_type == "package":
+                    # Show package selection directly
+                    keyboard = [
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.TRIAL.value, callback_data="TRIAL"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.FREE.value, callback_data="FREE"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.BASIC.value, callback_data="BASIC"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.UNLIMITED.value,
+                                callback_data="UNLIMITED",
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.BUSINESS.value, callback_data="BUSINESS"
+                            )
+                        ],
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await update.message.reply_text(  # type: ignore
+                        f"Selected chat: {chat.group_name} (ID: {chat.chat_id})\n\nPlease choose a subscription package:",
+                        reply_markup=reply_markup,
+                    )
+                    return PACKAGE_COMMAND_CODE
+            
+            # Multiple results - show selection buttons
+            keyboard = []
+            for chat in matching_chats:
+                button_text = f"{chat.group_name} (ID: {chat.chat_id})"
+                callback_data = f"select_chat_{chat.chat_id}"
+                keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+            
+            # Add cancel button
+            keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel_chat_selection")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(  # type: ignore
+                f"Found {len(matching_chats)} matching chats. Please select one:",
+                reply_markup=reply_markup
+            )
+            
+            # Store command type for the selection handler
+            context.user_data["command_type"] = command_type  # type: ignore
+            return CHAT_SELECTION_CODE
+            
+        except Exception as e:
+            force_log(f"Error in search_and_show_chats_for_command: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error searching for chats.")  # type: ignore
+            return ConversationHandler.END
+
+    async def execute_activate_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int
+    ) -> int:
+        """Execute the activate command for a specific chat"""
+        try:
+            chat = await self._get_chat_with_validation(update, chat_id)
+            if not chat:
+                return ConversationHandler.END
+            
+            # Use the existing process_chat_id logic
+            return await self.process_chat_id(update, context)
+        except Exception as e:
+            force_log(f"Error in execute_activate_command: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error activating chat.")  # type: ignore
+            return ConversationHandler.END
+
+    async def execute_deactivate_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Execute the deactivate command for a specific chat"""
+        try:
+            # Use the existing process_deactivate_chat_id logic
+            return await self.process_deactivate_chat_id(update, context)
+        except Exception as e:
+            force_log(f"Error in execute_deactivate_command: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error deactivating chat.")  # type: ignore
+            return ConversationHandler.END
+
+    async def execute_enable_shift_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Execute the enable shift command for a specific chat"""
+        try:
+            # Use the existing process_enable_shift_chat_id logic
+            return await self.process_enable_shift_chat_id(update, context)
+        except Exception as e:
+            force_log(f"Error in execute_enable_shift_command: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error enabling shift for chat.")  # type: ignore
+            return ConversationHandler.END
+
+    async def execute_activate_command_from_query(
+        self, query, chat_id: int
+    ) -> int:
+        """Execute activate command from callback query"""
+        try:
+            success = await self.chat_service.update_chat_status(chat_id, True)
+            if success:
+                await query.edit_message_text(f"✅ Chat {chat_id} has been activated successfully!")
+            else:
+                await query.edit_message_text(f"❌ Failed to activate chat {chat_id}")
+            return ConversationHandler.END
+        except Exception as e:
+            force_log(f"Error in execute_activate_command_from_query: {e}", "TelegramAdminBot")
+            await query.edit_message_text("Error activating chat.")
+            return ConversationHandler.END
+
+    async def execute_deactivate_command_from_query(
+        self, query, chat_id: int
+    ) -> int:
+        """Execute deactivate command from callback query"""
+        try:
+            success = await self.chat_service.update_chat_status(chat_id, False)
+            if success:
+                await query.edit_message_text(f"✅ Chat {chat_id} has been deactivated successfully!")
+            else:
+                await query.edit_message_text(f"❌ Failed to deactivate chat {chat_id}")
+            return ConversationHandler.END
+        except Exception as e:
+            force_log(f"Error in execute_deactivate_command_from_query: {e}", "TelegramAdminBot")
+            await query.edit_message_text("Error deactivating chat.")
+            return ConversationHandler.END
+
+    async def execute_enable_shift_command_from_query(
+        self, query, chat_id: int
+    ) -> int:
+        """Execute enable shift command from callback query"""
+        try:
+            success = await self.chat_service.update_chat_enable_shift(chat_id, True)
+            if success:
+                await query.edit_message_text(f"✅ Shift has been enabled for chat {chat_id} successfully!")
+            else:
+                await query.edit_message_text(f"❌ Failed to enable shift for chat {chat_id}")
+            return ConversationHandler.END
+        except Exception as e:
+            force_log(f"Error in execute_enable_shift_command_from_query: {e}", "TelegramAdminBot")
+            await query.edit_message_text("Error enabling shift for chat.")
             return ConversationHandler.END
 
     async def show_user_confirmation(
@@ -170,7 +558,7 @@ class TelegramAdminBot:
             await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            logger.error(f"Error in show_user_confirmation: {e}")
+            force_log(f"Error in show_user_confirmation: {e}", "TelegramAdminBot")
             await update.message.reply_text("Error displaying user information.")  # type: ignore
             return ConversationHandler.END
 
@@ -181,14 +569,15 @@ class TelegramAdminBot:
 
         if selection_type == "chat_id":
             return await self.validate_user_identifier(update, context)
-        elif selection_type == "username":
-            return await self.validate_user_by_username(update, context)
+        elif selection_type == "group_name":
+            return await self.search_and_show_chats(update, context)
         else:
             await update.message.reply_text("Invalid selection type.")  # type: ignore
             return ConversationHandler.END
 
+    @staticmethod
     async def user_confirmation_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+            update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
         query = update.callback_query
         try:
@@ -202,6 +591,11 @@ class TelegramAdminBot:
                         [
                             InlineKeyboardButton(
                                 ServicePackage.TRIAL.value, callback_data="TRIAL"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                ServicePackage.FREE.value, callback_data="FREE"
                             )
                         ],
                         [
@@ -234,7 +628,7 @@ class TelegramAdminBot:
 
             return USER_CONFIRMATION_CODE
         except Exception as e:
-            logger.error(f"Error in user_confirmation_handler: {e}")
+            force_log(f"Error in user_confirmation_handler: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -257,54 +651,159 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
 
                 # Handle package selection buttons
-                if selected_package in ["TRIAL", "BASIC", "UNLIMITED", "BUSINESS"]:
+                if selected_package in ["TRIAL", "FREE", "BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:
                         await query.edit_message_text("Chat ID not found.")
                         return ConversationHandler.END
 
-                    # Update group package
-                    group_package = (
-                        await self.group_package_service.get_or_create_group_package(
-                            chat_id
-                        )
-                    )
-                    updated_package = await self.group_package_service.update_package(
-                        chat_id, ServicePackage(selected_package)
-                    )
+                    # Store selected package for later processing
+                    context.user_data["selected_package"] = selected_package
 
-                    if not updated_package:
-                        await query.edit_message_text("Failed to update group package.")
-                        return ConversationHandler.END
-
-                    # Update shift settings based on package change
-                    if ServicePackage(selected_package) == ServicePackage.BUSINESS:
-                        # When upgrading to business, automatically enable shift
-                        await self.chat_service.update_chat_enable_shift(chat_id, True)
-                    elif ServicePackage(selected_package) == ServicePackage.TRIAL:
-                        # When downgrading to trial, disable shift
-                        await self.chat_service.update_chat_enable_shift(chat_id, False)
-
-                    # Get user info for confirmation message
-                    found_user = context.user_data.get("found_user")
-                    username = found_user.username if found_user and found_user.username else "N/A"  # type: ignore
-
-                    # Confirm to user
+                    # Ask for start date
                     await query.edit_message_text(
-                        f"✅ Successfully updated package to {selected_package} for chat {chat_id} (user @{username})."
+                        f"Selected package: {selected_package}\n\n"
+                        "Please enter the start date for this package (dd-mm-yyyy format):\n"
+                        "Example: 15-01-2024"
                     )
-                    return ConversationHandler.END
+                    return PACKAGE_START_DATE_CODE
 
             return PACKAGE_COMMAND_CODE
         except Exception as e:
-            logger.error(f"Error in package_button: {e}")
+            force_log(f"Error in package_button: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error updating user package: {str(e)}")
             return ConversationHandler.END
 
-    async def callback_query_handler(
+    async def process_package_start_date(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle start date input for package"""
+        try:
+            start_date_str = update.message.text.strip()  # type: ignore
+            
+            # Validate date format
+            from datetime import datetime
+            try:
+                start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+                context.user_data["package_start_date"] = start_date_str
+                
+                # Ask for end date
+                await update.message.reply_text(  # type: ignore
+                    f"Start date set: {start_date_str}\n\n"
+                    "Please enter the end date for this package (dd-mm-yyyy format):\n"
+                    "Example: 31-12-2024"
+                )
+                return PACKAGE_END_DATE_CODE
+                
+            except ValueError:
+                await update.message.reply_text(  # type: ignore
+                    "Invalid date format. Please use dd-mm-yyyy format (e.g., 15-01-2024):"
+                )
+                return PACKAGE_START_DATE_CODE
+                
+        except Exception as e:
+            force_log(f"Error in process_package_start_date: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing start date.")  # type: ignore
+            return ConversationHandler.END
+
+    async def process_package_end_date(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle end date input and finalize package update"""
+        try:
+            end_date_str = update.message.text.strip()  # type: ignore
+            
+            # Validate date format
+            from datetime import datetime
+            try:
+                end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
+                start_date = datetime.strptime(context.user_data["package_start_date"], "%d-%m-%Y")
+                
+                # Validate end date is after start date
+                if end_date <= start_date:
+                    await update.message.reply_text(  # type: ignore
+                        "End date must be after start date. Please enter a valid end date:"
+                    )
+                    return PACKAGE_END_DATE_CODE
+                
+                # Store end date
+                context.user_data["package_end_date"] = end_date_str
+                
+                # Now process the package update with dates
+                return await self.finalize_package_update(update, context)
+                
+            except ValueError:
+                await update.message.reply_text(  # type: ignore
+                    "Invalid date format. Please use dd-mm-yyyy format (e.g., 31-12-2024):"
+                )
+                return PACKAGE_END_DATE_CODE
+                
+        except Exception as e:
+            force_log(f"Error in process_package_end_date: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing end date.")  # type: ignore
+            return ConversationHandler.END
+
+    async def finalize_package_update(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Finalize the package update with selected dates"""
+        try:
+            # Get stored data
+            chat_id = context.user_data.get("chat_id_input")
+            selected_package = context.user_data.get("selected_package")
+            start_date_str = context.user_data.get("package_start_date")
+            end_date_str = context.user_data.get("package_end_date")
+            
+            if not all([chat_id, selected_package, start_date_str, end_date_str]):
+                await update.message.reply_text("Missing required information.")  # type: ignore
+                return ConversationHandler.END
+            
+            # Convert dates
+            from datetime import datetime
+            start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+            end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
+
+            # Update group package with dates
+            await self.group_package_service.get_or_create_group_package(chat_id)
+
+            updated_package = await self.group_package_service.update_package(
+                chat_id, 
+                ServicePackage(selected_package),
+                package_start_date=start_date,
+                package_end_date=end_date
+            )
+
+            if not updated_package:
+                await update.message.reply_text("Failed to update group package.")  # type: ignore
+                return ConversationHandler.END
+
+            # Update shift settings based on package change
+            if ServicePackage(selected_package) == ServicePackage.BUSINESS:
+                # When upgrading to business, automatically enable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, True)
+            elif ServicePackage(selected_package) in [ServicePackage.TRIAL, ServicePackage.FREE]:
+                # When downgrading to trial or free, disable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, False)
+
+            # Confirm to user
+            await update.message.reply_text(  # type: ignore
+                f"✅ Successfully updated package:\n"
+                f"• Package: {selected_package}\n"
+                f"• Chat ID: {chat_id}\n"
+                f"• Start Date: {start_date_str}\n"
+                f"• End Date: {end_date_str}"
+            )
+            return ConversationHandler.END
+            
+        except Exception as e:
+            force_log(f"Error in finalize_package_update: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error finalizing package update.")  # type: ignore
+            return ConversationHandler.END
+
+    async def callback_query_handler(
+        self, update: Update
     ) -> int:
         """Handle callback queries from inline buttons"""
         query = update.callback_query
@@ -316,7 +815,7 @@ class TelegramAdminBot:
             # Extract the callback data (similar to what Telethon would get)
             callback_data = query.data
 
-            # Create a pseudo event for the callback similar to Telethon's events.CallbackQuery
+            # Create a pseudo-event for the callback similar to Telethon's events.CallbackQuery
             class PseudoCallbackEvent:
                 def __init__(self, callback_query, callback_data):
                     self.chat_id = callback_query.message.chat_id
@@ -328,7 +827,8 @@ class TelegramAdminBot:
                     self.callback_query = True
                     self.message = callback_query.message
 
-                async def edit(self, text, buttons=None):
+                @staticmethod
+                async def edit(text, buttons=None):
                     if buttons:
                         # Convert Telethon buttons to python-telegram-bot InlineKeyboardButton format
                         keyboard = []
@@ -357,7 +857,8 @@ class TelegramAdminBot:
                     else:
                         await query.edit_message_text(text)
 
-                async def respond(self, text, buttons=None):
+                @staticmethod
+                async def respond(text, buttons=None):
                     """For cases where a new message needs to be sent instead of editing"""
                     if buttons:
                         # Convert Telethon buttons to python-telegram-bot format
@@ -382,11 +883,11 @@ class TelegramAdminBot:
                                 keyboard.append(keyboard_row)
 
                         reply_markup = InlineKeyboardMarkup(keyboard)
-                        await query.message.reply_text(text, reply_markup=reply_markup)
+                        await query.edit_message_text(text, reply_markup=reply_markup)
                     else:
-                        await query.message.reply_text(text)
+                        await query.edit_message_text(text)
 
-            # Create pseudo event
+            # Create pseudo-event
             pseudo_event = PseudoCallbackEvent(query, callback_data)
 
             # Call the event_handler's callback method
@@ -395,14 +896,17 @@ class TelegramAdminBot:
             return CALLBACK_QUERY_CODE
 
         except Exception as e:
-            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
-            await query.message.reply_text(f"Error processing button action: {str(e)}")
+            force_log(f"Error in callback_query_handler: {e}", "TelegramAdminBot")
+            try:
+                await query.edit_message_text(f"Error processing button action: {str(e)}")
+            except Exception:
+                pass
             return ConversationHandler.END
 
     async def _get_chat_with_validation(
         self,
         update: Update,
-        chat_id: str,
+        chat_id: int,
     ) -> Chat | None:
         chat = await self.chat_service.get_chat_by_chat_id(chat_id)
         if not chat:
@@ -411,18 +915,43 @@ class TelegramAdminBot:
         return chat
 
     async def deactivate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(self.default_question)  # type: ignore
-        return DEACTIVATE_COMMAND_CODE
+        context.user_data["command_type"] = "deactivate"  # type: ignore
+        keyboard = [
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(  # type: ignore
+            "How would you like to find the chat to deactivate?", reply_markup=reply_markup
+        )
+        return DEACTIVATE_SELECTION_CODE
 
     async def activate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(self.default_question)  # type: ignore
-        return ACTIVATE_COMMAND_CODE
+        context.user_data["command_type"] = "activate"  # type: ignore
+        keyboard = [
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(  # type: ignore
+            "How would you like to find the chat to activate?", reply_markup=reply_markup
+        )
+        return ACTIVATE_SELECTION_CODE
 
     async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(self.default_question)  # type: ignore
-        return ENABLE_SHIFT_COMMAND_CODE
+        context.user_data["command_type"] = "enable_shift"  # type: ignore
+        keyboard = [
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(  # type: ignore
+            "How would you like to find the chat to enable shift?", reply_markup=reply_markup
+        )
+        return ENABLE_SHIFT_SELECTION_CODE
 
-    async def get_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    @staticmethod
+    async def get_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Please provide the phone number (with country code, e.g., +85512345678) by replying to this message.")  # type: ignore
         return GET_USERNAME_COMMAND_CODE
 
@@ -434,7 +963,7 @@ class TelegramAdminBot:
 
         try:
             # Validate not found
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -459,7 +988,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
         try:
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = int(update.message.text.strip())  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -484,7 +1013,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
         try:
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = update.message.text.strip()  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -502,7 +1031,7 @@ class TelegramAdminBot:
             )
             if not group_package or group_package.package != ServicePackage.BUSINESS:
                 current_package = (
-                    group_package.package.value if group_package else "No package"
+                    str(group_package.package) if group_package else "No package"
                 )
                 await update.message.reply_text(
                     f"Chat must have BUSINESS package to enable shift. Current package: {current_package}"
@@ -527,7 +1056,8 @@ class TelegramAdminBot:
 
         return ConversationHandler.END
 
-    async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    @staticmethod
+    async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     async def process_phone_number(
@@ -560,7 +1090,7 @@ class TelegramAdminBot:
                 await update.message.reply_text(f"❌ No username found for phone number: {phone_number}\n\nPossible reasons:\n- User not found\n- User has no username set\n- Phone number format incorrect")
 
         except Exception as e:
-            logger.error(f"Error processing phone number: {e}")
+            force_log(f"Error processing phone number: {e}", "TelegramAdminBot")
             await update.message.reply_text(f"❌ Error: {str(e)}")
 
         return ConversationHandler.END
@@ -568,7 +1098,7 @@ class TelegramAdminBot:
     def set_telethon_client(self, telethon_client):
         """Set the telethon client reference for username lookup"""
         self.telethon_client = telethon_client
-        logger.info("Telethon client reference set for admin bot")
+        force_log("Telethon client reference set for admin bot", "TelegramAdminBot")
 
     async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
@@ -581,7 +1111,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
         try:
-            chat_id: str = update.message.text.strip()  # type: ignore
+            chat_id: int = int(update.message.text.strip())  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
             if not chat:
                 return ConversationHandler.END
@@ -604,14 +1134,14 @@ class TelegramAdminBot:
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
-            logger.error(f"Error in process_menu_chat_id: {e}", exc_info=True)
+            force_log(f"Error in process_menu_chat_id: {e}", "TelegramAdminBot")
 
         return CALLBACK_QUERY_CODE
 
-    async def callback_query_handler(
+    async def menu_callback_query_handler(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> int:
-        """Handle callback queries from inline buttons"""
+        """Handle callback queries from menu inline buttons"""
         query = update.callback_query
 
         try:
@@ -665,10 +1195,10 @@ class TelegramAdminBot:
                 result = await self._handle_date_summary(chat_id, callback_data, query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
             elif callback_data == "report_per_shift":
-                result = await self._handle_shift_report(chat_id, query)
+                result = await self._handle_shift_report(query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
             elif callback_data == "other_dates":
-                result = await self._handle_other_dates(chat_id, query)
+                result = await self._handle_other_dates(query)
                 return CALLBACK_QUERY_CODE if result else ConversationHandler.END
 
             # If we get here, it's an unknown callback
@@ -676,20 +1206,18 @@ class TelegramAdminBot:
             return CALLBACK_QUERY_CODE
 
         except Exception as e:
-            logger.error(f"Error in callback_query_handler: {e}", exc_info=True)
+            force_log(f"Error in menu_callback_query_handler: {e}", "TelegramAdminBot")
             try:
-                await query.message.reply_text(
+                await query.edit_message_text(
                     f"Error processing button action: {str(e)}"
                 )
-            except:
+            except Exception:
                 pass
             return ConversationHandler.END
 
-    async def _handle_daily_summary_menu(self, chat_id: str, query):
+    async def _handle_daily_summary_menu(self, chat_id: int, query):
         """Handle daily summary by showing date selection menu like normal bot"""
         try:
-            from helper import DateUtils
-            from datetime import timedelta
 
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
             if not chat:
@@ -743,11 +1271,11 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_daily_summary_menu: {e}", exc_info=True)
+            force_log(f"Error in _handle_daily_summary_menu: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error showing daily menu: {str(e)}")
             return False
 
-    async def _handle_report(self, chat_id: str, report_type: str, query):
+    async def _handle_report(self, chat_id: int, report_type: str, query):
         """Handle generating a specific report type"""
         try:
             chat = await self.chat_service.get_chat_by_chat_id(chat_id)
@@ -759,31 +1287,32 @@ class TelegramAdminBot:
             keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
+            # Get the user who clicked the button
+            requesting_user = query.from_user if query else None
+
             if report_type == "daily":
                 # Call report generation logic or reuse from event_handler
-                report = await self._generate_report(chat_id, "daily")
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                report = await self._generate_report(chat_id, "daily", requesting_user)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
             elif report_type == "weekly":
-                report = await self._generate_report(chat_id, "weekly")
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                report = await self._generate_report(chat_id, "weekly", requesting_user)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
             elif report_type == "monthly":
-                report = await self._generate_report(chat_id, "monthly")
-                await query.edit_message_text(report, reply_markup=reply_markup)
+                report = await self._generate_report(chat_id, "monthly", requesting_user)
+                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
 
             return True
         except Exception as e:
-            logger.error(f"Error in _handle_report: {e}", exc_info=True)
+            force_log(f"Error in _handle_report: {e}", "TelegramAdminBot")
             await query.edit_message_text(
                 f"Error generating {report_type} report: {str(e)}"
             )
             return False
 
-    async def _handle_date_summary(self, chat_id: str, callback_data: str, query):
+    @staticmethod
+    async def _handle_date_summary(chat_id: str, callback_data: str, query):
         """Handle date summary like normal bot"""
         try:
-            from datetime import datetime, timedelta
-            from models import IncomeService
-            from helper import total_summary_report
 
             date_str = callback_data.replace("summary_of_", "")
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -806,19 +1335,31 @@ class TelegramAdminBot:
                     f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
                 )
             else:
-                period_text = f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}"
-                formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
-                message = total_summary_report(incomes, formatted_title)
+                # Get username from the requesting user (who clicked the button)
+                telegram_username = "Admin"
+                if hasattr(query, 'from_user') and query.from_user:
+                    requesting_user = query.from_user
+                    if hasattr(requesting_user, 'username') and requesting_user.username:
+                        telegram_username = requesting_user.username
+                    elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                        telegram_username = requesting_user.first_name
+                    # If user is anonymous, username will remain "Admin"
+                
+                # Use new daily report format
+                start_date = selected_date
+                end_date = selected_date + timedelta(days=1)
+                message = daily_transaction_report(incomes, selected_date, telegram_username, start_date, end_date)
 
             await query.edit_message_text(message, reply_markup=reply_markup)
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_date_summary: {e}", exc_info=True)
+            force_log(f"Error in _handle_date_summary: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error generating date summary: {str(e)}")
             return False
 
-    async def _handle_shift_report(self, chat_id: str, query):
+    @staticmethod
+    async def _handle_shift_report(query):
         """Handle shift report - placeholder for now"""
         try:
             # For now, just show a placeholder message
@@ -834,11 +1375,12 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_shift_report: {e}", exc_info=True)
+            force_log(f"Error in _handle_shift_report: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return False
 
-    async def _handle_other_dates(self, chat_id: str, query):
+    @staticmethod
+    async def _handle_other_dates(query):
         """Handle other dates - placeholder for now"""
         try:
             # For now, just show a placeholder message
@@ -854,15 +1396,13 @@ class TelegramAdminBot:
             return True
 
         except Exception as e:
-            logger.error(f"Error in _handle_other_dates: {e}", exc_info=True)
+            force_log(f"Error in _handle_other_dates: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return False
 
-    async def _generate_report(self, chat_id: str, report_type: str) -> str:
+    @staticmethod
+    async def _generate_report(chat_id: int, report_type: str, requesting_user=None) -> str:
         """Generate report text by calling appropriate service methods"""
-        from datetime import timedelta
-        from models import IncomeService
-        from helper import total_summary_report, DateUtils
 
         income_service = IncomeService()
 
@@ -890,7 +1430,7 @@ class TelegramAdminBot:
 
         # Get income data using the same method as normal bot
         incomes = await income_service.get_income_by_date_and_chat_id(
-            chat_id=int(chat_id),
+            chat_id=chat_id,
             start_date=start_date,
             end_date=end_date,
         )
@@ -899,7 +1439,26 @@ class TelegramAdminBot:
         if not incomes:
             return f"គ្មានប្រតិបត្តិការសម្រាប់ {title} ទេ។"
 
-        # Use the same formatting as normal bot
+        # For daily reports, use the new format
+        if report_type == "daily":
+            # Get username from the requesting user (who clicked the button)
+            telegram_username = "Admin"
+            if requesting_user:
+                if hasattr(requesting_user, 'username') and requesting_user.username:
+                    telegram_username = requesting_user.username
+                elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                    telegram_username = requesting_user.first_name
+                # If user is anonymous, username will remain "Admin"
+            
+            return daily_transaction_report(incomes, now, telegram_username, start_date, end_date)
+        elif report_type == "weekly":
+            # Use the new weekly format
+            return weekly_transaction_report(incomes, start_date, end_date)
+        elif report_type == "monthly":
+            # Use the new monthly format
+            return monthly_transaction_report(incomes, start_date, end_date)
+        
+        # For other reports, use the old format
         period_text = title
         formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, formatted_title)
@@ -910,9 +1469,12 @@ class TelegramAdminBot:
         activate_command_handler = ConversationHandler(
             entry_points=[CommandHandler("activate", self.activate)],
             states={
+                ACTIVATE_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
                 ACTIVATE_COMMAND_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.process_chat_id)
+                    MessageHandler(filters.TEXT & filters.REPLY, self.shared_process_input),
+                    CallbackQueryHandler(self.shared_selection_handler),
                 ],
+                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
@@ -923,11 +1485,12 @@ class TelegramAdminBot:
         deactivate_command_handler = ConversationHandler(
             entry_points=[CommandHandler("deactivate", self.deactivate)],
             states={
+                DEACTIVATE_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
                 DEACTIVATE_COMMAND_CODE: [
-                    MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_deactivate_chat_id
-                    )
+                    MessageHandler(filters.TEXT & filters.REPLY, self.shared_process_input),
+                    CallbackQueryHandler(self.shared_selection_handler),
                 ],
+                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
@@ -940,14 +1503,17 @@ class TelegramAdminBot:
         package_handler = ConversationHandler(
             entry_points=[CommandHandler("package", self.package)],
             states={
-                PACKAGE_SELECTION_CODE: [CallbackQueryHandler(self.package_button)],
+                PACKAGE_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
                 PACKAGE_COMMAND_CODE: [
                     MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_package_input
+                        filters.TEXT & filters.REPLY, self.shared_process_input
                     ),
                     CallbackQueryHandler(self.package_button),
                 ],
                 USER_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_button)],
+                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
+                PACKAGE_START_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_start_date)],
+                PACKAGE_END_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_end_date)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
@@ -958,11 +1524,12 @@ class TelegramAdminBot:
         enable_shift_handler = ConversationHandler(
             entry_points=[CommandHandler("enable_shift", self.enable_shift)],
             states={
+                ENABLE_SHIFT_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
                 ENABLE_SHIFT_COMMAND_CODE: [
-                    MessageHandler(
-                        filters.TEXT & filters.REPLY, self.process_enable_shift_chat_id
-                    )
+                    MessageHandler(filters.TEXT & filters.REPLY, self.shared_process_input),
+                    CallbackQueryHandler(self.shared_selection_handler),
                 ],
+                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
@@ -979,7 +1546,7 @@ class TelegramAdminBot:
                     )
                 ],
                 CALLBACK_QUERY_CODE: [
-                    CallbackQueryHandler(self.callback_query_handler)
+                    CallbackQueryHandler(self.menu_callback_query_handler)
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
@@ -1010,7 +1577,7 @@ class TelegramAdminBot:
 
         # Remove the global callback query handler to avoid duplicate handling
         # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
-        logger.info("TelegramAdminBot handlers set up")
+        force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 
     async def start_polling(self) -> None:
         if not self.app:
@@ -1020,4 +1587,4 @@ class TelegramAdminBot:
         await self.app.initialize()
         await self.app.start()
         await self.app.updater.start_polling()  # type: ignore
-        logger.info("TelegramAdminBot started polling")
+        force_log("TelegramAdminBot started polling", "TelegramAdminBot")

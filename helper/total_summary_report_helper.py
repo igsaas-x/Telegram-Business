@@ -19,6 +19,6 @@ def total_summary_report(incomes, summary_title: str) -> str:
         total = totals.get(code, 0)
         format_string = "{:,.0f}" if code == "KHR" else "{:,.2f}"
         transaction_count = transaction_counts.get(code, 0)
-        message += f"{symbol} ({code}): {format_string.format(total)} ចំនួនប្រតិបត្តិការសរុប​​: {transaction_count}\n"
+        message += f"{symbol} ({code}): {format_string.format(total)} ចំនួនប្រតិបត្តិការសរុប: {transaction_count}\n"
 
     return message
