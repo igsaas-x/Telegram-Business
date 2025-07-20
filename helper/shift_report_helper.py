@@ -38,8 +38,8 @@ def shift_report_format(shift_number: int, shift_date: datetime, start_time: dat
     max_amount_length = max(len(khr_formatted), len(usd_formatted))
     
     # Calculate exact spacing needed to align pipes
-    khr_spaces_needed = max_amount_length - len(khr_formatted) + 8  # 8 base spaces
-    usd_spaces_needed = max_amount_length - len(usd_formatted) + 8  # 8 base spaces
+    khr_spaces_needed = max_amount_length - len(khr_formatted) + 4  # 4 base spaces
+    usd_spaces_needed = max_amount_length - len(usd_formatted) + 5
     
     report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការណ៍: {khr_count}\n"
     report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការណ៍: {usd_count}\n"

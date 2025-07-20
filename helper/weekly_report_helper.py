@@ -68,14 +68,14 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     max_usd_width = max(max_usd_width, len(total_usd_formatted))
     
     # Create header with proper spacing
-    report += f"ថ្ងៃ  {'(៛)':>{max_khr_width}}  {'($)':>{max_usd_width}}  សរុប(Trans.)\n"
+    report += f"ថ្ងៃ  {'(៛)':<{max_khr_width}}  {'($)':<{max_usd_width}}  សរុប(Trans.)\n"
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:2}  {row['khr']:>{max_khr_width}}  {row['usd']:>{max_usd_width}}  {row['count']:>2}\n"
+        report += f"{row['day']:<2}  {row['khr']:<{max_khr_width}}  {row['usd']:<{max_usd_width}}  {row['count']}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"សរុប: {total_khr_formatted:>{max_khr_width}}  {total_usd_formatted:>{max_usd_width}}  {total_transactions}"
+    report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}"
     
     return report

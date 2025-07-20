@@ -5,6 +5,7 @@ from .daily_report_helper import get_khmer_month_name
 
 def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
     """Generate monthly transaction report in format similar to weekly report"""
+    from datetime import date
     
     # Group transactions by date
     daily_data = {}
@@ -30,11 +31,23 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     # Build the report
     report = f"សរុបប្រតិបត្តិការ {month_khmer} {year}\n\n"
     
+    # Determine the actual end date for the report
+    # If the month hasn't ended yet, only show up to current date
+    today = date.today()
+    current_date = start_date.date()
+    end_date_actual = end_date.date()
+    
+    # If we're in the same month as start_date and haven't reached end_date yet, 
+    # limit to today's date
+    if (today.year == start_date.year and 
+        today.month == start_date.month and 
+        today < end_date_actual):
+        from datetime import timedelta
+        end_date_actual = today + timedelta(days=1)  # Add 1 day to include today
+    
     # Calculate column widths for proper alignment
     # First pass: collect all formatted amounts to determine max widths
     daily_rows = []
-    current_date = start_date.date()
-    end_date_actual = end_date.date()
     
     while current_date < end_date_actual:
         day_num = current_date.day
@@ -51,23 +64,9 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
             'count': trans_count
         })
         
-        # Move to next day
-        try:
-            if current_date.day < 28:  # Safe increment
-                current_date = current_date.replace(day=current_date.day + 1)
-            else:
-                # Handle end of month
-                next_month = current_date.month + 1 if current_date.month < 12 else 1
-                next_year = current_date.year if current_date.month < 12 else current_date.year + 1
-                current_date = current_date.replace(year=next_year, month=next_month, day=1)
-        except ValueError:
-            # If we can't increment (e.g., Feb 29 on non-leap year), move to next month
-            next_month = current_date.month + 1 if current_date.month < 12 else 1
-            next_year = current_date.year if current_date.month < 12 else current_date.year + 1
-            current_date = current_date.replace(year=next_year, month=next_month, day=1)
-        
-        if current_date >= end_date_actual:
-            break
+        # Move to next day using timedelta (much simpler and more reliable)
+        from datetime import timedelta
+        current_date = current_date + timedelta(days=1)
     
     # Calculate maximum widths for alignment
     max_khr_width = max(len(row['khr']) for row in daily_rows) if daily_rows else 8
@@ -80,14 +79,14 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     max_usd_width = max(max_usd_width, len(total_usd_formatted))
     
     # Create header with proper spacing
-    report += f"ថ្ងៃ  {'(៛)':>{max_khr_width}}  {'($)':>{max_usd_width}}  សរុប(Trans.)\n"
+    report += f"ថ្ងៃ  {'(៛)':<{max_khr_width}}  {'($)':<{max_usd_width}}  សរុប(Trans.)\n"
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
     
     # Generate daily rows with proper alignment
     for row in daily_rows:
-        report += f"{row['day']:2}  {row['khr']:>{max_khr_width}}  {row['usd']:>{max_usd_width}}  {row['count']:>2}\n"
+        report += f"{row['day']:<2}  {row['khr']:<{max_khr_width}}  {row['usd']:<{max_usd_width}}  {row['count']}\n"
     
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"សរុប: {total_khr_formatted:>{max_khr_width}}  {total_usd_formatted:>{max_usd_width}}  {total_transactions}"
+    report += f"សរុប: {total_khr_formatted:<{max_khr_width}}  {total_usd_formatted:<{max_usd_width}}  {total_transactions}"
     
     return report
