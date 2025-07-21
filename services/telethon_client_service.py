@@ -119,8 +119,8 @@ class TelethonClientService:
                     return
 
                 # Ignore specific bot: AutosumBusinessBot
-                if getattr(sender, "username", "") == "AutosumBusinessBot":
-                    force_log(f"Message from AutosumBusinessBot, ignoring")
+                if getattr(sender, "username", "") == "AutosumBusinessBot" or getattr(sender, "username", "") == "AutoSum_bot":
+                    force_log(f"Message from Autosum, ignoring")
                     return
 
                 # Skip if no message text
