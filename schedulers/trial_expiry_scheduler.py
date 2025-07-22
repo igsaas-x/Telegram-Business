@@ -72,7 +72,7 @@ class TrialExpiryScheduler:
         """
         Start the scheduler to run the trial expiry job.
         """
-        # Schedule the job to run daily at 9:00 AM Cambodia time
+        # Schedule the job to run daily at 1:00 AM Cambodia time
         cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
         schedule.every().day.at("01:00", cambodia_tz).do(self.convert_expired_trials_to_free)
 
