@@ -39,6 +39,7 @@ class GroupPackageService:
                 chat_group_id=chat_group_id,
                 package=package,
                 is_paid=False if package in [ServicePackage.TRIAL, ServicePackage.FREE] else True,
+                package_start_date=DateUtils.now(),
                 created_at=DateUtils.now(),
                 updated_at=DateUtils.now(),
             )
