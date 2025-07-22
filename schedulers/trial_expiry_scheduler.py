@@ -73,8 +73,9 @@ class TrialExpiryScheduler:
         """
         # Schedule the job to run daily at 9:00 AM Cambodia time
         cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
-        schedule.every().day.at("01:00", cambodia_tz).do(self.convert_expired_trials_to_free)
-        
+        # schedule.every().day.at("01:00", cambodia_tz).do(self.convert_expired_trials_to_free)
+        schedule.every().minute.do(self.convert_expired_trials_to_free)
+
         # For testing purposes, you can also run it every minute:
         # schedule.every().minute.do(self.convert_expired_trials_to_free)
         
@@ -88,7 +89,3 @@ class TrialExpiryScheduler:
             force_log("Trial expiry scheduler stopped by user")
         except Exception as e:
             force_log(f"Error in scheduler: {str(e)}")
-
-if __name__ == "__main__":
-    scheduler = TrialExpiryScheduler()
-    scheduler.start_scheduler()
