@@ -135,7 +135,7 @@ class MessageVerificationScheduler:
 
                     if is_bot and message.text:
                         # Skip AutosumBusinessBot messages
-                        if getattr(sender, "username", "") != "AutosumBusinessBot":
+                        if getattr(sender, "username", "") != "AutosumBusinessBot" and getattr(sender, "username", "") != "AutoSum_bot":
                             messages.append(message)
                             force_log(
                                 f"Found bot message in timeframe: {message.id} from {message_time}"
