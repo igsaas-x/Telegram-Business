@@ -1,4 +1,4 @@
-import time
+import asyncio
 from datetime import timedelta
 
 import pytz
@@ -68,7 +68,7 @@ class TrialExpiryScheduler:
         except Exception as e:
             force_log(f"Error in convert_expired_trials_to_free: {str(e)}")
 
-    def start_scheduler(self):
+    async def start_scheduler(self):
         """
         Start the scheduler to run the trial expiry job.
         """
@@ -84,7 +84,7 @@ class TrialExpiryScheduler:
         try:
             while True:
                 schedule.run_pending()
-                time.sleep(60)  # Check every minute
+                await asyncio.sleep(60)  # Check every minute
         except KeyboardInterrupt:
             force_log("Trial expiry scheduler stopped by user")
         except Exception as e:
