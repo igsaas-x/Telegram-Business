@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import timedelta
 
 import pytz
 from telethon import TelegramClient, events
@@ -186,13 +187,16 @@ class TelethonClientService:
                     chat_created = DateUtils.localize_datetime(chat_created)
                 chat_created_utc = chat_created.astimezone(pytz.UTC)
 
+                # Add a 5-minute buffer to handle any timestamp precision issues
+                chat_created_with_buffer = chat_created_utc - timedelta(minutes=5)
+                
                 force_log(
-                    f"Message time: {message_time}, Chat created: {chat_created_utc}"
+                    f"Message time: {message_time}, Chat created: {chat_created_utc} (with 5min buffer: {chat_created_with_buffer})"
                 )
-                # Ignore messages sent before chat registration
-                if message_time < chat_created_utc:
+                # Ignore messages sent before chat registration (with buffer)
+                if message_time < chat_created_with_buffer:
                     force_log(
-                        f"Ignoring message from {message_time} (before chat registration at {chat_created_utc})"
+                        f"Ignoring message from {message_time} (before chat registration buffer at {chat_created_with_buffer})"
                     )
                     return
 
