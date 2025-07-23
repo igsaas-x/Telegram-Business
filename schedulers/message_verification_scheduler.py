@@ -190,12 +190,12 @@ class MessageVerificationScheduler:
                 message_time = pytz.UTC.localize(message_time)
 
             # Convert chat created_at to UTC for comparison
+            from helper import DateUtils
+
             chat_created = chat.created_at
             if chat_created.tzinfo is None:
-                # Assume database stores in UTC if naive
-                chat_created_utc = pytz.UTC.localize(chat_created)
-            else:
-                chat_created_utc = chat_created.astimezone(pytz.UTC)
+                chat_created = DateUtils.localize_datetime(chat_created)
+            chat_created_utc = chat_created.astimezone(pytz.UTC)
 
             if message_time < chat_created_utc:
                 force_log(
