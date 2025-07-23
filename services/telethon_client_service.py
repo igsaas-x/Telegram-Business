@@ -6,7 +6,6 @@ from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
 
 # Check if message was sent after chat registration (applies to all messages)
-from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
@@ -183,8 +182,10 @@ class TelethonClientService:
                 # Convert chat created_at to UTC for comparison
                 chat_created = chat.created_at
                 if chat_created.tzinfo is None:
-                    chat_created = DateUtils.localize_datetime(chat_created)
-                chat_created_utc = chat_created.astimezone(pytz.UTC)
+                    # Assume database stores in UTC if naive
+                    chat_created_utc = pytz.UTC.localize(chat_created)
+                else:
+                    chat_created_utc = chat_created.astimezone(pytz.UTC)
 
                 force_log(
                     f"Message time: {message_time}, Chat created: {chat_created_utc}"
@@ -213,6 +214,7 @@ class TelethonClientService:
                         trx_id,
                         0,  # shift_id
                         chat.enable_shift,  # enable_shift
+                        username,  # sent_by
                     )
                     force_log(
                         f"Successfully saved income record with id={result.id} for message {message_id}"

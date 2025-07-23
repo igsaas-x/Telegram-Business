@@ -190,12 +190,12 @@ class MessageVerificationScheduler:
                 message_time = pytz.UTC.localize(message_time)
 
             # Convert chat created_at to UTC for comparison
-            from helper import DateUtils
-
             chat_created = chat.created_at
             if chat_created.tzinfo is None:
-                chat_created = DateUtils.localize_datetime(chat_created)
-            chat_created_utc = chat_created.astimezone(pytz.UTC)
+                # Assume database stores in UTC if naive
+                chat_created_utc = pytz.UTC.localize(chat_created)
+            else:
+                chat_created_utc = chat_created.astimezone(pytz.UTC)
 
             if message_time < chat_created_utc:
                 force_log(
@@ -237,6 +237,10 @@ class MessageVerificationScheduler:
             #     force_log(f"Duplicate transaction found for message {message_id}, skipping")
             #     return
 
+            # Get sender username
+            sender = await message.get_sender()
+            username = getattr(sender, "username", "") or ""
+            
             # Store the message as income
             force_log(f"Storing income for message {message_id}")
             result = await self.income_service.insert_income(
@@ -249,6 +253,7 @@ class MessageVerificationScheduler:
                 trx_id,
                 None,  # shift_id
                 chat.enable_shift,  # enable_shift
+                username,  # sent_by
             )
 
             force_log(
