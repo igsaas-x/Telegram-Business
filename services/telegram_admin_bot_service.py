@@ -21,8 +21,6 @@ from models import Chat
 from services import ChatService, UserService, IncomeService
 from .group_package_service import GroupPackageService
 
-ACTIVATE_COMMAND_CODE = 1001
-DEACTIVATE_COMMAND_CODE = 1002
 PACKAGE_COMMAND_CODE = 1003
 PACKAGE_SELECTION_CODE = 1004
 USER_CONFIRMATION_CODE = 1005
@@ -117,9 +115,7 @@ class TelegramAdminBot:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def search_and_show_chats(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def search_and_show_chats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             search_term = update.message.text.strip()  # type: ignore
             force_log(f"Searching for chats with term: {search_term}", "TelegramAdminBot")
@@ -197,23 +193,12 @@ class TelegramAdminBot:
                         keyboard = [
                             [
                                 InlineKeyboardButton(
-                                    ServicePackage.TRIAL.value, callback_data="TRIAL"
-                                )
-                            ],
-                            [
-                                InlineKeyboardButton(
-                                    ServicePackage.FREE.value, callback_data="FREE"
-                                )
-                            ],
-                            [
-                                InlineKeyboardButton(
                                     ServicePackage.BASIC.value, callback_data="BASIC"
                                 )
                             ],
                             [
                                 InlineKeyboardButton(
-                                    ServicePackage.UNLIMITED.value,
-                                    callback_data="UNLIMITED",
+                                    ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
                                 )
                             ],
                             [
@@ -230,12 +215,6 @@ class TelegramAdminBot:
                         return PACKAGE_COMMAND_CODE
                     
                     # For other commands, execute directly
-                    elif command_type == "activate":
-                        await query.edit_message_text(f"Executing activate for chat: {chat.group_name}")
-                        return await self.execute_activate_command_from_query(query, int(chat_id))
-                    elif command_type == "deactivate":
-                        await query.edit_message_text(f"Executing deactivate for chat: {chat.group_name}")
-                        return await self.execute_deactivate_command_from_query(query, int(chat_id))
                     elif command_type == "enable_shift":
                         await query.edit_message_text(f"Executing enable shift for chat: {chat.group_name}")
                         return await self.execute_enable_shift_command_from_query(query, int(chat_id))
@@ -294,11 +273,7 @@ class TelegramAdminBot:
                         "Please provide the chat ID or group name to search. You can search by exact chat ID or partial group name (up to 5 results will be shown)."
                     )
                     # Return appropriate command code based on command type
-                    if command_type == "activate":
-                        return ACTIVATE_COMMAND_CODE
-                    elif command_type == "deactivate":
-                        return DEACTIVATE_COMMAND_CODE
-                    elif command_type == "enable_shift":
+                    if command_type == "enable_shift":
                         return ENABLE_SHIFT_COMMAND_CODE
                     else:
                         return PACKAGE_COMMAND_CODE
@@ -309,11 +284,7 @@ class TelegramAdminBot:
                         "Please provide the group name to search. You can enter partial group name (up to 5 results will be shown)."
                     )
                     # Return appropriate command code based on command type
-                    if command_type == "activate":
-                        return ACTIVATE_COMMAND_CODE
-                    elif command_type == "deactivate":
-                        return DEACTIVATE_COMMAND_CODE
-                    elif command_type == "enable_shift":
+                    if command_type == "enable_shift":
                         return ENABLE_SHIFT_COMMAND_CODE
                     else:
                         return PACKAGE_COMMAND_CODE
@@ -363,25 +334,11 @@ class TelegramAdminBot:
                 context.user_data["chat_id_input"] = str(chat.chat_id)  # type: ignore
                 
                 # Execute the command directly
-                if command_type == "activate":
-                    return await self.execute_activate_command(update, context, chat.chat_id)
-                elif command_type == "deactivate":
-                    return await self.execute_deactivate_command(update, context)
-                elif command_type == "enable_shift":
+                if command_type == "enable_shift":
                     return await self.execute_enable_shift_command(update, context)
                 elif command_type == "package":
                     # Show package selection directly
                     keyboard = [
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.TRIAL.value, callback_data="TRIAL"
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                ServicePackage.FREE.value, callback_data="FREE"
-                            )
-                        ],
                         [
                             InlineKeyboardButton(
                                 ServicePackage.BASIC.value, callback_data="BASIC"
@@ -389,8 +346,7 @@ class TelegramAdminBot:
                         ],
                         [
                             InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value,
-                                callback_data="UNLIMITED",
+                                ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
                             )
                         ],
                         [
@@ -651,7 +607,7 @@ class TelegramAdminBot:
                     return await self.user_confirmation_handler(update, context)
 
                 # Handle package selection buttons
-                if selected_package in ["TRIAL", "FREE", "BASIC", "UNLIMITED", "BUSINESS"]:
+                if selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:
@@ -683,10 +639,8 @@ class TelegramAdminBot:
         try:
             start_date_str = update.message.text.strip()  # type: ignore
             
-            # Validate date format
-            from datetime import datetime
             try:
-                start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+                # start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
                 context.user_data["package_start_date"] = start_date_str
                 
                 # Ask for end date
@@ -716,7 +670,6 @@ class TelegramAdminBot:
             end_date_str = update.message.text.strip()  # type: ignore
             
             # Validate date format
-            from datetime import datetime
             try:
                 end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
                 start_date = datetime.strptime(context.user_data["package_start_date"], "%d-%m-%Y")
@@ -1233,12 +1186,12 @@ class TelegramAdminBot:
                 keyboard.append(
                     [
                         InlineKeyboardButton(
-                            "ប្រចាំវេន​ថ្ងៃ​នេះ", callback_data="report_per_shift"
+                            "ប្រចាំវេនថ្ងៃនេះ", callback_data="report_per_shift"
                         )
                     ]
                 )
                 # Only show current date for shift-enabled chats
-                label = today.strftime("ថ្ងៃ​នេះ")
+                label = today.strftime("ថ្ងៃនេះ")
                 callback_value = today.strftime("%Y-%m-%d")
                 keyboard.append(
                     [
@@ -1466,38 +1419,6 @@ class TelegramAdminBot:
     def setup(self) -> None:
         self.app = ApplicationBuilder().token(self.bot_token).build()
 
-        activate_command_handler = ConversationHandler(
-            entry_points=[CommandHandler("activate", self.activate)],
-            states={
-                ACTIVATE_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
-                ACTIVATE_COMMAND_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.shared_process_input),
-                    CallbackQueryHandler(self.shared_selection_handler),
-                ],
-                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
-            },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_chat=True,
-            per_user=True,
-            per_message=False,
-        )
-
-        deactivate_command_handler = ConversationHandler(
-            entry_points=[CommandHandler("deactivate", self.deactivate)],
-            states={
-                DEACTIVATE_SELECTION_CODE: [CallbackQueryHandler(self.shared_selection_handler)],
-                DEACTIVATE_COMMAND_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.shared_process_input),
-                    CallbackQueryHandler(self.shared_selection_handler),
-                ],
-                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
-            },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_chat=True,
-            per_user=True,
-            per_message=False,
-        )
-
         # Package command handler with multiple states
         # Note: per_message=False warning is expected when mixing CallbackQueryHandler with other handler types
         package_handler = ConversationHandler(
@@ -1568,8 +1489,6 @@ class TelegramAdminBot:
             per_message=False
         )
 
-        self.app.add_handler(activate_command_handler)
-        self.app.add_handler(deactivate_command_handler)
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
