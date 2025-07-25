@@ -50,9 +50,7 @@ class TelegramAdminBot:
         self.telethon_client = None
         force_log("TelegramAdminBot initialized with token", "TelegramAdminBot")
 
-    async def validate_user_identifier(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def validate_user_identifier(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             chat_id = int(update.message.text.strip())  # type: ignore
             chat = await self._get_chat_with_validation(update, chat_id)
@@ -74,7 +72,8 @@ class TelegramAdminBot:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
             return ConversationHandler.END
 
-    async def package(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    @staticmethod
+    async def package(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "package"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -86,9 +85,8 @@ class TelegramAdminBot:
         )
         return PACKAGE_SELECTION_CODE
 
-    async def package_selection_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    @staticmethod
+    async def package_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         try:
             if query:
@@ -162,9 +160,7 @@ class TelegramAdminBot:
             await update.message.reply_text("Error searching for chats.")  # type: ignore
             return ConversationHandler.END
 
-    async def handle_chat_selection(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def handle_chat_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         try:
             if query:
@@ -226,41 +222,11 @@ class TelegramAdminBot:
             if query:
                 await query.edit_message_text("Error processing selection.")
             return ConversationHandler.END
-        
         return ConversationHandler.END
 
+
     @staticmethod
-    async def show_user_confirmation_from_query(
-            query, user
-    ) -> int:
-        try:
-            # Display user information with username
-            username = user.username if user.username else "N/A"  # type: ignore
-            first_name = user.first_name if user.first_name else "N/A"  # type: ignore
-            last_name = user.last_name if user.last_name else "N/A"  # type: ignore
-            user_info = f"User Found:\n"
-            user_info += f"Username: @{username}\n"
-            user_info += f"First Name: {first_name}\n"
-            user_info += f"Last Name: {last_name}\n"
-            user_info += f"User ID: {user.identifier}\n\n"
-            user_info += "Do you want to proceed with this user?"
-
-            keyboard = [
-                [InlineKeyboardButton("✅ Confirm", callback_data="confirm_user")],
-                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_user")],
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await query.edit_message_text(user_info, reply_markup=reply_markup)
-            return USER_CONFIRMATION_CODE
-        except Exception as e:
-            force_log(f"Error in show_user_confirmation_from_query: {e}", "TelegramAdminBot")
-            await query.edit_message_text(f"Error: {str(e)}")
-            return ConversationHandler.END
-
-    async def shared_selection_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def shared_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Shared handler for chat selection across all commands"""
         query = update.callback_query
         try:
@@ -299,9 +265,7 @@ class TelegramAdminBot:
         
         return ConversationHandler.END
 
-    async def shared_process_input(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def shared_process_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Shared handler for processing chat search input across all commands"""
         selection_type = context.user_data.get("selection_type")  # type: ignore
 
@@ -314,9 +278,7 @@ class TelegramAdminBot:
             await update.message.reply_text("Invalid selection type.")  # type: ignore
             return ConversationHandler.END
 
-    async def search_and_show_chats_for_command(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def search_and_show_chats_for_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Search and show chats for activate/deactivate/enable_shift commands"""
         try:
             search_term = update.message.text.strip()  # type: ignore
@@ -387,34 +349,6 @@ class TelegramAdminBot:
         except Exception as e:
             force_log(f"Error in search_and_show_chats_for_command: {e}", "TelegramAdminBot")
             await update.message.reply_text("Error searching for chats.")  # type: ignore
-            return ConversationHandler.END
-
-    async def execute_activate_command(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int
-    ) -> int:
-        """Execute the activate command for a specific chat"""
-        try:
-            chat = await self._get_chat_with_validation(update, chat_id)
-            if not chat:
-                return ConversationHandler.END
-            
-            # Use the existing process_chat_id logic
-            return await self.process_chat_id(update, context)
-        except Exception as e:
-            force_log(f"Error in execute_activate_command: {e}", "TelegramAdminBot")
-            await update.message.reply_text("Error activating chat.")  # type: ignore
-            return ConversationHandler.END
-
-    async def execute_deactivate_command(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
-        """Execute the deactivate command for a specific chat"""
-        try:
-            # Use the existing process_deactivate_chat_id logic
-            return await self.process_deactivate_chat_id(update, context)
-        except Exception as e:
-            force_log(f"Error in execute_deactivate_command: {e}", "TelegramAdminBot")
-            await update.message.reply_text("Error deactivating chat.")  # type: ignore
             return ConversationHandler.END
 
     async def execute_enable_shift_command(
@@ -604,10 +538,6 @@ class TelegramAdminBot:
                 if selected_package in ["use_chat_id", "use_username"]:
                     return await self.package_selection_handler(update, context)
 
-                # Handle user confirmation buttons
-                if selected_package in ["confirm_user", "cancel_user"]:
-                    return await self.user_confirmation_handler(update, context)
-
                 # Handle package selection buttons
                 if selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
@@ -634,15 +564,13 @@ class TelegramAdminBot:
                 await query.edit_message_text(f"Error updating user package: {str(e)}")
             return ConversationHandler.END
 
-    async def process_package_start_date(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    @staticmethod
+    async def process_package_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle start date input for package"""
         try:
             start_date_str = update.message.text.strip()  # type: ignore
             
             try:
-                # start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
                 context.user_data["package_start_date"] = start_date_str
                 
                 # Ask for end date
@@ -759,9 +687,7 @@ class TelegramAdminBot:
             await update.message.reply_text("Error finalizing package update.")  # type: ignore
             return ConversationHandler.END
 
-    async def callback_query_handler(
-        self, update: Update
-    ) -> int:
+    async def callback_query_handler(self, update: Update) -> int:
         """Handle callback queries from inline buttons"""
         query = update.callback_query
 
@@ -871,31 +797,9 @@ class TelegramAdminBot:
             return None
         return chat
 
-    async def deactivate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        context.user_data["command_type"] = "deactivate"  # type: ignore
-        keyboard = [
-            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
-            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(  # type: ignore
-            "How would you like to find the chat to deactivate?", reply_markup=reply_markup
-        )
-        return DEACTIVATE_SELECTION_CODE
 
-    async def activate(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        context.user_data["command_type"] = "activate"  # type: ignore
-        keyboard = [
-            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
-            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(  # type: ignore
-            "How would you like to find the chat to activate?", reply_markup=reply_markup
-        )
-        return ACTIVATE_SELECTION_CODE
-
-    async def enable_shift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    @staticmethod
+    async def enable_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["command_type"] = "enable_shift"  # type: ignore
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
@@ -932,31 +836,6 @@ class TelegramAdminBot:
 
             await self.chat_service.update_chat_status(chat_id, True)
             await update.message.reply_text("Chat has been activated successfully.")
-
-        except Exception as e:
-            await update.message.reply_text(f"Error: {str(e)}")
-
-        return ConversationHandler.END
-
-    async def process_deactivate_chat_id(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
-        if not update.message:
-            return ConversationHandler.END
-
-        try:
-            chat_id: int = int(update.message.text.strip())  # type: ignore
-            chat = await self._get_chat_with_validation(update, chat_id)
-            if not chat:
-                return ConversationHandler.END
-
-            # Validate already deactivated
-            if not chat.is_active:  # type: ignore
-                await update.message.reply_text("Chat has already been deactivated.")
-                return ConversationHandler.END
-
-            await self.chat_service.update_chat_status(chat_id, False)
-            await update.message.reply_text("Chat has been deactivated successfully.")
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")
@@ -1015,41 +894,6 @@ class TelegramAdminBot:
 
     @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        return ConversationHandler.END
-
-    async def process_phone_number(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
-        if not update.message:
-            return ConversationHandler.END
-
-        try:
-            phone_number: str = update.message.text.strip()  # type: ignore
-
-            # Validate phone number format
-            if not phone_number:
-                await update.message.reply_text("Please provide a valid phone number.")
-                return ConversationHandler.END
-
-            # Check if telethon client is available
-            if not self.telethon_client:
-                await update.message.reply_text("❌ Telethon client not available. Please make sure the service is running.")
-                return ConversationHandler.END
-
-            await update.message.reply_text(f"🔍 Looking up username for phone number: {phone_number}")
-
-            # Use the telethon client to get username by phone
-            username = await self.telethon_client.get_username_by_phone(phone_number)
-
-            if username:
-                await update.message.reply_text(f"✅ Username found: @{username}")
-            else:
-                await update.message.reply_text(f"❌ No username found for phone number: {phone_number}\n\nPossible reasons:\n- User not found\n- User has no username set\n- Phone number format incorrect")
-
-        except Exception as e:
-            force_log(f"Error processing phone number: {e}", "TelegramAdminBot")
-            await update.message.reply_text(f"❌ Error: {str(e)}")
-
         return ConversationHandler.END
 
     def set_telethon_client(self, telethon_client):
@@ -1480,23 +1324,9 @@ class TelegramAdminBot:
             per_message=False,
         )
 
-        get_username_handler = ConversationHandler(
-            entry_points=[CommandHandler("get_username", self.get_username)],
-            states={
-                GET_USERNAME_COMMAND_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.process_phone_number)
-                ],
-            },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_chat=True,
-            per_user=True,
-            per_message=False
-        )
-
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
-        self.app.add_handler(get_username_handler)
 
         # Remove the global callback query handler to avoid duplicate handling
         # self.app.add_handler(CallbackQueryHandler(self.callback_query_handler))
