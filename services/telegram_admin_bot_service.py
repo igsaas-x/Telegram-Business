@@ -131,6 +131,7 @@ class TelegramAdminBot:
                 # If only one result, proceed directly with that chat
                 chat = matching_chats[0]
                 context.user_data["chat_id_input"] = str(chat.chat_id)  # type: ignore
+                context.user_data["group_name"] = chat.group_name
                 context.user_data["found_user"] = chat.user  # type: ignore
                 if chat.user:
                     return await self.show_user_confirmation(update, context, chat.user)
@@ -186,6 +187,7 @@ class TelegramAdminBot:
                         return ConversationHandler.END
                     
                     context.user_data["chat_id_input"] = chat_id  # type: ignore
+                    context.user_data["group_name"] = chat.group_name
                     
                     # For package command, proceed directly to package selection
                     if command_type == "package" or not command_type:
@@ -705,6 +707,7 @@ class TelegramAdminBot:
         try:
             # Get stored data
             chat_id = context.user_data.get("chat_id_input")
+            chat_name = context.user_data.get("group_name")
             selected_package = context.user_data.get("selected_package")
             start_date_str = context.user_data.get("package_start_date")
             end_date_str = context.user_data.get("package_end_date")
@@ -745,6 +748,7 @@ class TelegramAdminBot:
                 f"✅ Successfully updated package:\n"
                 f"• Package: {selected_package}\n"
                 f"• Chat ID: {chat_id}\n"
+                f"• Chat Name: {chat_name}\n"
                 f"• Start Date: {start_date_str}\n"
                 f"• End Date: {end_date_str}"
             )
