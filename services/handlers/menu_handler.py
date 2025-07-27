@@ -71,6 +71,53 @@ class MenuHandler:
             await query.edit_message_text(f"Error showing daily menu: {str(e)}")
             return False
 
+    async def _handle_current_date_summary(self, chat_id: int, query):
+        """Handle current date summary for FREE and BASIC packages"""
+        try:
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            if not chat:
+                await query.edit_message_text(f"Chat {chat_id} not found.")
+                return False
+
+            # Get current date using DateUtils
+            from helper import DateUtils
+            current_date = DateUtils.now()
+            
+            # Use the same method as _handle_date_summary
+            from services import IncomeService
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_specific_date_and_chat_id(
+                chat_id=chat_id,
+                target_date=current_date
+            )
+
+            if not incomes:
+                message = (
+                    f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {current_date.strftime('%d %b %Y')} ទេ។"
+                )
+            else:
+                # Get username from the requesting user (who clicked the button)
+                telegram_username = "Admin"
+                if hasattr(query, 'from_user') and query.from_user:
+                    requesting_user = query.from_user
+                    if hasattr(requesting_user, 'username') and requesting_user.username:
+                        telegram_username = requesting_user.username
+                    elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
+                        telegram_username = requesting_user.first_name
+                    # If user is anonymous, username will remain "Admin"
+                
+                # Use daily report format for current date
+                from helper import daily_transaction_report
+                message = daily_transaction_report(incomes, current_date, telegram_username)
+
+            await query.edit_message_text(message, parse_mode='HTML')
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_current_date_summary: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error generating current date summary: {str(e)}")
+            return False
+
     async def _handle_report(self, chat_id: int, report_type: str, query):
         """Handle generating a specific report type"""
         try:
@@ -290,6 +337,9 @@ class MenuHandler:
             if callback_data == "daily_summary":
                 result = await self._handle_daily_summary_menu(chat_id, query)
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data == "current_date_summary":
+                result = await self._handle_current_date_summary(chat_id, query)
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "weekly_summary":
                 result = await self._handle_report(chat_id, "weekly", query)
                 return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report

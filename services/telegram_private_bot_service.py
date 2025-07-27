@@ -387,8 +387,12 @@ class TelegramPrivateBot:
         
         keyboard = []
         
-        # Always available options
-        keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
+        # Daily option - different callback based on package
+        if package_type and package_type.value in ['TRIAL', 'STANDARD', 'BUSINESS']:
+            keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
+        else:
+            # For FREE and BASIC packages, use current_date_summary
+            keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="current_date_summary")])
         
         # Package-based options
         if package_type and package_type.value in ['STANDARD', 'BUSINESS']:
