@@ -1,0 +1,21 @@
+from datetime import datetime
+
+from sqlalchemy import Integer, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from models.base_model import BaseModel
+from models.chat_model import Chat
+
+
+class PrivateBotGroupBinding(BaseModel):
+    __tablename__ = "private_bot_group_binding"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    private_chat_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    bound_group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_group.id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    # Relationship to the bound group
+    bound_group: Mapped[Chat] = relationship("Chat", backref="private_bot_bindings")
