@@ -18,6 +18,7 @@ from services.handlers.menu_handler import MenuHandler
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 
 # Conversation state codes for private bot
+START_MENU_CODE = 2000
 BIND_GROUP_CODE = 2001
 BIND_GROUP_SELECTION_CODE = 2002
 BIND_GROUP_SEARCH_CODE = 2003
@@ -38,16 +39,43 @@ class TelegramPrivateBot:
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
+        keyboard = [
+            [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
+            [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],
+            [InlineKeyboardButton("🔓 Unbind Group", callback_data="start_unbind")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await update.message.reply_text(
             "Welcome! This bot helps you view reports from your linked transaction groups.\n\n"
-            "Use /bind to link groups with transactions\n"
-            "Use /list to see your bound groups\n"
-            "Use /menu to view reports from linked groups\n"
-            "Use /unbind to remove group links"
+            "Choose an option:",
+            reply_markup=reply_markup
         )
+        return START_MENU_CODE
 
-    async def bind_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /bind command to bind groups"""
+    async def handle_start_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle start menu button selections"""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "start_bind":
+            return await self._start_bind_flow(update, context)
+        elif query.data == "start_list":
+            return await self._start_list_flow(update, context)
+        elif query.data == "start_menu":
+            return await self._start_menu_flow(update, context)
+        elif query.data == "start_unbind":
+            return await self._start_unbind_flow(update, context)
+        elif query.data == "close_conversation":
+            await query.edit_message_text("Goodbye! Use /start anytime to access the bot.")
+            return ConversationHandler.END
+        
+        return ConversationHandler.END
+
+    async def _start_bind_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start the bind flow from start menu"""
+        query = update.callback_query
         context.user_data["command_type"] = "bind_group"
         
         # Show search options instead of loading all groups
@@ -58,11 +86,139 @@ class TelegramPrivateBot:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(
+        await query.edit_message_text(
             "How would you like to search for the group to bind?",
             reply_markup=reply_markup
         )
         return BIND_GROUP_CODE
+
+    async def _start_list_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start the list flow from start menu"""
+        query = update.callback_query
+        private_chat_id = update.effective_chat.id
+        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+        
+        if not bound_groups:
+            keyboard = [[InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "You have no bound groups.\n\n"
+                "Bind groups to view transaction reports.",
+                reply_markup=reply_markup
+            )
+            return START_MENU_CODE
+        
+        # Build the list message
+        message_lines = [f"📋 Your bound groups ({len(bound_groups)} total):"]
+        message_lines.append("")
+        
+        for i, group in enumerate(bound_groups, 1):
+            group_name = group.group_name or "Unnamed Group"
+            group_id = group.chat_id
+            
+            # Get package info
+            try:
+                group_package = await self.group_package_service.get_package_by_chat_id(group.chat_id)
+                package_name = group_package.package.value if group_package else "Unknown"
+            except Exception:
+                package_name = "Unknown"
+            
+            message_lines.append(f"{i}. **{group_name}**")
+            message_lines.append(f"   • ID: `{group_id}`")
+            message_lines.append(f"   • Package: {package_name}")
+            message_lines.append("")
+        
+        keyboard = [
+            [InlineKeyboardButton("🔓 Unbind Group", callback_data="start_unbind")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "\n".join(message_lines),
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return START_MENU_CODE
+
+    async def _start_menu_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start the menu flow from start menu"""
+        query = update.callback_query
+        private_chat_id = update.effective_chat.id
+        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+        
+        if not bound_groups:
+            keyboard = [
+                [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "No groups are bound to this chat. Bind groups first.",
+                reply_markup=reply_markup
+            )
+            return START_MENU_CODE
+        
+        # Store bound groups in context
+        context.user_data["bound_groups"] = bound_groups
+        
+        if len(bound_groups) == 1:
+            # Single group - show menu directly
+            group = bound_groups[0]
+            context.user_data["selected_group"] = group
+            return await self._show_report_menu(update, group)
+        else:
+            # Multiple groups - let user select
+            keyboard = []
+            for group in bound_groups:
+                keyboard.append([InlineKeyboardButton(
+                    f"{group.group_name or 'Unnamed'} (ID: {group.chat_id})",
+                    callback_data=f"select_{group.id}"
+                )])
+            
+            keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                "Select a group to view reports:",
+                reply_markup=reply_markup
+            )
+            return MENU_SELECTION_CODE
+
+    async def _start_unbind_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start the unbind flow from start menu"""
+        query = update.callback_query
+        private_chat_id = update.effective_chat.id
+        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+        
+        if not bound_groups:
+            keyboard = [
+                [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "No groups are currently bound.",
+                reply_markup=reply_markup
+            )
+            return START_MENU_CODE
+        
+        keyboard = []
+        for group in bound_groups:
+            keyboard.append([InlineKeyboardButton(
+                f"Unbind {group.group_name or 'Unnamed'} (ID: {group.chat_id})",
+                callback_data=f"unbind_{group.id}"
+            )])
+        
+        keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "Select a group to unbind:",
+            reply_markup=reply_markup
+        )
+        return START_MENU_CODE
+
 
     async def handle_bind_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle search method selection for binding"""
@@ -185,45 +341,6 @@ class TelegramPrivateBot:
         
         return ConversationHandler.END
 
-    async def list_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /list command to show bound groups"""
-        private_chat_id = update.effective_chat.id
-        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
-        
-        if not bound_groups:
-            await update.message.reply_text(
-                "You have no bound groups.\n\n"
-                "Use /bind to link groups with transactions."
-            )
-            return
-        
-        # Build the list message
-        message_lines = [f"📋 Your bound groups ({len(bound_groups)} total):"]
-        message_lines.append("")
-        
-        for i, group in enumerate(bound_groups, 1):
-            group_name = group.group_name or "Unnamed Group"
-            group_id = group.chat_id
-            
-            # Get package info
-            try:
-                group_package = await self.group_package_service.get_package_by_chat_id(group.chat_id)
-                package_name = group_package.package.value if group_package else "Unknown"
-            except Exception:
-                package_name = "Unknown"
-            
-            message_lines.append(f"{i}. **{group_name}**")
-            message_lines.append(f"   • ID: `{group_id}`")
-            message_lines.append(f"   • Package: {package_name}")
-            message_lines.append("")
-        
-        message_lines.append("Use /menu to view reports from these groups")
-        message_lines.append("Use /unbind to remove group links")
-        
-        await update.message.reply_text(
-            "\n".join(message_lines),
-            parse_mode="Markdown"
-        )
 
     async def menu_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /menu command"""
@@ -374,29 +491,67 @@ class TelegramPrivateBot:
             await query.edit_message_text(f"Error generating report: {str(e)}")
             return ConversationHandler.END
 
-    async def unbind_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /unbind command"""
-        private_chat_id = update.effective_chat.id
-        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+    async def handle_unbind_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle unbind selection from start menu"""
+        query = update.callback_query
+        await query.answer()
         
-        if not bound_groups:
-            await update.message.reply_text("No groups are currently bound.")
-            return
+        if query.data == "cancel":
+            keyboard = [
+                [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
+                [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],
+                [InlineKeyboardButton("📊 View Reports", callback_data="start_menu")],
+                [InlineKeyboardButton("🔓 Unbind Group", callback_data="start_unbind")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                "Welcome! This bot helps you view reports from your linked transaction groups.\n\n"
+                "Choose an option:",
+                reply_markup=reply_markup
+            )
+            return START_MENU_CODE
         
-        keyboard = []
-        for group in bound_groups:
-            keyboard.append([InlineKeyboardButton(
-                f"Unbind {group.group_name or 'Unnamed'} (ID: {group.chat_id})",
-                callback_data=f"unbind_{group.id}"
-            )])
+        if query.data == "close_conversation":
+            await query.edit_message_text("Goodbye! Use /start anytime to access the bot.")
+            return ConversationHandler.END
         
-        keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        if query.data.startswith("unbind_"):
+            group_id = int(query.data.split("_")[1])
+            private_chat_id = update.effective_chat.id
+            
+            try:
+                # Get group info first
+                group = await self.chat_service.get_chat_by_chat_id(group_id)
+                if not group:
+                    await query.edit_message_text("Selected group not found.")
+                    return ConversationHandler.END
+                
+                # Unbind the group
+                self.binding_service.unbind_group(private_chat_id, group_id)
+                
+                group_name = group.group_name or f"Group {group.chat_id}"
+                
+                keyboard = [
+                    [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
+                    [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],
+                    [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"Successfully unbound from {group_name}!",
+                    reply_markup=reply_markup
+                )
+                return START_MENU_CODE
+                
+            except Exception as e:
+                await query.edit_message_text(f"Error unbinding group: {str(e)}")
+                return ConversationHandler.END
         
-        await update.message.reply_text(
-            "Select a group to unbind:",
-            reply_markup=reply_markup
-        )
+        return START_MENU_CODE
+
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Cancel command"""
@@ -407,20 +562,23 @@ class TelegramPrivateBot:
         """Set up the bot handlers"""
         self.app = ApplicationBuilder().token(self.bot_token).build()
 
-        # Bind conversation handler
-        bind_handler = ConversationHandler(
-            entry_points=[CommandHandler("bind", self.bind_command)],
+        # Main conversation handler that starts with /start
+        main_handler = ConversationHandler(
+            entry_points=[CommandHandler("start", self.start_command)],
             states={
+                START_MENU_CODE: [CallbackQueryHandler(self.handle_start_menu), CallbackQueryHandler(self.handle_unbind_selection)],
                 BIND_GROUP_CODE: [CallbackQueryHandler(self.handle_bind_selection)],
                 BIND_GROUP_SEARCH_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_bind_search)],
                 BIND_GROUP_SELECTION_CODE: [CallbackQueryHandler(self.handle_group_selection)],
+                MENU_SELECTION_CODE: [CallbackQueryHandler(self.handle_menu_selection)],
+                REPORT_CALLBACK_CODE: [CallbackQueryHandler(self.handle_report_callback)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
             per_user=True,
         )
 
-        # Menu conversation handler
+        # Menu command handler (standalone)
         menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.menu_command)],
             states={
@@ -433,11 +591,8 @@ class TelegramPrivateBot:
         )
 
         # Add handlers
-        self.app.add_handler(CommandHandler("start", self.start_command))
-        self.app.add_handler(bind_handler)
-        self.app.add_handler(CommandHandler("list", self.list_command))
+        self.app.add_handler(main_handler)
         self.app.add_handler(menu_handler)
-        self.app.add_handler(CommandHandler("unbind", self.unbind_command))
 
         force_log("TelegramPrivateBot handlers set up", "TelegramPrivateBot")
 
