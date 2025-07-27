@@ -325,7 +325,10 @@ class CommandHandler:
                 return
 
             message = await self.format_totals_message(
-                incomes, selected_date, event.sender
+                incomes=incomes,
+                report_date=selected_date,
+                requesting_user=event.sender,
+                is_daily=True
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
