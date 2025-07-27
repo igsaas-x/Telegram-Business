@@ -225,7 +225,7 @@ class TelegramPrivateBot:
     async def _show_report_menu(self, update: Update, group: Chat):
         """Show report menu for a specific group"""
         # Get group package to determine available options
-        group_package = self.group_package_service.get_package_by_chat_id(group.chat_id)
+        group_package = await self.group_package_service.get_package_by_chat_id(group.chat_id)
         package_type = group_package.package if group_package else None
         
         keyboard = []
