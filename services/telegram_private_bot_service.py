@@ -6,9 +6,12 @@ from telegram.ext import (
     Application,
     ConversationHandler,
     CallbackQueryHandler,
+    MessageHandler,
+    filters,
 )
 
 from helper.logger_utils import force_log
+from models import Chat
 from services.chat_service import ChatService
 from services.group_package_service import GroupPackageService
 from services.handlers.menu_handler import MenuHandler
@@ -17,8 +20,9 @@ from services.private_bot_group_binding_service import PrivateBotGroupBindingSer
 # Conversation state codes for private bot
 BIND_GROUP_CODE = 2001
 BIND_GROUP_SELECTION_CODE = 2002
-MENU_SELECTION_CODE = 2003
-REPORT_CALLBACK_CODE = 2004
+BIND_GROUP_SEARCH_CODE = 2003
+MENU_SELECTION_CODE = 2004
+REPORT_CALLBACK_CODE = 2005
 
 
 class TelegramPrivateBot:
@@ -45,32 +49,88 @@ class TelegramPrivateBot:
         """Handle /bind command to bind groups"""
         context.user_data["command_type"] = "bind_group"
         
-        # Get all available groups
-        all_groups = self.chat_service.get_all_active_chats()
-        
-        if not all_groups:
-            await update.message.reply_text("No active transaction groups found.")
-            return ConversationHandler.END
-        
-        # Create keyboard with group options
-        keyboard = []
-        for group in all_groups[:10]:  # Limit to 10 groups for UI clarity
-            keyboard.append([InlineKeyboardButton(
-                f"{group.group_name or 'Unnamed'} (ID: {group.group_id})",
-                callback_data=f"bind_{group.id}"
-            )])
-        
-        keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+        # Show search options instead of loading all groups
+        keyboard = [
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
+            [InlineKeyboardButton("Cancel", callback_data="cancel")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            "Select a group to bind:", 
+            "How would you like to search for the group to bind?",
             reply_markup=reply_markup
         )
-        return BIND_GROUP_SELECTION_CODE
+        return BIND_GROUP_CODE
 
     async def handle_bind_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle group binding selection"""
+        """Handle search method selection for binding"""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "cancel":
+            await query.edit_message_text("Binding cancelled.")
+            return ConversationHandler.END
+        
+        if query.data == "use_chat_id":
+            context.user_data["selection_type"] = "chat_id"
+            await query.edit_message_text(
+                "Please provide the chat ID or group name to search. You can search by exact chat ID or partial group name (up to 5 results will be shown)."
+            )
+            return BIND_GROUP_SEARCH_CODE
+            
+        elif query.data == "use_group_name":
+            context.user_data["selection_type"] = "group_name"
+            await query.edit_message_text(
+                "Please provide the group name to search. You can enter partial group name (up to 5 results will be shown)."
+            )
+            return BIND_GROUP_SEARCH_CODE
+        
+        return ConversationHandler.END
+
+    async def handle_bind_search(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle group search input for binding"""
+        try:
+            search_term = update.message.text.strip()
+            force_log(f"Searching for groups with term: {search_term}", "TelegramPrivateBot")
+            
+            # Search for chats using the chat service search method
+            matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
+            
+            if not matching_chats:
+                await update.message.reply_text("No groups found matching your search.")
+                return ConversationHandler.END
+            
+            if len(matching_chats) == 1:
+                # If only one result, proceed directly with binding
+                chat = matching_chats[0]
+                return await self._bind_group_directly(update, context, chat)
+            
+            # Multiple results - show selection buttons
+            keyboard = []
+            for chat in matching_chats:
+                button_text = f"{chat.group_name or 'Unnamed'} (ID: {chat.chat_id})"
+                callback_data = f"bind_{chat.id}"
+                keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+            
+            # Add cancel button
+            keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                f"Found {len(matching_chats)} matching groups. Please select one to bind:",
+                reply_markup=reply_markup
+            )
+            
+            return BIND_GROUP_SELECTION_CODE
+            
+        except Exception as e:
+            force_log(f"Error in handle_bind_search: {e}", "TelegramPrivateBot")
+            await update.message.reply_text("Error searching for groups.")
+            return ConversationHandler.END
+
+    async def handle_group_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle group selection for binding"""
         query = update.callback_query
         await query.answer()
         
@@ -83,12 +143,16 @@ class TelegramPrivateBot:
             private_chat_id = update.effective_chat.id
             
             try:
+                # Get group info first
+                group = await self.chat_service.get_chat_by_chat_id(group_id)
+                if not group:
+                    await query.edit_message_text("Selected group not found.")
+                    return ConversationHandler.END
+                
                 # Bind the group
                 self.binding_service.bind_group(private_chat_id, group_id)
                 
-                # Get group info
-                group = self.chat_service.get_chat_by_id(group_id)
-                group_name = group.group_name if group else f"Group {group_id}"
+                group_name = group.group_name or f"Group {group.chat_id}"
                 
                 await query.edit_message_text(
                     f"Successfully bound to {group_name}!\n\n"
@@ -97,6 +161,26 @@ class TelegramPrivateBot:
                 
             except Exception as e:
                 await query.edit_message_text(f"Error binding group: {str(e)}")
+        
+        return ConversationHandler.END
+
+    async def _bind_group_directly(self, update: Update, context: ContextTypes.DEFAULT_TYPE, chat):
+        """Bind a group directly when only one result is found"""
+        try:
+            private_chat_id = update.effective_chat.id
+            
+            # Bind the group
+            self.binding_service.bind_group(private_chat_id, chat.id)
+            
+            group_name = chat.group_name or f"Group {chat.chat_id}"
+            
+            await update.message.reply_text(
+                f"Successfully bound to {group_name}!\n\n"
+                "You can now use /menu to view reports from this group."
+            )
+            
+        except Exception as e:
+            await update.message.reply_text(f"Error binding group: {str(e)}")
         
         return ConversationHandler.END
 
@@ -124,7 +208,7 @@ class TelegramPrivateBot:
             keyboard = []
             for group in bound_groups:
                 keyboard.append([InlineKeyboardButton(
-                    f"{group.group_name or 'Unnamed'} (ID: {group.group_id})",
+                    f"{group.group_name or 'Unnamed'} (ID: {group.chat_id})",
                     callback_data=f"select_{group.id}"
                 )])
             
@@ -138,10 +222,10 @@ class TelegramPrivateBot:
             )
             return MENU_SELECTION_CODE
 
-    async def _show_report_menu(self, update: Update, group):
+    async def _show_report_menu(self, update: Update, group: Chat):
         """Show report menu for a specific group"""
         # Get group package to determine available options
-        group_package = self.group_package_service.get_group_package_by_chat_id(group.id)
+        group_package = self.group_package_service.get_package_by_chat_id(group.chat_id)
         package_type = group_package.package if group_package else None
         
         keyboard = []
@@ -150,17 +234,17 @@ class TelegramPrivateBot:
         keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
         
         # Package-based options
-        if package_type and package_type.value in ['STANDARD', 'PREMIUM']:
+        if package_type and package_type.value in ['STANDARD', 'BUSINESS']:
             keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
             keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
         
-        if package_type and package_type.value == 'PREMIUM':
+        if package_type and package_type.value == 'BUSINESS':
             keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
         
         keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        group_name = group.group_name or f"Group {group.group_id}"
+        group_name = group.group_name or f"Group {group.chat_id}"
         text = f"Reports for {group_name}:\nPackage: {package_type.value if package_type else 'Unknown'}\n\nSelect report type:"
         
         if hasattr(update, 'callback_query') and update.callback_query:
@@ -285,7 +369,7 @@ class TelegramPrivateBot:
         keyboard = []
         for group in bound_groups:
             keyboard.append([InlineKeyboardButton(
-                f"Unbind {group.group_name or 'Unnamed'} (ID: {group.group_id})",
+                f"Unbind {group.group_name or 'Unnamed'} (ID: {group.chat_id})",
                 callback_data=f"unbind_{group.id}"
             )])
         
@@ -310,7 +394,9 @@ class TelegramPrivateBot:
         bind_handler = ConversationHandler(
             entry_points=[CommandHandler("bind", self.bind_command)],
             states={
-                BIND_GROUP_SELECTION_CODE: [CallbackQueryHandler(self.handle_bind_selection)],
+                BIND_GROUP_CODE: [CallbackQueryHandler(self.handle_bind_selection)],
+                BIND_GROUP_SEARCH_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_bind_search)],
+                BIND_GROUP_SELECTION_CODE: [CallbackQueryHandler(self.handle_group_selection)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
