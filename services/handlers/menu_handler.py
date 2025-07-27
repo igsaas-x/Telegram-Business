@@ -118,6 +118,94 @@ class MenuHandler:
             await query.edit_message_text(f"Error generating current date summary: {str(e)}")
             return False
 
+    async def _handle_weekly_summary_menu(self, chat_id: int, query):
+        """Handle weekly summary by showing week selection menu like normal bot"""
+        try:
+            from helper import DateUtils
+            now = DateUtils.now()
+            
+            # Get this week's Monday (start of current week)
+            this_week_monday = now - timedelta(days=now.weekday())
+            
+            # Get last week's Monday (start of previous week)
+            last_week_monday = this_week_monday - timedelta(days=7)
+            
+            keyboard = []
+            
+            # Add this week button
+            this_week_sunday = this_week_monday + timedelta(days=6)
+            if this_week_monday.month != this_week_sunday.month:
+                this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d %b')} - {this_week_sunday.strftime('%d %b %Y')})"
+            else:
+                this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d')} - {this_week_sunday.strftime('%d %b %Y')})"
+            
+            this_week_callback = this_week_monday.strftime("%Y-%m-%d")
+            keyboard.append([InlineKeyboardButton(this_week_label, callback_data=f"summary_week_{this_week_callback}")])
+            
+            # Add last week button
+            last_week_sunday = last_week_monday + timedelta(days=6)
+            if last_week_monday.month != last_week_sunday.month:
+                last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d %b')} - {last_week_sunday.strftime('%d %b %Y')})"
+            else:
+                last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d')} - {last_week_sunday.strftime('%d %b %Y')})"
+            
+            last_week_callback = last_week_monday.strftime("%Y-%m-%d")
+            keyboard.append([InlineKeyboardButton(last_week_label, callback_data=f"summary_week_{last_week_callback}")])
+            
+            keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("ជ្រើសរើសសប្តាហ៍:", reply_markup=reply_markup)
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_weekly_summary_menu: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error showing weekly menu: {str(e)}")
+            return False
+
+    async def _handle_monthly_summary_menu(self, chat_id: int, query):
+        """Handle monthly summary by showing month selection menu like normal bot"""
+        try:
+            from helper import DateUtils
+            from datetime import datetime
+            now = DateUtils.now()
+            year = now.year
+            keyboard = []
+            
+            for month in range(1, 13):
+                month_date = datetime(year, month, 1)
+                label = month_date.strftime("%B %Y")
+                callback_value = month_date.strftime("%Y-%m")
+                keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_month_{callback_value}")])
+            
+            keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("ជ្រើសរើសខែ:", reply_markup=reply_markup)
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_monthly_summary_menu: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error showing monthly menu: {str(e)}")
+            return False
+
+    async def _handle_shift_summary_menu(self, chat_id: int, query):
+        """Handle shift summary by showing shift selection menu like business bot"""
+        try:
+            keyboard = [
+                [InlineKeyboardButton("ប្រចាំវេនថ្ងៃនេះ", callback_data="report_per_shift")],
+                [InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_shift_dates")],
+                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("ជ្រើសរើសរបាយការណ៍វេន:", reply_markup=reply_markup)
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_shift_summary_menu: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error showing shift menu: {str(e)}")
+            return False
+
     async def _handle_report(self, chat_id: int, report_type: str, query):
         """Handle generating a specific report type"""
         try:
@@ -193,25 +281,76 @@ class MenuHandler:
             await query.edit_message_text(f"Error generating date summary: {str(e)}")
             return False
 
-    @staticmethod
-    async def _handle_shift_report(query):
-        """Handle shift report - placeholder for now"""
+    async def _handle_shift_report(self, chat_id: int, query):
+        """Handle current shift report for today"""
         try:
-            # For now, just show a placeholder message
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(
-                "Shift report functionality not implemented yet.",
-                reply_markup=reply_markup,
-            )
+            # Get current shift data for today
+            from services import ShiftService
+            from helper import DateUtils
+            
+            shift_service = ShiftService()
+            current_date = DateUtils.now().date()
+            
+            # Get current or latest shift for today
+            shift = await shift_service.get_current_shift(chat_id)
+            
+            if not shift:
+                await query.edit_message_text(
+                    "គ្មានវេនបើកសម្រាប់ថ្ងៃនេះទេ។",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Get shift report
+            from helper import shift_report
+            report = await shift_report(shift.id, shift.shift_number, current_date)
+            
+            await query.edit_message_text(report, parse_mode='HTML')
             return True
 
         except Exception as e:
             force_log(f"Error in _handle_shift_report: {e}", "MenuHandler")
-            await query.edit_message_text(f"Error: {str(e)}")
+            await query.edit_message_text(f"Error generating shift report: {str(e)}")
+            return False
+
+    async def _handle_other_shift_dates(self, chat_id: int, query):
+        """Handle other shift dates selection like business bot"""
+        try:
+            from services import ShiftService
+            
+            shift_service = ShiftService()
+            recent_dates = await shift_service.get_recent_dates_with_shifts(chat_id, 3)
+            
+            if not recent_dates:
+                keyboard = [
+                    [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="shift_summary")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    "📅 របាយការណ៍ថ្ងៃផ្សេង\n\n🔴 គ្មានទិន្នន័យសម្រាប់ថ្ងៃមុនៗ។\n\n💡 ទិន្នន័យនឹងបង្ហាញនៅទីនេះបន្ទាប់ពីមានវេនបានបិទ។",
+                    reply_markup=reply_markup
+                )
+            else:
+                keyboard = []
+                for date in recent_dates:
+                    date_str = date.strftime("%Y-%m-%d")
+                    display_date = date.strftime("%d %b %Y")
+                    keyboard.append([InlineKeyboardButton(display_date, callback_data=f"shift_date_{date_str}")])
+                
+                keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="shift_summary")])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    "📅 របាយការណ៍ថ្ងៃផ្សេង\n\nជ្រើសរើសថ្ងៃដែលអ្នកចង់មើល:",
+                    reply_markup=reply_markup
+                )
+            
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_other_shift_dates: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error showing other shift dates: {str(e)}")
             return False
 
     @staticmethod
@@ -233,6 +372,79 @@ class MenuHandler:
         except Exception as e:
             force_log(f"Error in _handle_other_dates: {e}", "MenuHandler")
             await query.edit_message_text(f"Error: {str(e)}")
+            return False
+
+    @staticmethod
+    async def _handle_week_summary(chat_id: int, callback_data: str, query):
+        """Handle week summary like normal bot"""
+        try:
+            from datetime import datetime
+            from services import IncomeService
+            from helper import weekly_transaction_report
+            
+            start_date = datetime.strptime(
+                callback_data.replace("summary_week_", ""), "%Y-%m-%d"
+            )
+            end_date = start_date + timedelta(days=7)
+            
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            if not incomes:
+                period_text = f"{start_date.strftime('%d')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+            else:
+                # Use weekly report format
+                message = weekly_transaction_report(incomes, start_date, end_date)
+
+            await query.edit_message_text(message, parse_mode='HTML')
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_week_summary: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error generating week summary: {str(e)}")
+            return False
+
+    @staticmethod
+    async def _handle_month_summary(chat_id: int, callback_data: str, query):
+        """Handle month summary like normal bot"""
+        try:
+            from datetime import datetime
+            from calendar import monthrange
+            from services import IncomeService
+            from helper import monthly_transaction_report
+            
+            start_date = datetime.strptime(
+                callback_data.replace("summary_month_", ""), "%Y-%m"
+            )
+            
+            _, last_day = monthrange(start_date.year, start_date.month)
+            end_date = start_date.replace(day=last_day) + timedelta(days=1)
+            
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            if not incomes:
+                period_text = start_date.strftime("%B %Y")
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+            else:
+                # Use monthly report format
+                message = monthly_transaction_report(incomes, start_date, end_date)
+
+            await query.edit_message_text(message, parse_mode='HTML')
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_month_summary: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error generating month summary: {str(e)}")
             return False
 
     @staticmethod
@@ -341,11 +553,14 @@ class MenuHandler:
                 result = await self._handle_current_date_summary(chat_id, query)
                 return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "weekly_summary":
-                result = await self._handle_report(chat_id, "weekly", query)
-                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
+                result = await self._handle_weekly_summary_menu(chat_id, query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
             elif callback_data == "monthly_summary":
-                result = await self._handle_report(chat_id, "monthly", query)
-                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
+                result = await self._handle_monthly_summary_menu(chat_id, query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data == "shift_summary":
+                result = await self._handle_shift_summary_menu(chat_id, query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
             elif callback_data == "menu":
                 # Return to package-based menu - recreate the menu buttons based on package
                 chat = await self.chat_service.get_chat_by_chat_id(chat_id)
@@ -386,10 +601,19 @@ class MenuHandler:
                 result = await self._handle_date_summary(chat_id, callback_data, query)
                 return ConversationHandler.END  # End conversation after showing final report
             elif callback_data == "report_per_shift":
-                result = await self._handle_shift_report(query)
-                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+                result = await self._handle_shift_report(chat_id, query)
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "other_dates":
                 result = await self._handle_other_dates(query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data.startswith("summary_week_"):
+                result = await self._handle_week_summary(chat_id, callback_data, query)
+                return ConversationHandler.END  # End conversation after showing final report
+            elif callback_data.startswith("summary_month_"):
+                result = await self._handle_month_summary(chat_id, callback_data, query)
+                return ConversationHandler.END  # End conversation after showing final report
+            elif callback_data == "other_shift_dates":
+                result = await self._handle_other_shift_dates(chat_id, query)
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
 
             # If we get here, it's an unknown callback
