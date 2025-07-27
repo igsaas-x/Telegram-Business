@@ -57,6 +57,7 @@ class CommandHandler:
     async def handle_date_input_response(self, event, question):
         try:
             input_str = event.message.text.strip()
+            force_log(f"Date input received: '{input_str}'", "CommandHandler")
             
             conversation_service = ConversationService()
             context_data = {}
@@ -66,13 +67,16 @@ class CommandHandler:
             current_month = context_data.get(
                 "current_month", DateUtils.now().strftime("%Y-%m")
             )
+            force_log(f"Current month: {current_month}", "CommandHandler")
             
             # Check if input is a date range (e.g., "1-5" or "01-05")
             if '-' in input_str and input_str.count('-') == 1:
+                force_log(f"Processing date range: {input_str}", "CommandHandler")
                 try:
                     start_day_str, end_day_str = input_str.split('-')
                     start_day = int(start_day_str.strip())
                     end_day = int(end_day_str.strip())
+                    force_log(f"Parsed range: {start_day} to {end_day}", "CommandHandler")
                     
                     # Validate date range
                     if start_day < 1 or start_day > 31 or end_day < 1 or end_day > 31:
@@ -83,12 +87,17 @@ class CommandHandler:
                         await event.respond("ថ្ងៃចាប់ផ្តើមមុនថ្ងៃបញ្ចប់។ ឧទាហរណ៍: 1-5")
                         return
                     
-                    # Create date range
+                    # Create date range with validation
                     start_date_str = f"{current_month}-{start_day:02d}"
                     end_date_str = f"{current_month}-{end_day:02d}"
                     
-                    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-                    end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+                    # Validate that the dates exist (e.g., Feb 30 doesn't exist)
+                    try:
+                        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+                    except ValueError:
+                        await event.respond(f"កាលបរិច្ឆេទមិនត្រឹមត្រូវសម្រាប់ខែនេះ។ សូមពិនិត្យថ្ងៃ {start_day} ដល់ {end_day}")
+                        return
                     
                     await conversation_service.mark_as_replied(
                         chat_id=event.chat_id, message_id=question.message_id
@@ -111,6 +120,7 @@ class CommandHandler:
                     message = await self.format_totals_message(
                         f"ថ្ងៃទី {start_day} ដល់ {end_day}", incomes, event.chat_id, start_date, event.sender
                     )
+                    force_log(f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions", "CommandHandler")
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
                     
                 except ValueError:
