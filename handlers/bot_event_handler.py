@@ -56,13 +56,8 @@ class CommandHandler:
 
     async def handle_date_input_response(self, event, question):
         try:
-            day_str = event.message.text.strip()
-            day = int(day_str)
-
-            if day < 1 or day > 31:
-                await event.respond("ថ្ងៃមិនត្រឹមត្រូវ។ សូមជ្រើសរើសថ្ងៃពី 1 ដល់ 31។")
-                return
-
+            input_str = event.message.text.strip()
+            
             conversation_service = ConversationService()
             context_data = {}
             if question.context_data:
@@ -71,38 +66,94 @@ class CommandHandler:
             current_month = context_data.get(
                 "current_month", DateUtils.now().strftime("%Y-%m")
             )
-            date_str = f"{current_month}-{day:02d}"
-
-            try:
-                selected_date = datetime.strptime(date_str, "%Y-%m-%d")
-                await conversation_service.mark_as_replied(
-                    chat_id=event.chat_id, message_id=question.message_id
-                )
-
-                income_service = IncomeService()
-                incomes = await income_service.get_income_by_date_and_chat_id(
-                    chat_id=event.chat_id,
-                    start_date=selected_date,
-                    end_date=selected_date + timedelta(days=1),
-                )
-
-                # Don't delete user's reply message
-                if not incomes:
-                    await event.respond(
-                        f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
+            
+            # Check if input is a date range (e.g., "1-5" or "01-05")
+            if '-' in input_str and input_str.count('-') == 1:
+                try:
+                    start_day_str, end_day_str = input_str.split('-')
+                    start_day = int(start_day_str.strip())
+                    end_day = int(end_day_str.strip())
+                    
+                    # Validate date range
+                    if start_day < 1 or start_day > 31 or end_day < 1 or end_day > 31:
+                        await event.respond("ថ្ងៃមិនត្រឹមត្រូវ។ សូមជ្រើសរើសថ្ងៃពី 1 ដល់ 31។")
+                        return
+                    
+                    if start_day > end_day:
+                        await event.respond("ថ្ងៃចាប់ផ្តើមមុនថ្ងៃបញ្ចប់។ ឧទាហរណ៍: 1-5")
+                        return
+                    
+                    # Create date range
+                    start_date_str = f"{current_month}-{start_day:02d}"
+                    end_date_str = f"{current_month}-{end_day:02d}"
+                    
+                    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                    end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+                    
+                    await conversation_service.mark_as_replied(
+                        chat_id=event.chat_id, message_id=question.message_id
                     )
-                    return
 
-                message = await self.format_totals_message(
-                    f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
-                )
-                await event.client.send_message(event.chat_id, message, parse_mode='html')
+                    income_service = IncomeService()
+                    incomes = await income_service.get_income_by_date_and_chat_id(
+                        chat_id=event.chat_id,
+                        start_date=start_date,
+                        end_date=end_date,
+                    )
 
-            except ValueError:
-                await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ")
+                    # Don't delete user's reply message
+                    if not incomes:
+                        await event.respond(
+                            f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {start_day} ដល់ {end_day} ទេ។"
+                        )
+                        return
 
-        except ValueError:
-            await event.respond("សូមវាយថ្ងៃជាលេខពី 1 ដល់ 31")
+                    message = await self.format_totals_message(
+                        f"ថ្ងៃទី {start_day} ដល់ {end_day}", incomes, event.chat_id, start_date, event.sender
+                    )
+                    await event.client.send_message(event.chat_id, message, parse_mode='html')
+                    
+                except ValueError:
+                    await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ។ ឧទាហរណ៍: 1-5 ឬ 01-05")
+                    
+            else:
+                # Handle single day input (existing logic)
+                try:
+                    day = int(input_str)
+
+                    if day < 1 or day > 31:
+                        await event.respond("ថ្ងៃមិនត្រឹមត្រូវ។ សូមជ្រើសរើសថ្ងៃពី 1 ដល់ 31។")
+                        return
+
+                    date_str = f"{current_month}-{day:02d}"
+                    selected_date = datetime.strptime(date_str, "%Y-%m-%d")
+                    
+                    await conversation_service.mark_as_replied(
+                        chat_id=event.chat_id, message_id=question.message_id
+                    )
+
+                    income_service = IncomeService()
+                    incomes = await income_service.get_income_by_date_and_chat_id(
+                        chat_id=event.chat_id,
+                        start_date=selected_date,
+                        end_date=selected_date + timedelta(days=1),
+                    )
+
+                    # Don't delete user's reply message
+                    if not incomes:
+                        await event.respond(
+                            f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
+                        )
+                        return
+
+                    message = await self.format_totals_message(
+                        f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
+                    )
+                    await event.client.send_message(event.chat_id, message, parse_mode='html')
+
+                except ValueError:
+                    await event.respond("សូមវាយថ្ងៃជាលេខពី 1 ដល់ 31 ឬជួរថ្ងៃ ឧទាហរណ៍: 1-5")
+
         except Exception as e:
             force_log(f"Error in handle_date_input_response: {e}")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
@@ -217,7 +268,7 @@ class CommandHandler:
 
         result = await event.client.send_message(
             chat_id,
-            "ឆែករបាយការណ៍ថ្ងៃទី:\n\nសូមវាយថ្ងៃ (1-31) ជាការឆ្លើយតបសារនេះដោយប្រើប៊ូតុង 'Reply' ឬ 'ឆ្លើយតប'",
+            "ឆែករបាយការណ៍ថ្ងៃទី:\n\nសូមវាយថ្ងៃ (05) ឬ (01-05) ជាការឆ្លើយតបសារនេះដោយចុច 'Reply'\n\nឧទាហរណ៍:\n• មួយថ្ងៃ: 5\n• ច្រើនថ្ងៃ: 1-5 ឬ 01-05",
         )
 
         conversation_service = ConversationService()
