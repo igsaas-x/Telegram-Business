@@ -147,4 +147,9 @@ def extract_trx_id(message_text: str) -> str | None:
     if match:
         return match.group(1)
     
+    # Pattern 8: Transaction ID format "Transaction ID: 099QORT252080682"
+    match = re.search(r'Transaction ID:\s*([a-zA-Z0-9]+)', message_text)
+    if match:
+        return match.group(1)
+    
     return None
