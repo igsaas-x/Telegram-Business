@@ -350,13 +350,13 @@ class TelegramPrivateBot:
         if "all" in callback_data:
             # Multi-group report
             selected_groups = context.user_data.get("selected_groups", [])
-            group_ids = [group.id for group in selected_groups]
-            context.user_data["admin_chat_ids"] = group_ids
+            group_chat_ids = [group.chat_id for group in selected_groups]
+            context.user_data["admin_chat_ids"] = group_chat_ids
         else:
             # Single group report
             selected_group = context.user_data.get("selected_group")
             if selected_group:
-                context.user_data["admin_chat_id"] = selected_group.id
+                context.user_data["admin_chat_id"] = selected_group.chat_id
         
         # Create a pseudo-update object to interface with the menu handler
         class PseudoCallbackQuery:
