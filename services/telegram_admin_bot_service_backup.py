@@ -777,8 +777,8 @@ class TelegramAdminBot:
             message = (
                 f"✅ Successfully updated package:\n"
                 f"• Package: {selected_package}\n"
-                f"• Chat ID: {chat_id}\n"
-                f"• Chat Name: {chat_name}\n"
+                f"• Group ID: {chat_id}\n"
+                f"• Group Name: {chat_name}\n"
                 f"• Start Date: {start_date_str}\n"
                 f"• End Date: {end_date_str}\n"
                 f"• Amount Paid: ${amount_paid:.2f}"
@@ -842,8 +842,8 @@ class TelegramAdminBot:
             await update.message.reply_text(  # type: ignore
                 f"✅ Successfully updated package:\n"
                 f"• Package: {selected_package}\n"
-                f"• Chat ID: {chat_id}\n"
-                f"• Chat Name: {chat_name}\n"
+                f"• Group ID: {chat_id}\n"
+                f"• Group Name: {chat_name}\n"
                 f"• Start Date: {start_date_str}\n"
                 f"• End Date: {end_date_str}"
             )

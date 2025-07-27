@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -131,8 +132,58 @@ class PackageHandler:
                 await query.answer()
                 selected_package = query.data
 
+                # Handle today start date button
+                if selected_package == "today_start_date":
+                    today_str = datetime.now().strftime("%d-%m-%Y")
+                    context.user_data["package_start_date"] = today_str
+                    
+                    # Ask for end date with period buttons
+                    keyboard = [
+                        [InlineKeyboardButton("📅 1 Month", callback_data="1_month_end")],
+                        [InlineKeyboardButton("📅 2 Months", callback_data="2_months_end")],
+                        [InlineKeyboardButton("📅 1 Year", callback_data="1_year_end")],
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await query.edit_message_text(
+                        f"Start date set: {today_str} (Today)\n\n"
+                        "Please enter the end date for this package (dd-mm-yyyy format):\n"
+                        "Example: 31-12-2024\n\n"
+                        "Or select a common period:",
+                        reply_markup=reply_markup
+                    )
+                    return PACKAGE_END_DATE_CODE
+
+                # Handle end date period buttons
+                elif selected_package in ["1_month_end", "2_months_end", "1_year_end"]:
+                    start_date_str = context.user_data.get("package_start_date")
+                    if not start_date_str:
+                        await query.edit_message_text("Start date not found. Please start over.")
+                        return ConversationHandler.END
+                    
+                    start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+                    
+                    # Calculate end date based on period
+                    if selected_package == "1_month_end":
+                        end_date = start_date + relativedelta(months=1)
+                    elif selected_package == "2_months_end":
+                        end_date = start_date + relativedelta(months=2)
+                    elif selected_package == "1_year_end":
+                        end_date = start_date + relativedelta(years=1)
+                    
+                    end_date_str = end_date.strftime("%d-%m-%Y")
+                    context.user_data["package_end_date"] = end_date_str
+                    
+                    # Ask for amount paid
+                    await query.edit_message_text(
+                        f"End date set: {end_date_str}\n\n"
+                        "Please enter the amount paid for this package:\n"
+                        "Example: 25.50"
+                    )
+                    return AMOUNT_PAID_CODE
+
                 # Handle package selection buttons
-                if selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
+                elif selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:
@@ -142,11 +193,18 @@ class PackageHandler:
                     # Store selected package for later processing
                     context.user_data["selected_package"] = selected_package
 
-                    # Ask for start date
+                    # Ask for start date with Today button
+                    keyboard = [
+                        [InlineKeyboardButton("📅 Today", callback_data="today_start_date")],
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
                     await query.edit_message_text(
                         f"Selected package: {selected_package}\n\n"
                         "Please enter the start date for this package (dd-mm-yyyy format):\n"
-                        "Example: 15-01-2024"
+                        "Example: 15-01-2024\n\n"
+                        "Or click the button below for today's date:",
+                        reply_markup=reply_markup
                     )
                     return PACKAGE_START_DATE_CODE
 
@@ -166,11 +224,20 @@ class PackageHandler:
             try:
                 context.user_data["package_start_date"] = start_date_str
                 
-                # Ask for end date
+                # Ask for end date with period buttons
+                keyboard = [
+                    [InlineKeyboardButton("📅 1 Month", callback_data="1_month_end")],
+                    [InlineKeyboardButton("📅 2 Months", callback_data="2_months_end")],
+                    [InlineKeyboardButton("📅 1 Year", callback_data="1_year_end")],
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await update.message.reply_text(  # type: ignore
                     f"Start date set: {start_date_str}\n\n"
                     "Please enter the end date for this package (dd-mm-yyyy format):\n"
-                    "Example: 31-12-2024"
+                    "Example: 31-12-2024\n\n"
+                    "Or select a common period:",
+                    reply_markup=reply_markup
                 )
                 return PACKAGE_END_DATE_CODE
                 
@@ -366,8 +433,8 @@ class PackageHandler:
             message = (
                 f"✅ Successfully updated package:\n"
                 f"• Package: {selected_package}\n"
-                f"• Chat ID: {chat_id}\n"
-                f"• Chat Name: {chat_name}\n"
+                f"• Group ID: {chat_id}\n"
+                f"• Group Name: {chat_name}\n"
                 f"• Start Date: {start_date_str}\n"
                 f"• End Date: {end_date_str}\n"
                 f"• Amount Paid: ${amount_paid:.2f}"

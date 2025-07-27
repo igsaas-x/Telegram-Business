@@ -271,8 +271,14 @@ class TelegramAdminBot:
                 ],
                 USER_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_handler.package_button)],
                 CHAT_SELECTION_CODE: [CallbackQueryHandler(self.chat_search_handler.handle_chat_selection)],
-                PACKAGE_START_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_package_start_date)],
-                PACKAGE_END_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_package_end_date)],
+                PACKAGE_START_DATE_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_package_start_date),
+                    CallbackQueryHandler(self.package_handler.package_button)
+                ],
+                PACKAGE_END_DATE_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_package_end_date),
+                    CallbackQueryHandler(self.package_handler.package_button)
+                ],
                 AMOUNT_PAID_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_amount_paid)],
                 NOTE_CONFIRMATION_CODE: [CallbackQueryHandler(self.package_handler.handle_note_confirmation)],
                 NOTE_INPUT_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.package_handler.process_note_input)],
