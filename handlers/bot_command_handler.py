@@ -244,9 +244,7 @@ class EventHandler:
 
     async def callback(self, event):
         data = event.data.decode()
-        if any(
-            data.startswith(prefix) for prefix in ["summary_week_", "summary_month_"]
-        ):
+        if any(data.startswith(prefix) for prefix in ["summary_week_", "summary_month_"]):
             await self.command_handler.handle_period_summary(event, data)
             return
 

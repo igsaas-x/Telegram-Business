@@ -20,14 +20,16 @@ class CommandHandler:
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
 
-    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None, start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False, is_monthly: bool = False):
+    async def format_totals_message(self, incomes, report_date: datetime = None, requesting_user=None,
+                                    start_date: datetime = None, end_date: datetime = None,
+                                    is_daily: bool = False, is_weekly: bool = False, is_monthly: bool = False):
         # Check if this is a daily report (contains "ថ្ងៃទី")
-        if "ថ្ងៃទី" in period_text:
+        if is_daily:
             # This is a daily report, use the new format
             if not report_date:
                 # Try to extract date from period_text or use today
                 report_date = DateUtils.now()
-            
+
             # Get username from the requesting user (who triggered the request)
             telegram_username = "Admin"
             if requesting_user:
@@ -36,13 +38,8 @@ class CommandHandler:
                 elif hasattr(requesting_user, 'first_name') and requesting_user.first_name:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
-            
-            # For daily reports, if no start/end date provided, calculate them from report_date
-            if not start_date:
-                start_date = report_date
-            if not end_date:
-                end_date = report_date + timedelta(days=1)
-            return daily_transaction_report(incomes, report_date, telegram_username, start_date, end_date)
+
+            return daily_transaction_report(incomes, report_date, telegram_username)
         elif is_weekly and start_date and end_date:
             # This is a weekly report, use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)
@@ -50,15 +47,15 @@ class CommandHandler:
             # This is a monthly report, use the new monthly format
             return monthly_transaction_report(incomes, start_date, end_date)
         else:
-            # This is other period report, use the old format
-            title = f"សរុបប្រតិបត្តិការ {period_text}"
+            # Fallback only - shouldn't be any cases
+            title = f"សរុបប្រតិបត្តិការ:"
             return total_summary_report(incomes, title)
 
     async def handle_date_input_response(self, event, question):
         try:
             input_str = event.message.text.strip()
             force_log(f"Date input received: '{input_str}'", "CommandHandler")
-            
+
             conversation_service = ConversationService()
             context_data = {}
             if question.context_data:
@@ -68,7 +65,7 @@ class CommandHandler:
                 "current_month", DateUtils.now().strftime("%Y-%m")
             )
             force_log(f"Current month: {current_month}", "CommandHandler")
-            
+
             # Check if input is a date range (e.g., "1-5" or "01-05")
             if '-' in input_str and input_str.count('-') == 1:
                 force_log(f"Processing date range: {input_str}", "CommandHandler")
@@ -77,28 +74,29 @@ class CommandHandler:
                     start_day = int(start_day_str.strip())
                     end_day = int(end_day_str.strip())
                     force_log(f"Parsed range: {start_day} to {end_day}", "CommandHandler")
-                    
+
                     # Validate date range
                     if start_day < 1 or start_day > 31 or end_day < 1 or end_day > 31:
                         await event.respond("ថ្ងៃមិនត្រឹមត្រូវ។ សូមជ្រើសរើសថ្ងៃពី 1 ដល់ 31។")
                         return
-                    
+
                     if start_day > end_day:
                         await event.respond("ថ្ងៃចាប់ផ្តើមមុនថ្ងៃបញ្ចប់។ ឧទាហរណ៍: 1-5")
                         return
-                    
+
                     # Create date range with validation
                     start_date_str = f"{current_month}-{start_day:02d}"
                     end_date_str = f"{current_month}-{end_day:02d}"
-                    
+
                     # Validate that the dates exist (e.g., Feb 30 doesn't exist)
                     try:
                         start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
                         end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
                     except ValueError:
-                        await event.respond(f"កាលបរិច្ឆេទមិនត្រឹមត្រូវសម្រាប់ខែនេះ។ សូមពិនិត្យថ្ងៃ {start_day} ដល់ {end_day}")
+                        await event.respond(
+                            f"កាលបរិច្ឆេទមិនត្រឹមត្រូវសម្រាប់ខែនេះ។ សូមពិនិត្យថ្ងៃ {start_day} ដល់ {end_day}")
                         return
-                    
+
                     await conversation_service.mark_as_replied(
                         chat_id=event.chat_id, message_id=question.message_id
                     )
@@ -118,14 +116,21 @@ class CommandHandler:
                         return
 
                     message = await self.format_totals_message(
-                        f"ថ្ងៃទី {start_day} ដល់ {end_day}", incomes, event.chat_id, start_date, event.sender
+                        incomes=incomes,
+                        report_date=start_date,
+                        requesting_user=event.sender,
+                        start_date=start_date,
+                        end_date=end_date,
+                        is_weekly=True
                     )
-                    force_log(f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions", "CommandHandler")
+                    force_log(
+                        f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions",
+                        "CommandHandler")
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
-                    
+
                 except ValueError:
                     await event.respond("ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ។ ឧទាហរណ៍: 1-5 ឬ 01-05")
-                    
+
             else:
                 # Handle single day input (existing logic)
                 try:
@@ -137,16 +142,15 @@ class CommandHandler:
 
                     date_str = f"{current_month}-{day:02d}"
                     selected_date = datetime.strptime(date_str, "%Y-%m-%d")
-                    
+
                     await conversation_service.mark_as_replied(
                         chat_id=event.chat_id, message_id=question.message_id
                     )
 
                     income_service = IncomeService()
-                    incomes = await income_service.get_income_by_date_and_chat_id(
+                    incomes = await income_service.get_income_by_specific_date_and_chat_id(
                         chat_id=event.chat_id,
-                        start_date=selected_date,
-                        end_date=selected_date + timedelta(days=1),
+                        target_date=selected_date
                     )
 
                     # Don't delete user's reply message
@@ -157,7 +161,10 @@ class CommandHandler:
                         return
 
                     message = await self.format_totals_message(
-                        f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
+                        incomes=incomes,
+                        report_date=selected_date,
+                        requesting_user=event.sender,
+                        is_daily=True
                     )
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
 
@@ -202,7 +209,10 @@ class CommandHandler:
                 return
 
             message = await self.format_totals_message(
-                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, chat_id, today, event.sender
+                incomes=incomes,
+                report_date=today,
+                requesting_user=event.sender,
+                is_daily=True
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -227,32 +237,32 @@ class CommandHandler:
 
     async def handle_weekly_summary(self, event):
         now = DateUtils.now()
-        
+
         # Get this week's Monday (start of current week)
         this_week_monday = now - timedelta(days=now.weekday())
-        
+
         # Get last week's Monday (start of previous week)
         last_week_monday = this_week_monday - timedelta(days=7)
-        
+
         buttons = []
-        
+
         # Add this week button
         this_week_sunday = this_week_monday + timedelta(days=6)
         if this_week_monday.month != this_week_sunday.month:
             this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d %b')} - {this_week_sunday.strftime('%d %b %Y')})"
         else:
             this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d')} - {this_week_sunday.strftime('%d %b %Y')})"
-        
+
         this_week_callback = this_week_monday.strftime("%Y-%m-%d")
         buttons.append([Button.inline(this_week_label, f"summary_week_{this_week_callback}")])
-        
+
         # Add last week button
         last_week_sunday = last_week_monday + timedelta(days=6)
         if last_week_monday.month != last_week_sunday.month:
             last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d %b')} - {last_week_sunday.strftime('%d %b %Y')})"
         else:
             last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d')} - {last_week_sunday.strftime('%d %b %Y')})"
-        
+
         last_week_callback = last_week_monday.strftime("%Y-%m-%d")
         buttons.append([Button.inline(last_week_label, f"summary_week_{last_week_callback}")])
 
@@ -317,7 +327,10 @@ class CommandHandler:
                 return
 
             message = await self.format_totals_message(
-                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, chat_id, selected_date, event.sender
+                incomes=incomes,
+                report_date=selected_date,
+                requesting_user=event.sender,
+                is_daily=True
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -363,7 +376,13 @@ class CommandHandler:
             # Check if this is a weekly or monthly report
             is_weekly = data.startswith("summary_week_")
             is_monthly = data.startswith("summary_month_")
-            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly, is_monthly)
+            message = await self.format_totals_message(
+                incomes=incomes,
+                requesting_user=event.sender,
+                start_date=start_date,
+                end_date=end_date,
+                is_weekly=is_weekly,
+                is_monthly=is_monthly)
             await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
