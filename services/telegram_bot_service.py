@@ -37,6 +37,11 @@ class TelegramBotService:
         @self.bot.on(events.NewMessage(pattern="/menu"))
         async def menu_handler(event):
             try:
+                # Check if this is a private chat
+                if event.is_private:
+                    await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
+                    return
+                
                 await self.event_handler.menu(event)
             except Exception as e:
                 force_log(f"Error in menu_handler: {e}")
@@ -47,6 +52,12 @@ class TelegramBotService:
         async def register_handler(event):
             try:
                 force_log(f"Registration attempt from chat {event.chat_id}")
+                
+                # Check if this is a private chat
+                if event.is_private:
+                    await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
+                    return
+                
                 # Always insert user if not exists, regardless of chat_id existence
                 sender = await event.get_sender()
 

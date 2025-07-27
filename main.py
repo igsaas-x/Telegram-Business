@@ -13,6 +13,7 @@ from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
 from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
 from services.telegram_bot_service import TelegramBotService
+from services.telegram_private_bot_service import TelegramPrivateBot
 from services.telethon_client_service import TelethonClientService
 
 load_environment()
@@ -69,6 +70,7 @@ async def main(loader: CredentialLoader) -> None:
         telethon_client_service = TelethonClientService()
         admin_bot = TelegramAdminBot(loader.admin_bot_token)
         business_bot = AutosumBusinessBot(loader.autosum_business_bot_token)
+        private_bot = TelegramPrivateBot(loader.private_chat_bot_token)
         auto_close_scheduler = AutoCloseScheduler(bot_service=business_bot)
         trial_expiry_scheduler = TrialExpiryScheduler()
 
@@ -100,6 +102,13 @@ async def main(loader: CredentialLoader) -> None:
             service_tasks.append(asyncio.create_task(business_bot.start_polling()))
         else:
             logger.warning("Business bot token not provided, skipping business bot")
+
+        # Add private bot only if token is provided
+        if loader.private_chat_bot_token:
+            logger.info("Starting private bot...")
+            service_tasks.append(asyncio.create_task(private_bot.start_polling()))
+        else:
+            logger.warning("Private bot token not provided, skipping private bot")
 
         tasks.update(service_tasks)
         await asyncio.gather(*service_tasks)

@@ -55,9 +55,10 @@ jobs:
         CHECK_API_HASH1: ${{ secrets.API_HASH1 != '' && 'true' || 'false' }}
         CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
         CHECK_AUTOSUM_BUSINESS_BOT_TOKEN: ${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_PRIVATE_CHAT_BOT: ${{ secrets.PRIVATE_CHAT_BOT != '' && 'true' || 'false' }}
       run: |
         MISSING_SECRETS=0
-        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_BOT_TOKEN" "CHECK_BOT_NAME" "CHECK_PHONE_NUMBER1" "CHECK_API_ID1" "CHECK_API_HASH1" "CHECK_ADMIN_BOT_TOKEN" "CHECK_AUTOSUM_BUSINESS_BOT_TOKEN")
+        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_BOT_TOKEN" "CHECK_BOT_NAME" "CHECK_PHONE_NUMBER1" "CHECK_API_ID1" "CHECK_API_HASH1" "CHECK_ADMIN_BOT_TOKEN" "CHECK_AUTOSUM_BUSINESS_BOT_TOKEN" "CHECK_PRIVATE_CHAT_BOT")
         
         echo "Checking for required secrets..."
         for SECRET in "${REQUIRED_SECRETS[@]}"
@@ -110,6 +111,7 @@ jobs:
           API_HASH1=${{ secrets.API_HASH1 }}
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
           AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
+          PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
           EOF
           
           pip install -r requirements.txt
