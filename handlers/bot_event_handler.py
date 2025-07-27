@@ -374,7 +374,13 @@ class CommandHandler:
             # Check if this is a weekly or monthly report
             is_weekly = data.startswith("summary_week_")
             is_monthly = data.startswith("summary_month_")
-            message = await self.format_totals_message(incomes, None, event.sender, start_date, end_date, is_weekly, is_monthly)
+            message = await self.format_totals_message(
+                incomes=incomes,
+                requesting_user=event.sender,
+                start_date=start_date,
+                end_date=end_date,
+                is_weekly=is_weekly,
+                is_monthly=is_monthly)
             await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
