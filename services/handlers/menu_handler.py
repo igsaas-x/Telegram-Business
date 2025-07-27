@@ -297,18 +297,40 @@ class MenuHandler:
                 result = await self._handle_report(chat_id, "monthly", query)
                 return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "menu":
-                # Return to main menu - recreate the menu buttons
-                keyboard = [
-                    [InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")],
-                    [InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")],
-                    [InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")],
-                    [InlineKeyboardButton("បិទ", callback_data="close_menu")],
-                ]
+                # Return to package-based menu - recreate the menu buttons based on package
+                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                if not chat:
+                    await query.edit_message_text("Chat not found.")
+                    return ConversationHandler.END
+
+                # Import GroupPackageService here to avoid circular imports
+                from services.group_package_service import GroupPackageService
+                group_package_service = GroupPackageService()
+                
+                # Get group package to determine available options
+                group_package = await group_package_service.get_package_by_chat_id(chat.chat_id)
+                package_type = group_package.package if group_package else None
+                
+                keyboard = []
+                
+                # Always available options
+                keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
+                
+                # Package-based options
+                if package_type and package_type.value in ['STANDARD', 'BUSINESS']:
+                    keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
+                    keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
+                
+                if package_type and package_type.value == 'BUSINESS':
+                    keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
+                
+                keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
-                await query.edit_message_text(
-                    "ជ្រើសរើសរបាយការណ៍ប្រចាំ:", reply_markup=reply_markup
-                )
+                group_name = chat.group_name or f"Group {chat.chat_id}"
+                text = f"Reports for {group_name}:\nPackage: {package_type.value if package_type else 'Unknown'}\n\nSelect report type:"
+
+                await query.edit_message_text(text, reply_markup=reply_markup)
                 return 1008  # CALLBACK_QUERY_CODE
             elif callback_data.startswith("summary_of_"):
                 result = await self._handle_date_summary(chat_id, callback_data, query)
