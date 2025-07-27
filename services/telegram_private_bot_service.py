@@ -317,41 +317,33 @@ class TelegramPrivateBot:
             if selected_group:
                 context.user_data["admin_chat_id"] = selected_group.id
         
-        # Create a pseudo-event similar to the admin bot
-        class PseudoCallbackEvent:
+        # Create a pseudo-update object to interface with the menu handler
+        class PseudoCallbackQuery:
+            def __init__(self, original_query, callback_data):
+                self.data = callback_data
+                self.message = original_query.message
+                self.from_user = original_query.from_user
+                self.chat_instance = original_query.chat_instance
+                self.id = original_query.id
+                self._original_query = original_query
+                
+            async def answer(self, text=None, show_alert=False, url=None, cache_time=None):
+                return await self._original_query.answer(text, show_alert, url, cache_time)
+                
+            async def edit_message_text(self, text, reply_markup=None, parse_mode=None):
+                return await self._original_query.edit_message_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+        class PseudoUpdate:
             def __init__(self, callback_query, callback_data):
-                self.chat_id = callback_query.message.chat_id
-                self.data = callback_data.encode("utf-8") if isinstance(callback_data, str) else callback_data
-                self.callback_query = True
-                self.message = callback_query.message
+                self.callback_query = PseudoCallbackQuery(callback_query, callback_data)
+                self.effective_chat = callback_query.message.chat
+                self.effective_user = callback_query.from_user
 
-            async def edit(self, text, buttons=None):
-                if buttons:
-                    # Convert buttons if needed
-                    keyboard = []
-                    for row in buttons:
-                        keyboard_row = []
-                        for button in row:
-                            if hasattr(button, "text") and hasattr(button, "data"):
-                                button_data = button.data
-                                if isinstance(button_data, bytes):
-                                    button_data = button_data.decode("utf-8")
-                                keyboard_row.append(
-                                    InlineKeyboardButton(button.text, callback_data=button_data)
-                                )
-                        if keyboard_row:
-                            keyboard.append(keyboard_row)
-                    
-                    reply_markup = InlineKeyboardMarkup(keyboard)
-                    await query.edit_message_text(text, reply_markup=reply_markup)
-                else:
-                    await query.edit_message_text(text)
-
-        # Create pseudo-event and call menu handler
-        pseudo_event = PseudoCallbackEvent(query, callback_data.replace("_all", ""))
+        # Create pseudo-update and call menu handler
+        pseudo_update = PseudoUpdate(query, callback_data.replace("_all", ""))
         
         try:
-            await self.menu_handler.menu_callback_query_handler(pseudo_event, context)
+            await self.menu_handler.menu_callback_query_handler(pseudo_update, context)  # type: ignore
         except Exception as e:
             await query.edit_message_text(f"Error generating report: {str(e)}")
         
@@ -387,7 +379,7 @@ class TelegramPrivateBot:
         return ConversationHandler.END
 
     def setup(self):
-        """Setup the bot handlers"""
+        """Set up the bot handlers"""
         self.app = ApplicationBuilder().token(self.bot_token).build()
 
         # Bind conversation handler
@@ -431,5 +423,5 @@ class TelegramPrivateBot:
         assert self.app is not None
         await self.app.initialize()
         await self.app.start()
-        await self.app.updater.start_polling()
+        await self.app.updater.start_polling()  # type: ignore
         force_log("TelegramPrivateBot started polling", "TelegramPrivateBot")
