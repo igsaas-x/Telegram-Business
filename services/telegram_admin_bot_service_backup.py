@@ -1315,7 +1315,7 @@ class TelegramAdminBot:
                 # Use new daily report format
                 start_date = selected_date
                 end_date = selected_date + timedelta(days=1)
-                message = daily_transaction_report(incomes, selected_date, telegram_username, start_date, end_date)
+                message = daily_transaction_report(incomes, selected_date, telegram_username)
 
             await query.edit_message_text(message, reply_markup=reply_markup)
             return True
@@ -1417,7 +1417,7 @@ class TelegramAdminBot:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
             
-            return daily_transaction_report(incomes, now, telegram_username, start_date, end_date)
+            return daily_transaction_report(incomes, now, telegram_username)
         elif report_type == "weekly":
             # Use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)
