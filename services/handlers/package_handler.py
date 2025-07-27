@@ -1,6 +1,6 @@
+import calendar
 from datetime import datetime
 
-from dateutil.relativedelta import relativedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -24,6 +24,15 @@ class PackageHandler:
     def __init__(self):
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
+
+    @staticmethod
+    def _add_months(date, months):
+        """Add months to a datetime object without using dateutil"""
+        month = date.month - 1 + months
+        year = date.year + month // 12
+        month = month % 12 + 1
+        day = min(date.day, calendar.monthrange(year, month)[1])
+        return date.replace(year=year, month=month, day=day)
 
     async def show_user_confirmation(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, user
@@ -168,11 +177,11 @@ class PackageHandler:
                     
                     # Calculate end date based on period
                     if selected_package == "1_month_end":
-                        end_date = start_date + relativedelta(months=1)
+                        end_date = self._add_months(start_date, 1)
                     elif selected_package == "2_months_end":
-                        end_date = start_date + relativedelta(months=2)
+                        end_date = self._add_months(start_date, 2)
                     elif selected_package == "1_year_end":
-                        end_date = start_date + relativedelta(years=1)
+                        end_date = self._add_months(start_date, 12)
                     
                     end_date_str = end_date.strftime("%d-%m-%Y")
                     context.user_data["package_end_date"] = end_date_str
