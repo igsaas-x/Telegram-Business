@@ -106,24 +106,17 @@ class MenuHandler:
             return False
 
     @staticmethod
-    async def _handle_date_summary(chat_id: str, callback_data: str, query):
+    async def _handle_date_summary(chat_id: int, callback_data: str, query):
         """Handle date summary like normal bot"""
         try:
             date_str = callback_data.replace("summary_of_", "")
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
 
             income_service = IncomeService()
-            incomes = await income_service.get_income_by_date_and_chat_id(
-                chat_id=int(chat_id),
-                start_date=selected_date,
-                end_date=selected_date + timedelta(days=1),
+            incomes = await income_service.get_income_by_specific_date_and_chat_id(
+                chat_id=chat_id,
+                target_date=selected_date
             )
-
-            # Create return to daily menu button
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
 
             if not incomes:
                 message = (
@@ -145,7 +138,7 @@ class MenuHandler:
                 end_date = selected_date + timedelta(days=1)
                 message = daily_transaction_report(incomes, selected_date, telegram_username, start_date, end_date)
 
-            await query.edit_message_text(message, reply_markup=reply_markup)
+            await query.edit_message_text(message)
             return True
 
         except Exception as e:
@@ -277,16 +270,8 @@ class MenuHandler:
                 await query.edit_message_text("Menu closed.")
                 return ConversationHandler.END
 
-            # Get chat_id from context or use message chat_id as fallback
-            if context and context.user_data and "admin_chat_id" in context.user_data:
-                chat_id = context.user_data["admin_chat_id"]
-            else:
-                # No stored chat ID from admin bot menu flow
-                # This might be a global callback handler case
-                await query.edit_message_text(
-                    "Session expired. Please run /menu again."
-                )
-                return ConversationHandler.END
+            # Get chat_id
+            chat_id = query.message.chat.id
 
             # Prepare callback handlers for different report types
             if callback_data == "daily_summary":

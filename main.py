@@ -78,8 +78,8 @@ async def main(loader: CredentialLoader) -> None:
         loop = asyncio.get_running_loop()
         handle_signals(loop)
 
-        # Set telethon client reference in admin bot for username lookup
-        admin_bot.set_telethon_client(telethon_client_service)
+        # # Set telethon client reference in admin bot for username lookup
+        # admin_bot.set_telethon_client(telethon_client_service)
         
         # Start all services
         service_tasks = [

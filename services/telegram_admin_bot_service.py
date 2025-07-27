@@ -120,11 +120,6 @@ class TelegramAdminBot:
         )
         return ENABLE_SHIFT_SELECTION_CODE
 
-    @staticmethod
-    async def get_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("Please provide the phone number (with country code, e.g., +85512345678) by replying to this message.")  # type: ignore
-        return GET_USERNAME_COMMAND_CODE
-
     async def menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(self.default_question)  # type: ignore
         return MENU_COMMAND_CODE
@@ -264,12 +259,9 @@ class TelegramAdminBot:
 
     @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        await update.message.reply_text("Session has been cancelled")
         return ConversationHandler.END
 
-    def set_telethon_client(self, telethon_client):
-        """Set the telethon client reference for username lookup"""
-        self.telethon_client = telethon_client
-        force_log("Telethon client reference set for admin bot", "TelegramAdminBot")
 
     def setup(self) -> None:
         self.app = ApplicationBuilder().token(self.bot_token).build()

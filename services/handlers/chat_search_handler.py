@@ -235,13 +235,13 @@ class ChatSearchHandler:
                 # If only one result, proceed directly with the command
                 chat = matching_chats[0]
                 context.user_data["chat_id_input"] = str(chat.chat_id)  # type: ignore
-                
+                context.user_data["group_name"] = chat.group_name
+
                 # Execute the command directly
                 if command_type == "enable_shift":
                     return await self.execute_enable_shift_command(update, context)
                 elif command_type == "query_package":
                     # Execute query package directly
-                    context.user_data["group_name"] = chat.group_name
                     from .package_handler import PackageHandler
                     package_handler = PackageHandler()
                     return await package_handler.display_package_details(update, context)
