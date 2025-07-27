@@ -202,11 +202,18 @@ class MenuHandler:
             end_date = now + timedelta(days=1)
             title = f"ថ្ងៃទី {now.strftime('%d %b %Y')}"
         elif report_type == "weekly":
-            # Get start of week (Monday)
-            start_of_week = now - timedelta(days=now.weekday())
-            start_date = start_of_week
-            end_date = now + timedelta(days=1)
-            title = f"{start_of_week.strftime('%d')} - {now.strftime('%d %b %Y')}"
+            # Get this week's Monday (start of current week)
+            this_week_monday = now - timedelta(days=now.weekday())
+            # Get this week's Sunday (end of current week)
+            this_week_sunday = this_week_monday + timedelta(days=6)
+            start_date = this_week_monday
+            end_date = this_week_sunday + timedelta(days=1)  # Include Sunday
+            
+            # Format title like the main bot
+            if this_week_monday.month != this_week_sunday.month:
+                title = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d %b')} - {this_week_sunday.strftime('%d %b %Y')})"
+            else:
+                title = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d')} - {this_week_sunday.strftime('%d %b %Y')})"
         elif report_type == "monthly":
             # First day of current month
             start_of_month = now.replace(day=1)
