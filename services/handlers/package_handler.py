@@ -5,6 +5,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
 from common.enums import ServicePackage
+from helper import DateUtils
 from helper.logger_utils import force_log
 from services import ChatService
 from services.group_package_service import GroupPackageService
@@ -146,7 +147,7 @@ class PackageHandler:
 
                 # Handle today start date button
                 if selected_package == "today_start_date":
-                    today_str = datetime.now().strftime("%d-%m-%Y")
+                    today_str = DateUtils.now().strftime("%d-%m-%Y")
                     context.user_data["package_start_date"] = today_str
                     
                     # Ask for end date with period buttons
@@ -410,7 +411,11 @@ class PackageHandler:
             note = context.user_data.get("note")
             
             if not all([chat_id, selected_package, start_date_str, end_date_str, amount_paid is not None]):
-                await update.message.reply_text("Missing required information.")  # type: ignore
+                # Check if update is from a callback query or regular message
+                if hasattr(update, 'callback_query') and update.callback_query:
+                    await update.callback_query.edit_message_text("Missing required information.")
+                else:
+                    await update.message.reply_text("Missing required information.")  # type: ignore
                 return ConversationHandler.END
             
             # Convert dates
@@ -430,7 +435,11 @@ class PackageHandler:
             )
 
             if not updated_package:
-                await update.message.reply_text("Failed to update group package.")  # type: ignore
+                # Check if update is from a callback query or regular message
+                if hasattr(update, 'callback_query') and update.callback_query:
+                    await update.callback_query.edit_message_text("Failed to update group package.")
+                else:
+                    await update.message.reply_text("Failed to update group package.")  # type: ignore
                 return ConversationHandler.END
 
             # Update shift settings based on package change
@@ -455,12 +464,20 @@ class PackageHandler:
             if note:
                 message += f"\n• Note: {note}"
 
-            await update.message.reply_text(message)  # type: ignore
+            # Check if update is from a callback query or regular message
+            if hasattr(update, 'callback_query') and update.callback_query:
+                await update.callback_query.edit_message_text(message)
+            else:
+                await update.message.reply_text(message)  # type: ignore
             return ConversationHandler.END
             
         except Exception as e:
             force_log(f"Error in finalize_package_update_with_payment: {e}", "PackageHandler")
-            await update.message.reply_text("Error finalizing package update.")  # type: ignore
+            # Check if update is from a callback query or regular message
+            if hasattr(update, 'callback_query') and update.callback_query:
+                await update.callback_query.edit_message_text("Error finalizing package update.")
+            else:
+                await update.message.reply_text("Error finalizing package update.")  # type: ignore
             return ConversationHandler.END
 
     async def display_package_details(
@@ -494,8 +511,7 @@ class PackageHandler:
                 
                 # Calculate status
                 if group_package.package_end_date:
-                    from datetime import datetime
-                    now = datetime.now()
+                    now = DateUtils.now()
                     if now > group_package.package_end_date:
                         status = "❌ Expired"
                     else:
