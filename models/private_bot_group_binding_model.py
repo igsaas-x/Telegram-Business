@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import Integer, DateTime, ForeignKey
+from sqlalchemy import Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base_model import BaseModel
@@ -15,7 +13,6 @@ class PrivateBotGroupBinding(BaseModel):
     bound_group_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("chat_group.id"), nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     # Relationship to the bound group
     bound_group: Mapped[Chat] = relationship("Chat", backref="private_bot_bindings")

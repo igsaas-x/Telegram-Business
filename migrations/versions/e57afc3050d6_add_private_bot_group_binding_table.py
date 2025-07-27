@@ -25,6 +25,7 @@ def upgrade() -> None:
         sa.Column('private_chat_id', sa.Integer(), nullable=False),
         sa.Column('bound_group_id', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(['bound_group_id'], ['chat_group.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
