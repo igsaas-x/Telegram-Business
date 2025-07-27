@@ -34,6 +34,9 @@ DEACTIVATE_SELECTION_CODE = 1012
 ENABLE_SHIFT_SELECTION_CODE = 1013
 PACKAGE_START_DATE_CODE = 1014
 PACKAGE_END_DATE_CODE = 1015
+AMOUNT_PAID_CODE = 1016
+NOTE_CONFIRMATION_CODE = 1017
+NOTE_INPUT_CODE = 1018
 
 
 class TelegramAdminBot:
@@ -614,8 +617,13 @@ class TelegramAdminBot:
                 # Store end date
                 context.user_data["package_end_date"] = end_date_str
                 
-                # Now process the package update with dates
-                return await self.finalize_package_update(update, context)
+                # Ask for amount paid
+                await update.message.reply_text(  # type: ignore
+                    f"End date set: {end_date_str}\n\n"
+                    "Please enter the amount paid for this package:\n"
+                    "Example: 25.50"
+                )
+                return AMOUNT_PAID_CODE
                 
             except ValueError:
                 await update.message.reply_text(  # type: ignore
@@ -626,6 +634,165 @@ class TelegramAdminBot:
         except Exception as e:
             force_log(f"Error in process_package_end_date: {e}", "TelegramAdminBot")
             await update.message.reply_text("Error processing end date.")  # type: ignore
+            return ConversationHandler.END
+
+    async def process_amount_paid(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle amount paid input"""
+        try:
+            amount_str = update.message.text.strip()  # type: ignore
+            
+            # Validate amount format
+            try:
+                amount_paid = float(amount_str)
+                if amount_paid < 0:
+                    await update.message.reply_text(  # type: ignore
+                        "Amount must be a positive number. Please enter a valid amount:"
+                    )
+                    return AMOUNT_PAID_CODE
+                
+                # Store amount paid
+                context.user_data["amount_paid"] = amount_paid
+                
+                # Ask if user wants to add a note
+                keyboard = [
+                    [InlineKeyboardButton("✅ Yes, add note", callback_data="add_note")],
+                    [InlineKeyboardButton("❌ No, finish setup", callback_data="skip_note")],
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(  # type: ignore
+                    f"Amount paid set: ${amount_paid:.2f}\n\n"
+                    "Would you like to add a note for this package?",
+                    reply_markup=reply_markup
+                )
+                return NOTE_CONFIRMATION_CODE
+                
+            except ValueError:
+                await update.message.reply_text(  # type: ignore
+                    "Invalid amount format. Please enter a valid number (e.g., 25.50):"
+                )
+                return AMOUNT_PAID_CODE
+                
+        except Exception as e:
+            force_log(f"Error in process_amount_paid: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing amount paid.")  # type: ignore
+            return ConversationHandler.END
+
+    async def handle_note_confirmation(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle note confirmation buttons"""
+        query = update.callback_query
+        try:
+            if query:
+                await query.answer()
+                action = query.data
+
+                if action == "add_note":
+                    await query.edit_message_text(
+                        "Please enter your note for this package:"
+                    )
+                    return NOTE_INPUT_CODE
+
+                elif action == "skip_note":
+                    # Proceed to finalize without note
+                    context.user_data["note"] = None
+                    return await self.finalize_package_update_with_payment(update, context)
+
+            return NOTE_CONFIRMATION_CODE
+        except Exception as e:
+            force_log(f"Error in handle_note_confirmation: {e}", "TelegramAdminBot")
+            if query:
+                await query.edit_message_text(f"Error: {str(e)}")
+            return ConversationHandler.END
+
+    async def process_note_input(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Handle note input"""
+        try:
+            note = update.message.text.strip()  # type: ignore
+            
+            # Store note
+            context.user_data["note"] = note
+            
+            # Proceed to finalize with note
+            return await self.finalize_package_update_with_payment(update, context)
+            
+        except Exception as e:
+            force_log(f"Error in process_note_input: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error processing note.")  # type: ignore
+            return ConversationHandler.END
+
+    async def finalize_package_update_with_payment(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Finalize the package update with payment info and optional note"""
+        try:
+            # Get stored data
+            chat_id = context.user_data.get("chat_id_input")
+            chat_name = context.user_data.get("group_name")
+            selected_package = context.user_data.get("selected_package")
+            start_date_str = context.user_data.get("package_start_date")
+            end_date_str = context.user_data.get("package_end_date")
+            amount_paid = context.user_data.get("amount_paid")
+            note = context.user_data.get("note")
+            
+            if not all([chat_id, selected_package, start_date_str, end_date_str, amount_paid is not None]):
+                await update.message.reply_text("Missing required information.")  # type: ignore
+                return ConversationHandler.END
+            
+            # Convert dates
+            from datetime import datetime
+            start_date = datetime.strptime(start_date_str, "%d-%m-%Y")
+            end_date = datetime.strptime(end_date_str, "%d-%m-%Y")
+
+            # Update group package with dates, amount, and note
+            await self.group_package_service.get_or_create_group_package(chat_id)
+
+            updated_package = await self.group_package_service.update_package(
+                chat_id, 
+                ServicePackage(selected_package),
+                package_start_date=start_date,
+                package_end_date=end_date,
+                amount_paid=amount_paid,
+                note=note
+            )
+
+            if not updated_package:
+                await update.message.reply_text("Failed to update group package.")  # type: ignore
+                return ConversationHandler.END
+
+            # Update shift settings based on package change
+            if ServicePackage(selected_package) == ServicePackage.BUSINESS:
+                # When upgrading to business, automatically enable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, True)
+            elif ServicePackage(selected_package) in [ServicePackage.TRIAL, ServicePackage.FREE]:
+                # When downgrading to trial or free, disable shift
+                await self.chat_service.update_chat_enable_shift(chat_id, False)
+
+            # Prepare confirmation message
+            message = (
+                f"✅ Successfully updated package:\n"
+                f"• Package: {selected_package}\n"
+                f"• Chat ID: {chat_id}\n"
+                f"• Chat Name: {chat_name}\n"
+                f"• Start Date: {start_date_str}\n"
+                f"• End Date: {end_date_str}\n"
+                f"• Amount Paid: ${amount_paid:.2f}"
+            )
+            
+            if note:
+                message += f"\n• Note: {note}"
+
+            await update.message.reply_text(message)  # type: ignore
+            return ConversationHandler.END
+            
+        except Exception as e:
+            force_log(f"Error in finalize_package_update_with_payment: {e}", "TelegramAdminBot")
+            await update.message.reply_text("Error finalizing package update.")  # type: ignore
             return ConversationHandler.END
 
     async def finalize_package_update(
@@ -1283,6 +1450,9 @@ class TelegramAdminBot:
                 CHAT_SELECTION_CODE: [CallbackQueryHandler(self.handle_chat_selection)],
                 PACKAGE_START_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_start_date)],
                 PACKAGE_END_DATE_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_package_end_date)],
+                AMOUNT_PAID_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_amount_paid)],
+                NOTE_CONFIRMATION_CODE: [CallbackQueryHandler(self.handle_note_confirmation)],
+                NOTE_INPUT_CODE: [MessageHandler(filters.TEXT & filters.REPLY, self.process_note_input)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
