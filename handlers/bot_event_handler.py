@@ -119,6 +119,8 @@ class CommandHandler:
                         incomes=incomes,
                         report_date=start_date,
                         requesting_user=event.sender,
+                        start_date=start_date,
+                        end_date=end_date,
                         is_weekly=True
                     )
                     force_log(
