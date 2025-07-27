@@ -491,7 +491,7 @@ class PackageHandler:
             if not chat_id:
                 await update.message.reply_text("Chat ID not found.")  # type: ignore
                 return ConversationHandler.END
-            
+
             # Get package details
             group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
             
@@ -512,10 +512,18 @@ class PackageHandler:
                 # Calculate status
                 if group_package.package_end_date:
                     now = DateUtils.now()
-                    if now > group_package.package_end_date:
+                    # Convert both to naive datetime to avoid timezone comparison issues
+                    if hasattr(now, 'replace') and now.tzinfo is not None:
+                        now = now.replace(tzinfo=None)
+                    
+                    package_end_date = group_package.package_end_date
+                    if hasattr(package_end_date, 'replace') and package_end_date.tzinfo is not None:
+                        package_end_date = package_end_date.replace(tzinfo=None)
+                    
+                    if now > package_end_date:
                         status = "❌ Expired"
                     else:
-                        days_left = (group_package.package_end_date - now).days
+                        days_left = (package_end_date - now).days
                         status = f"✅ Active ({days_left} days left)"
                 else:
                     status = "⚠️ No end date set"
