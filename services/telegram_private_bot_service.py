@@ -504,7 +504,6 @@ class TelegramPrivateBot:
             keyboard = [
                 [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
                 [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],
-                [InlineKeyboardButton("📊 View Reports", callback_data="start_menu")],
                 [InlineKeyboardButton("🔓 Unbind Group", callback_data="start_unbind")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
             ]

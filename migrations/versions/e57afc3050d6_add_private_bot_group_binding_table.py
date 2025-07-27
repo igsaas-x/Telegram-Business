@@ -22,7 +22,7 @@ def upgrade() -> None:
     # Create private_bot_group_binding table
     op.create_table('private_bot_group_binding',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('private_chat_id', sa.Integer(), nullable=False),
+        sa.Column('private_chat_id', sa.BigInteger(), nullable=False),
         sa.Column('bound_group_id', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
