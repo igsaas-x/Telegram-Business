@@ -15,6 +15,9 @@ PACKAGE_END_DATE_CODE = 1015
 AMOUNT_PAID_CODE = 1016
 NOTE_CONFIRMATION_CODE = 1017
 NOTE_INPUT_CODE = 1018
+QUERY_PACKAGE_SELECTION_CODE = 1019
+QUERY_PACKAGE_COMMAND_CODE = 1020
+QUERY_PACKAGE_CHAT_SELECTION_CODE = 1021
 
 
 class PackageHandler:
@@ -449,4 +452,76 @@ class PackageHandler:
         except Exception as e:
             force_log(f"Error in finalize_package_update_with_payment: {e}", "PackageHandler")
             await update.message.reply_text("Error finalizing package update.")  # type: ignore
+            return ConversationHandler.END
+
+    async def display_package_details(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        """Display package details for the selected chat"""
+        try:
+            chat_id = context.user_data.get("chat_id_input")
+            chat_name = context.user_data.get("group_name")
+            
+            if not chat_id:
+                await update.message.reply_text("Chat ID not found.")  # type: ignore
+                return ConversationHandler.END
+            
+            # Get package details
+            group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
+            
+            if not group_package:
+                message = (
+                    f"📋 Package Details\n\n"
+                    f"• Group ID: {chat_id}\n"
+                    f"• Group Name: {chat_name or 'N/A'}\n"
+                    f"• Package: No package assigned\n"
+                    f"• Status: No active package"
+                )
+            else:
+                # Format dates
+                start_date_str = group_package.package_start_date.strftime("%d-%m-%Y") if group_package.package_start_date else "N/A"
+                end_date_str = group_package.package_end_date.strftime("%d-%m-%Y") if group_package.package_end_date else "N/A"
+                last_paid_str = group_package.last_paid_date.strftime("%d-%m-%Y") if group_package.last_paid_date else "N/A"
+                
+                # Calculate status
+                if group_package.package_end_date:
+                    from datetime import datetime
+                    now = datetime.now()
+                    if now > group_package.package_end_date:
+                        status = "❌ Expired"
+                    else:
+                        days_left = (group_package.package_end_date - now).days
+                        status = f"✅ Active ({days_left} days left)"
+                else:
+                    status = "⚠️ No end date set"
+                
+                message = (
+                    f"📋 Package Details\n\n"
+                    f"• Group ID: {chat_id}\n"
+                    f"• Group Name: {chat_name or 'N/A'}\n"
+                    f"• Package: {group_package.package.value}\n"
+                    f"• Status: {status}\n"
+                    f"• Start Date: {start_date_str}\n"
+                    f"• End Date: {end_date_str}\n"
+                    f"• Last Paid: {last_paid_str}"
+                )
+                
+                # Add amount paid if available
+                if group_package.amount_paid is not None:
+                    message += f"\n• Amount Paid: ${group_package.amount_paid:.2f}"
+                
+                # Add note if available
+                if group_package.note:
+                    message += f"\n• Note: {group_package.note}"
+            
+            # Check if update is from a callback query or regular message
+            if hasattr(update, 'callback_query') and update.callback_query:
+                await update.callback_query.edit_message_text(message)
+            else:
+                await update.message.reply_text(message)  # type: ignore
+            return ConversationHandler.END
+            
+        except Exception as e:
+            force_log(f"Error in display_package_details: {e}", "PackageHandler")
+            await update.message.reply_text("Error retrieving package details.")  # type: ignore
             return ConversationHandler.END

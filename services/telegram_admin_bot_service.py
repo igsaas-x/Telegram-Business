@@ -31,6 +31,9 @@ PACKAGE_END_DATE_CODE = 1015
 AMOUNT_PAID_CODE = 1016
 NOTE_CONFIRMATION_CODE = 1017
 NOTE_INPUT_CODE = 1018
+QUERY_PACKAGE_SELECTION_CODE = 1019
+QUERY_PACKAGE_COMMAND_CODE = 1020
+QUERY_PACKAGE_CHAT_SELECTION_CODE = 1021
 
 
 class TelegramAdminBot:
@@ -62,6 +65,19 @@ class TelegramAdminBot:
             "How would you like to identify the user?", reply_markup=reply_markup
         )
         return PACKAGE_SELECTION_CODE
+
+    @staticmethod
+    async def query_package(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        context.user_data["command_type"] = "query_package"  # type: ignore
+        keyboard = [
+            [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
+            [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(  # type: ignore
+            "How would you like to identify the group to query?", reply_markup=reply_markup
+        )
+        return QUERY_PACKAGE_SELECTION_CODE
 
     @staticmethod
     async def package_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -323,9 +339,26 @@ class TelegramAdminBot:
             per_message=False,
         )
 
+        query_package_handler = ConversationHandler(
+            entry_points=[CommandHandler("query_package", self.query_package)],
+            states={
+                QUERY_PACKAGE_SELECTION_CODE: [CallbackQueryHandler(self.chat_search_handler.shared_selection_handler)],
+                QUERY_PACKAGE_COMMAND_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.chat_search_handler.shared_process_input),
+                    CallbackQueryHandler(self.chat_search_handler.shared_selection_handler),
+                ],
+                QUERY_PACKAGE_CHAT_SELECTION_CODE: [CallbackQueryHandler(self.chat_search_handler.handle_chat_selection)],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_chat=True,
+            per_user=True,
+            per_message=False,
+        )
+
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
+        self.app.add_handler(query_package_handler)
 
         force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 
