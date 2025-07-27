@@ -305,7 +305,7 @@ class MenuHandler:
                 return 1008  # CALLBACK_QUERY_CODE
             elif callback_data.startswith("summary_of_"):
                 result = await self._handle_date_summary(chat_id, callback_data, query)
-                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+                return ConversationHandler.END  # End conversation after showing final report
             elif callback_data == "report_per_shift":
                 result = await self._handle_shift_report(query)
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
