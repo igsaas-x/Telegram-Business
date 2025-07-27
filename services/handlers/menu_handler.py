@@ -138,7 +138,7 @@ class MenuHandler:
                 end_date = selected_date + timedelta(days=1)
                 message = daily_transaction_report(incomes, selected_date, telegram_username)
 
-            await query.edit_message_text(message)
+            await query.edit_message_text(message, parse_mode='HTML')
             return True
 
         except Exception as e:

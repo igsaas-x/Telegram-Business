@@ -384,11 +384,19 @@ class TelegramPrivateBot:
         pseudo_update = PseudoUpdate(query, callback_data.replace("_all", ""))
         
         try:
-            await self.menu_handler.menu_callback_query_handler(pseudo_update, context)  # type: ignore
+            result = await self.menu_handler.menu_callback_query_handler(pseudo_update, context)  # type: ignore
+            # If the menu handler returns ConversationHandler.END, end our conversation too
+            if result == ConversationHandler.END:
+                return ConversationHandler.END
+            # If it returns a callback query code (1008), continue in report callback state
+            elif result == 1008:  # CALLBACK_QUERY_CODE from menu handler
+                return REPORT_CALLBACK_CODE
+            else:
+                # For any other return value, continue in report callback state
+                return REPORT_CALLBACK_CODE
         except Exception as e:
             await query.edit_message_text(f"Error generating report: {str(e)}")
-        
-        return REPORT_CALLBACK_CODE
+            return ConversationHandler.END
 
     async def unbind_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /unbind command"""
