@@ -252,9 +252,7 @@ class MenuHandler:
         formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, formatted_title)
 
-    async def menu_callback_query_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def menu_callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle callback queries from menu inline buttons"""
         query = update.callback_query
 
@@ -270,8 +268,16 @@ class MenuHandler:
                 await query.edit_message_text("Menu closed.")
                 return ConversationHandler.END
 
-            # Get chat_id
-            chat_id = query.message.chat.id
+            # Get chat_id from context or use message chat_id as fallback
+            if context and context.user_data and "admin_chat_id" in context.user_data:
+                chat_id = context.user_data["admin_chat_id"]
+            else:
+                # No stored chat ID from admin bot menu flow
+                # This might be a global callback handler case
+                await query.edit_message_text(
+                    "Session expired. Please run /menu again."
+                )
+                return ConversationHandler.END
 
             # Prepare callback handlers for different report types
             if callback_data == "daily_summary":

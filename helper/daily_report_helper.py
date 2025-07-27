@@ -50,10 +50,15 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     day = report_date.day
     month_khmer = get_khmer_month_name(report_date.month)
     year = report_date.year
+
+    end_day = end_date.day
     
     # Build the report using HTML formatting
     report = "<b>សរុបប្រតិបត្តិការ</b>"
-    report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
+    if day != end_day:
+        report += f"<b>ថ្ងៃ {day} ទៅថ្ងៃ{end_day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
+    else:
+        report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"
     report += f"<i>(ដោយ: @{telegram_username})</i>\n"
 
     # KHR and USD amounts
