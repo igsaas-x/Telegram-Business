@@ -289,7 +289,12 @@ class ChatSearchHandler:
             
             # Store command type for the selection handler
             context.user_data["command_type"] = command_type  # type: ignore
-            return 1010  # CHAT_SELECTION_CODE
+            
+            # Return appropriate state code based on command type
+            if command_type == "query_package":
+                return 1021  # QUERY_PACKAGE_CHAT_SELECTION_CODE
+            else:
+                return 1010  # CHAT_SELECTION_CODE
             
         except Exception as e:
             force_log(f"Error in search_and_show_chats_for_command: {e}", "ChatSearchHandler")

@@ -536,7 +536,6 @@ class PackageHandler:
                     f"• Status: {status}\n"
                     f"• Start Date: {start_date_str}\n"
                     f"• End Date: {end_date_str}\n"
-                    f"• Last Paid: {last_paid_str}"
                 )
                 
                 # Add amount paid if available
