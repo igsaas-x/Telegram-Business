@@ -41,7 +41,7 @@ class CommandHandler:
             if not start_date:
                 start_date = report_date
             if not end_date:
-                end_date = report_date + timedelta(days=1)
+                end_date = report_date
             return daily_transaction_report(incomes, report_date, telegram_username, start_date, end_date)
         elif is_weekly and start_date and end_date:
             # This is a weekly report, use the new weekly format
