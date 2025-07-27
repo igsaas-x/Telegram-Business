@@ -108,8 +108,8 @@ class PackageHandler:
                         ],
                         [
                             InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value,
-                                callback_data="UNLIMITED",
+                                ServicePackage.STANDARD.value,
+                                callback_data="STANDARD",
                             )
                         ],
                         [
@@ -196,7 +196,7 @@ class PackageHandler:
                     return AMOUNT_PAID_CODE
 
                 # Handle package selection buttons
-                elif selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
+                elif selected_package in ["BASIC", "STANDARD", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:

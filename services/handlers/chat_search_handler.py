@@ -126,7 +126,7 @@ class ChatSearchHandler:
                             ],
                             [
                                 InlineKeyboardButton(
-                                    ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
+                                    ServicePackage.STANDARD.value, callback_data="STANDARD",
                                 )
                             ],
                             [
@@ -255,7 +255,7 @@ class ChatSearchHandler:
                         ],
                         [
                             InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
+                                ServicePackage.STANDARD.value, callback_data="STANDARD",
                             )
                         ],
                         [

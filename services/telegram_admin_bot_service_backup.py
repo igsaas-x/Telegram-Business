@@ -199,7 +199,7 @@ class TelegramAdminBot:
                             ],
                             [
                                 InlineKeyboardButton(
-                                    ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
+                                    ServicePackage.STANDARD.value, callback_data="STANDARD",
                                 )
                             ],
                             [
@@ -313,7 +313,7 @@ class TelegramAdminBot:
                         ],
                         [
                             InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value, callback_data="UNLIMITED",
+                                ServicePackage.STANDARD.value, callback_data="STANDARD",
                             )
                         ],
                         [
@@ -500,8 +500,7 @@ class TelegramAdminBot:
                         ],
                         [
                             InlineKeyboardButton(
-                                ServicePackage.UNLIMITED.value,
-                                callback_data="UNLIMITED",
+                                ServicePackage.STANDARD.value, callback_data="STANDARD",
                             )
                         ],
                         [
@@ -542,7 +541,7 @@ class TelegramAdminBot:
                     return await self.package_selection_handler(update, context)
 
                 # Handle package selection buttons
-                if selected_package in ["BASIC", "UNLIMITED", "BUSINESS"]:
+                if selected_package in ["BASIC", "STANDARD", "BUSINESS"]:
                     chat_id = context.user_data.get("chat_id_input")
 
                     if not chat_id:
