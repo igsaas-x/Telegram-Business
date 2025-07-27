@@ -20,7 +20,8 @@ class CommandHandler:
         self.chat_service = ChatService()
         self.group_package_service = GroupPackageService()
 
-    async def format_totals_message(self, period_text: str, incomes, chat_id: int = None, report_date: datetime = None, requesting_user=None, start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False, is_monthly: bool = False):
+    async def format_totals_message(self, period_text: str, incomes, report_date: datetime = None, requesting_user=None,
+                                    start_date: datetime = None, end_date: datetime = None, is_weekly: bool = False, is_monthly: bool = False):
         # Check if this is a daily report (contains "ថ្ងៃទី")
         if "ថ្ងៃទី" in period_text:
             # This is a daily report, use the new format
@@ -118,7 +119,7 @@ class CommandHandler:
                         return
 
                     message = await self.format_totals_message(
-                        f"ថ្ងៃទី {start_day} ដល់ {end_day}", incomes, event.chat_id, start_date, event.sender
+                        f"ថ្ងៃទី {start_day} ដល់ {end_day}", incomes, start_date, event.sender
                     )
                     force_log(f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions", "CommandHandler")
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
@@ -157,7 +158,7 @@ class CommandHandler:
                         return
 
                     message = await self.format_totals_message(
-                        f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, event.chat_id, selected_date, event.sender
+                        f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, selected_date, event.sender
                     )
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
 
@@ -202,7 +203,7 @@ class CommandHandler:
                 return
 
             message = await self.format_totals_message(
-                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, chat_id, today, event.sender
+                f"ថ្ងៃទី {today.strftime('%d %b %Y')}", incomes, today, event.sender
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -317,7 +318,7 @@ class CommandHandler:
                 return
 
             message = await self.format_totals_message(
-                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, chat_id, selected_date, event.sender
+                f"ថ្ងៃទី {selected_date.strftime('%d %b %Y')}", incomes, selected_date, event.sender
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -363,7 +364,7 @@ class CommandHandler:
             # Check if this is a weekly or monthly report
             is_weekly = data.startswith("summary_week_")
             is_monthly = data.startswith("summary_month_")
-            message = await self.format_totals_message(period_text, incomes, chat_id, None, event.sender, start_date, end_date, is_weekly, is_monthly)
+            message = await self.format_totals_message(period_text, incomes, None, event.sender, start_date, end_date, is_weekly, is_monthly)
             await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:
