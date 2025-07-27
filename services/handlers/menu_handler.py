@@ -79,23 +79,23 @@ class MenuHandler:
                 await query.edit_message_text(f"Chat {chat_id} not found.")
                 return False
 
-            # Create return to menu button
-            keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
             # Get the user who clicked the button
             requesting_user = query.from_user if query else None
 
             if report_type == "daily":
-                # Call report generation logic or reuse from event_handler
+                # Create return to menu button for daily reports
+                keyboard = [[InlineKeyboardButton("ត្រឡប់", callback_data="menu")]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
                 report = await self._generate_report(chat_id, "daily", requesting_user)
                 await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
             elif report_type == "weekly":
+                # No return button for weekly reports
                 report = await self._generate_report(chat_id, "weekly", requesting_user)
-                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
+                await query.edit_message_text(report, parse_mode='HTML')
             elif report_type == "monthly":
+                # No return button for monthly reports
                 report = await self._generate_report(chat_id, "monthly", requesting_user)
-                await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
+                await query.edit_message_text(report, parse_mode='HTML')
 
             return True
         except Exception as e:
@@ -292,10 +292,10 @@ class MenuHandler:
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
             elif callback_data == "weekly_summary":
                 result = await self._handle_report(chat_id, "weekly", query)
-                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "monthly_summary":
                 result = await self._handle_report(chat_id, "monthly", query)
-                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
             elif callback_data == "menu":
                 # Return to main menu - recreate the menu buttons
                 keyboard = [

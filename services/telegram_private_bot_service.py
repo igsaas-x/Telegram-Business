@@ -253,7 +253,6 @@ class TelegramPrivateBot:
                     callback_data=f"select_{group.id}"
                 )])
             
-            keyboard.append([InlineKeyboardButton("All Groups", callback_data="select_all")])
             keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
             reply_markup = InlineKeyboardMarkup(keyboard)
             
@@ -306,24 +305,7 @@ class TelegramPrivateBot:
         
         bound_groups = context.user_data.get("bound_groups", [])
         
-        if query.data == "select_all":
-            # Handle multi-group reporting
-            context.user_data["selected_groups"] = bound_groups
-            keyboard = [
-                [InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary_all")],
-                [InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary_all")],
-                [InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary_all")],
-                [InlineKeyboardButton("បិទ", callback_data="close_menu")],
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await query.edit_message_text(
-                "Combined reports from all bound groups:\n\nSelect report type:",
-                reply_markup=reply_markup
-            )
-            return REPORT_CALLBACK_CODE
-        
-        elif query.data.startswith("select_"):
+        if query.data.startswith("select_"):
             group_id = int(query.data.split("_")[1])
             group = next((g for g in bound_groups if g.id == group_id), None)
             
@@ -347,16 +329,10 @@ class TelegramPrivateBot:
         private_chat_id = update.effective_chat.id
         
         # Store necessary data for the menu handler
-        if "all" in callback_data:
-            # Multi-group report
-            selected_groups = context.user_data.get("selected_groups", [])
-            group_chat_ids = [group.chat_id for group in selected_groups]
-            context.user_data["admin_chat_ids"] = group_chat_ids
-        else:
-            # Single group report
-            selected_group = context.user_data.get("selected_group")
-            if selected_group:
-                context.user_data["admin_chat_id"] = selected_group.chat_id
+        # Single group report
+        selected_group = context.user_data.get("selected_group")
+        if selected_group:
+            context.user_data["admin_chat_id"] = selected_group.chat_id
         
         # Create a pseudo-update object to interface with the menu handler
         class PseudoCallbackQuery:
@@ -381,7 +357,7 @@ class TelegramPrivateBot:
                 self.effective_user = callback_query.from_user
 
         # Create pseudo-update and call menu handler
-        pseudo_update = PseudoUpdate(query, callback_data.replace("_all", ""))
+        pseudo_update = PseudoUpdate(query, callback_data)
         
         try:
             result = await self.menu_handler.menu_callback_query_handler(pseudo_update, context)  # type: ignore
