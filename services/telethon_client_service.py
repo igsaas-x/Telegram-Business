@@ -108,8 +108,12 @@ class TelethonClientService:
             try:
                 sender = await event.get_sender()
                 is_bot = getattr(sender, "bot", False)
+
+                # Ignore specific bot
+                username = getattr(sender, "username", "") or ""
+
                 # Check if this is a private chat (not a group)
-                if event.is_private and not is_bot:
+                if event.is_private and not is_bot and username != "autosum_kh":
                     force_log(f"Private chat detected, sending auto-response")
                     await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
                     return
@@ -118,9 +122,6 @@ class TelethonClientService:
                 if not is_bot:
                     force_log(f"Message from human user, ignoring")
                     return
-
-                # Ignore specific bot
-                username = getattr(sender, "username", "") or ""
 
                 if username == "AutosumBusinessBot" or username == "AutoSum_bot":
                     force_log(f"Message from Autosum, ignoring")

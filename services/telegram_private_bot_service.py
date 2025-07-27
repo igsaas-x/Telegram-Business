@@ -41,6 +41,7 @@ class TelegramPrivateBot:
         await update.message.reply_text(
             "Welcome! This bot helps you view reports from your linked transaction groups.\n\n"
             "Use /bind to link groups with transactions\n"
+            "Use /list to see your bound groups\n"
             "Use /menu to view reports from linked groups\n"
             "Use /unbind to remove group links"
         )
@@ -183,6 +184,46 @@ class TelegramPrivateBot:
             await update.message.reply_text(f"Error binding group: {str(e)}")
         
         return ConversationHandler.END
+
+    async def list_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /list command to show bound groups"""
+        private_chat_id = update.effective_chat.id
+        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+        
+        if not bound_groups:
+            await update.message.reply_text(
+                "You have no bound groups.\n\n"
+                "Use /bind to link groups with transactions."
+            )
+            return
+        
+        # Build the list message
+        message_lines = [f"📋 Your bound groups ({len(bound_groups)} total):"]
+        message_lines.append("")
+        
+        for i, group in enumerate(bound_groups, 1):
+            group_name = group.group_name or "Unnamed Group"
+            group_id = group.chat_id
+            
+            # Get package info
+            try:
+                group_package = await self.group_package_service.get_package_by_chat_id(group.chat_id)
+                package_name = group_package.package.value if group_package else "Unknown"
+            except Exception:
+                package_name = "Unknown"
+            
+            message_lines.append(f"{i}. **{group_name}**")
+            message_lines.append(f"   • ID: `{group_id}`")
+            message_lines.append(f"   • Package: {package_name}")
+            message_lines.append("")
+        
+        message_lines.append("Use /menu to view reports from these groups")
+        message_lines.append("Use /unbind to remove group links")
+        
+        await update.message.reply_text(
+            "\n".join(message_lines),
+            parse_mode="Markdown"
+        )
 
     async def menu_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /menu command"""
@@ -410,6 +451,7 @@ class TelegramPrivateBot:
         # Add handlers
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(bind_handler)
+        self.app.add_handler(CommandHandler("list", self.list_command))
         self.app.add_handler(menu_handler)
         self.app.add_handler(CommandHandler("unbind", self.unbind_command))
 
