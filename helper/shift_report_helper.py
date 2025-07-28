@@ -24,7 +24,8 @@ async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -
         )
     else:  # Active shift
         now = DateUtils.now()
-        duration = now - shift.start_time
+        start_time_aware = DateUtils.localize_datetime(shift.start_time)
+        duration = now - start_time_aware
         hours = int(duration.total_seconds() // 3600)
         minutes = int((duration.total_seconds() % 3600) // 60)
         
