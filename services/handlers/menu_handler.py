@@ -303,7 +303,7 @@ class MenuHandler:
             
             # Get shift report
             from helper import shift_report
-            report = await shift_report(shift.id, shift.shift_number, current_date)
+            report = await shift_report(shift.id, shift.number, current_date)
             
             await query.edit_message_text(report, parse_mode='HTML')
             return True
