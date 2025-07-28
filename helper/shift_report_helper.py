@@ -1,6 +1,39 @@
 from datetime import datetime
 
 
+async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -> str:
+    """Generate shift report by ID - wrapper function for compatibility"""
+    from services import ShiftService
+    from helper import DateUtils
+    
+    shift_service = ShiftService()
+    
+    # Get shift details
+    shift = await shift_service.get_shift_by_id(shift_id)
+    if not shift:
+        return "Shift not found"
+    
+    # Get shift summary
+    shift_summary = await shift_service.get_shift_income_summary(shift_id, shift.chat_id)
+    
+    # Generate report based on shift status
+    if shift.end_time:  # Closed shift
+        return shift_report_format(
+            shift_number, shift_date, shift.start_time, 
+            shift.end_time, shift_summary, auto_closed=False
+        )
+    else:  # Active shift
+        now = DateUtils.now()
+        duration = now - shift.start_time
+        hours = int(duration.total_seconds() // 3600)
+        minutes = int((duration.total_seconds() % 3600) // 60)
+        
+        return current_shift_report_format(
+            shift_number, shift_date, shift.start_time,
+            shift_summary, hours, minutes
+        )
+
+
 def shift_report_format(shift_number: int, shift_date: datetime, start_time: datetime, end_time: datetime, 
                        shift_summary: dict, auto_closed: bool = False) -> str:
     """Generate shift report in the specified format"""
