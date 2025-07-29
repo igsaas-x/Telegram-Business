@@ -3,9 +3,10 @@ from datetime import timedelta, datetime
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
-from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report
+from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report, \
+    shift_report
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService
+from services import ChatService, IncomeService, ShiftService
 
 
 class MenuHandler:
@@ -353,6 +354,50 @@ class MenuHandler:
             await query.edit_message_text(f"Error showing other shift dates: {str(e)}")
             return False
 
+    async def _handle_shift_date_report(self, chat_id: int, date_str: str, query):
+        """Handle shift report for a specific date"""
+        try:
+            
+            shift_service = ShiftService()
+            
+            # Parse the date string (format: YYYY-MM-DD)
+            shift_date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            shift_date = shift_date_obj.date()
+            
+            # Get shifts for the specific date
+            shifts = await shift_service.get_shifts_by_date(chat_id, shift_date)
+            
+            if not shifts:
+                await query.edit_message_text(
+                    f"គ្មានវេនសម្រាប់ថ្ងៃ {shift_date.strftime('%d-%m-%Y')} ទេ។",
+                    parse_mode='HTML'
+                )
+                return True
+            
+            # Generate reports for all shifts on that date
+            reports = []
+            for shift in shifts:
+                try:
+                    report = await shift_report(shift.id, shift.number, shift_date_obj)
+                    reports.append(report)
+                except Exception as e:
+                    force_log(f"Error generating report for shift {shift.id}: {e}", "MenuHandler")
+                    reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
+            
+            # Combine all reports
+            if len(reports) == 1:
+                final_report = reports[0]
+            else:
+                final_report = "\n\n" + "="*50 + "\n\n".join(reports)
+            
+            await query.edit_message_text(final_report, parse_mode='HTML')
+            return True
+            
+        except Exception as e:
+            force_log(f"Error in _handle_shift_date_report: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error generating shift report: {str(e)}")
+            return False
+
     @staticmethod
     async def _handle_other_dates(query):
         """Handle other dates - placeholder for now"""
@@ -615,6 +660,10 @@ class MenuHandler:
             elif callback_data == "other_shift_dates":
                 result = await self._handle_other_shift_dates(chat_id, query)
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data.startswith("shift_date_"):
+                date_str = callback_data.replace("shift_date_", "")
+                result = await self._handle_shift_date_report(chat_id, date_str, query)
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
 
             # If we get here, it's an unknown callback
             await query.edit_message_text(f"Unhandled callback: {callback_data}")

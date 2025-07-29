@@ -423,6 +423,9 @@ class TelegramPrivateBot:
         if query.data == "cancel":
             await query.edit_message_text("Menu cancelled.")
             return ConversationHandler.END
+        elif query.data == "close_conversation":
+            await query.edit_message_text("Goodbye! Use /start anytime to access the bot.")
+            return ConversationHandler.END
         
         bound_groups = context.user_data.get("bound_groups", [])
         
