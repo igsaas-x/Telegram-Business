@@ -123,6 +123,23 @@ class ShiftService:
                 .all()
             )
 
+    async def get_shifts_by_end_date(self, chat_id: int, end_date: date) -> list[Shift]:
+        """Get shifts that ended on a specific date (for admin bot)"""
+        with get_db_session() as db:
+            from sqlalchemy import func
+            
+            return (
+                db.query(Shift)
+                .filter(
+                    Shift.chat_id == chat_id,
+                    func.date(Shift.end_time) == end_date,
+                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
+                    Shift.is_closed == True
+                )
+                .order_by(Shift.number)
+                .all()
+            )
+
     async def get_recent_closed_shifts(
         self, chat_id: int, limit: int = 1
     ) -> list[Shift]:
@@ -180,6 +197,28 @@ class ShiftService:
                 .filter(Shift.chat_id == chat_id)
                 .distinct()
                 .order_by(Shift.shift_date.desc())
+                .limit(days)
+                .all()
+            )
+
+            return [d[0] for d in dates]
+
+    async def get_recent_end_dates_with_shifts(
+        self, chat_id: int, days: int = 3
+    ) -> list[date]:
+        """Get last N dates based on shift end dates (for admin bot)"""
+        with get_db_session() as db:
+            from sqlalchemy import func
+            
+            dates = (
+                db.query(func.date(Shift.end_time))
+                .filter(
+                    Shift.chat_id == chat_id,
+                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
+                    Shift.is_closed == True
+                )
+                .distinct()
+                .order_by(func.date(Shift.end_time).desc())
                 .limit(days)
                 .all()
             )

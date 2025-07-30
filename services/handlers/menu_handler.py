@@ -320,7 +320,7 @@ class MenuHandler:
             from services import ShiftService
             
             shift_service = ShiftService()
-            recent_dates = await shift_service.get_recent_dates_with_shifts(chat_id, 3)
+            recent_dates = await shift_service.get_recent_end_dates_with_shifts(chat_id, 3)
             
             if not recent_dates:
                 keyboard = [
@@ -364,8 +364,8 @@ class MenuHandler:
             shift_date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             shift_date = shift_date_obj.date()
             
-            # Get shifts for the specific date
-            shifts = await shift_service.get_shifts_by_date(chat_id, shift_date)
+            # Get shifts for the specific date (by end date for admin bot)
+            shifts = await shift_service.get_shifts_by_end_date(chat_id, shift_date)
             
             if not shifts:
                 await query.edit_message_text(
@@ -388,7 +388,7 @@ class MenuHandler:
             if len(reports) == 1:
                 final_report = reports[0]
             else:
-                final_report = "\n\n" + "="*50 + "\n\n".join(reports)
+                final_report = "".join(reports)
             
             await query.edit_message_text(final_report, parse_mode='HTML')
             return True
