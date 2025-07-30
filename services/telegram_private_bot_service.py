@@ -267,7 +267,7 @@ class TelegramPrivateBot:
             keyboard = []
             for chat in matching_chats:
                 button_text = f"{chat.group_name or 'Unnamed'} (ID: {chat.chat_id})"
-                callback_data = f"bind_{chat.id}"
+                callback_data = f"bind_{chat.chat_id}"
                 keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
             
             # Add cancel button
@@ -296,18 +296,18 @@ class TelegramPrivateBot:
             return ConversationHandler.END
         
         if query.data.startswith("bind_"):
-            group_id = int(query.data.split("_")[1])
+            chat_id = int(query.data.split("_")[1])
             private_chat_id = update.effective_chat.id
             
             try:
                 # Get group info first
-                group = await self.chat_service.get_chat_by_chat_id(group_id)
+                group = await self.chat_service.get_chat_by_chat_id(chat_id)
                 if not group:
                     await query.edit_message_text("Selected group not found.")
                     return ConversationHandler.END
                 
-                # Bind the group
-                self.binding_service.bind_group(private_chat_id, group_id)
+                # Bind the group (use the database id for binding)
+                self.binding_service.bind_group(private_chat_id, group.id)
                 
                 group_name = group.group_name or f"Group {group.chat_id}"
                 

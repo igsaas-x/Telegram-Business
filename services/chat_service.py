@@ -111,6 +111,7 @@ class ChatService:
             finally:
                 session.close()
 
+
     @staticmethod
     async def search_chats_by_chat_id_or_name(search_term: str, limit: int = 5) -> list[Chat]:
         """Search chats by chat_id or group_name, return up to 'limit' results"""
