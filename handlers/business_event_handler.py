@@ -487,10 +487,14 @@ class BusinessEventHandler:
     async def close_current_shift(self, event):
         """Close the current active shift or create new shift if none exists"""
         chat_id = int(event.chat_id)
-        force_log(f"close_current_shift called for chat_id: {chat_id}")
+        current_time = DateUtils.now()
+        force_log(f"CLOSE_CURRENT_SHIFT: Called for chat_id: {chat_id} at {current_time}")
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
+            
+            if current_shift:
+                force_log(f"CLOSE_CURRENT_SHIFT: Found current shift - id={current_shift.id}, number={current_shift.number}, is_closed={current_shift.is_closed}")
 
             if not current_shift:
                 # No active shift, just create a new one
