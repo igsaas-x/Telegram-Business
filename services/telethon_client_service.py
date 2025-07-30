@@ -188,8 +188,8 @@ class TelethonClientService:
                     chat_created = DateUtils.localize_datetime(chat_created)
                 chat_created_utc = chat_created.astimezone(pytz.UTC)
 
-                # Add a 5-minute buffer to handle any timestamp precision issues
-                chat_created_with_buffer = chat_created_utc - timedelta(minutes=5)
+                # Add a 1-minute buffer to handle any timestamp precision issues
+                chat_created_with_buffer = chat_created_utc - timedelta(minutes=1)
                 
                 force_log(
                     f"Message time: {message_time}, Chat created: {chat_created_utc} (with 5min buffer: {chat_created_with_buffer})"
