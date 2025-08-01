@@ -70,6 +70,9 @@ class TelegramPrivateBot:
         elif query.data == "close_conversation":
             await query.edit_message_text("Goodbye! Use /start anytime to access the bot.")
             return ConversationHandler.END
+        elif query.data.startswith("unbind_") or query.data == "cancel":
+            # Delegate unbind selections to the unbind handler
+            return await self.handle_unbind_selection(update, context)
         
         return ConversationHandler.END
 
@@ -528,8 +531,10 @@ class TelegramPrivateBot:
             private_chat_id = update.effective_chat.id
             
             try:
-                # Get group info first
-                group = await self.chat_service.get_chat_by_chat_id(group_id)
+                # Get bound groups to find the group info by database ID
+                bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+                group = next((g for g in bound_groups if g.id == group_id), None)
+                
                 if not group:
                     await query.edit_message_text("Selected group not found.")
                     return ConversationHandler.END
@@ -572,7 +577,7 @@ class TelegramPrivateBot:
         main_handler = ConversationHandler(
             entry_points=[CommandHandler("start", self.start_command)],
             states={
-                START_MENU_CODE: [CallbackQueryHandler(self.handle_start_menu), CallbackQueryHandler(self.handle_unbind_selection)],
+                START_MENU_CODE: [CallbackQueryHandler(self.handle_start_menu)],
                 BIND_GROUP_CODE: [CallbackQueryHandler(self.handle_bind_selection)],
                 BIND_GROUP_SEARCH_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_bind_search)],
                 BIND_GROUP_SELECTION_CODE: [CallbackQueryHandler(self.handle_group_selection)],
