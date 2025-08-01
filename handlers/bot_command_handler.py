@@ -1,15 +1,14 @@
 from telethon import Button
 
-from helper import DateUtils, force_log
 from common.enums import ServicePackage
+from helper import DateUtils, force_log
+from models import User
 from services import (
     ChatService,
     ConversationService,
     IncomeService,
-    UserService,
     GroupPackageService,
 )
-from models import User
 from .bot_event_handler import CommandHandler
 
 contact_message = "សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688"
@@ -71,39 +70,14 @@ class EventHandler:
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
         if not chat:
-            # Chat doesn't exist - automatically register using our own register method
-            try:
-                # Get sender information
-                sender = await event.get_sender()
-
-                user = None
-                # Check if sender is anonymous
-                if sender and hasattr(sender, "id") and sender.id is not None:
-                    # Create user if not exists
-                    user_service = UserService()
-                    user = await user_service.create_user(sender)
-
-                # Use our own register method to register the chat
-                await self.register(event, user)
-
-                # Refresh chat information after registration
-                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
-
-                # If still not available, registration failed
-                if not chat:
-                    return  # Register method would have shown appropriate message
-
-                # No need to show success message here since register method already does that
-
-            except Exception as e:
-                import logging
-
-                logging.error(f"Error during auto-registration: {e}")
-                message = (
-                    "⚠️ Auto-registration failed. Please use /register command manually."
-                )
-                await event.respond(message)
-                return
+            # Chat is not registered - ask user to register first
+            message = (
+                "❌ This group is not registered.\n\n"
+                "Please use /register to register this group, or contact admin for assistance:\n"
+                "https://t.me/HK_688"
+            )
+            await event.respond(message)
+            return
 
         # Check if chat is not active (needs trial period check)
         if not chat.is_active:
@@ -133,7 +107,8 @@ class EventHandler:
         )
         if telethon_message and not_added:
             # Create button to easily add @autosum_kh
-            buttons = [[Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")]]
+            buttons = [[Button.url("➕ Add @autosum_kh", f"https://t.me/autosum_kh")],
+                       [Button.url("Contact Admin", f"https://t.me/HK_688")]]
             await event.respond(telethon_message, buttons=buttons)
             return
 
@@ -142,7 +117,7 @@ class EventHandler:
             event.chat_id
         )
 
-        if group_package.package == ServicePackage.BASIC:
+        if group_package.package == ServicePackage.BASIC or group_package.package == ServicePackage.FREE:
             # Basic package: only current date option
             buttons = [
                 [Button.inline("ថ្ងៃនេះ", "current_date_summary")],
@@ -214,27 +189,36 @@ class EventHandler:
             await event.respond(message)
 
     async def message(self, event):
+        force_log(f"Message received: '{event.message.text}'", "EventHandler")
         if event.message.text.startswith("/"):
+            force_log("Message is a command, skipping", "EventHandler")
             return
 
         replied_message = await event.message.get_reply_message()
         if not replied_message:
+            force_log("No replied message found", "EventHandler")
             return
 
+        force_log(f"Reply detected to message ID: {replied_message.id}", "EventHandler")
         chat_id = event.chat_id
         question = await self.conversation_service.get_question_by_message_id(
             chat_id=chat_id, message_id=replied_message.id
         )
 
+        if question:
+            force_log(f"Found question with type: {question.question_type}", "EventHandler")
+        else:
+            force_log("No question found for this message ID", "EventHandler")
+            return
+
         if question and question.question_type == "date_input":  # type: ignore
+            force_log("Calling date input handler", "EventHandler")
             await self.command_handler.handle_date_input_response(event, question)
             return
 
     async def callback(self, event):
         data = event.data.decode()
-        if any(
-            data.startswith(prefix) for prefix in ["summary_week_", "summary_month_"]
-        ):
+        if any(data.startswith(prefix) for prefix in ["summary_week_", "summary_month_"]):
             await self.command_handler.handle_period_summary(event, data)
             return
 

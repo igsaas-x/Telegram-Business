@@ -15,6 +15,7 @@ anon.*
 
 # Environment files
 .env.local
+.env
 *.log
 debug_log.txt
 logs/

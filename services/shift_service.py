@@ -1,11 +1,17 @@
+import asyncio
 from datetime import date
+
 from sqlalchemy import func
+
 from config import get_db_session
 from helper import force_log, DateUtils
 from models import Shift
 
 
 class ShiftService:
+    def __init__(self):
+        # Lock to prevent race conditions when closing shifts
+        self._close_shift_locks = {}
     async def create_shift(self, chat_id: int) -> Shift:
         """Create a new shift starting now"""
         current_time = DateUtils.now()
@@ -52,16 +58,46 @@ class ShiftService:
     async def close_shift(self, shift_id: int) -> Shift | None:
         """Close a shift by setting end_time and is_closed"""
         current_time = DateUtils.now()
+        force_log(f"CLOSE_SHIFT: Attempting to close shift_id {shift_id} at {current_time}")
 
-        with get_db_session() as db:
-            shift = db.query(Shift).filter(Shift.id == shift_id).first()
-            if shift and not shift.is_closed:
+        # Get or create a lock for this specific shift_id
+        if shift_id not in self._close_shift_locks:
+            self._close_shift_locks[shift_id] = asyncio.Lock()
+        
+        lock = self._close_shift_locks[shift_id]
+        
+        async with lock:
+            force_log(f"CLOSE_SHIFT: Acquired lock for shift_id {shift_id}")
+            
+            with get_db_session() as db:
+                shift = db.query(Shift).filter(Shift.id == shift_id).first()
+                if not shift:
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} not found")
+                    return None
+                    
+                if shift.is_closed:
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} is already closed at {shift.end_time}")
+                    return shift  # Return the already closed shift
+                    
+                # Double-check it's still open (race condition protection)
+                if shift.end_time is not None:
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} already has end_time {shift.end_time}, marking as closed")
+                    shift.is_closed = True
+                    db.commit()
+                    db.refresh(shift)
+                    return shift
+                    
+                force_log(f"CLOSE_SHIFT: Successfully closing shift {shift_id} (was open since {shift.start_time})")
                 shift.end_time = current_time
                 shift.is_closed = True
                 db.commit()
                 db.refresh(shift)
+                
+                # Clean up the lock after successful close to prevent memory leaks
+                if shift_id in self._close_shift_locks:
+                    del self._close_shift_locks[shift_id]
+                
                 return shift
-            return None
 
     async def get_shifts_by_date_range(
         self, chat_id: int, start_date: date, end_date: date
@@ -83,6 +119,23 @@ class ShiftService:
             return (
                 db.query(Shift)
                 .filter(Shift.chat_id == chat_id, Shift.shift_date == shift_date)
+                .order_by(Shift.number)
+                .all()
+            )
+
+    async def get_shifts_by_end_date(self, chat_id: int, end_date: date) -> list[Shift]:
+        """Get shifts that ended on a specific date (for admin bot)"""
+        with get_db_session() as db:
+            from sqlalchemy import func
+            
+            return (
+                db.query(Shift)
+                .filter(
+                    Shift.chat_id == chat_id,
+                    func.date(Shift.end_time) == end_date,
+                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
+                    Shift.is_closed == True
+                )
                 .order_by(Shift.number)
                 .all()
             )
@@ -144,6 +197,28 @@ class ShiftService:
                 .filter(Shift.chat_id == chat_id)
                 .distinct()
                 .order_by(Shift.shift_date.desc())
+                .limit(days)
+                .all()
+            )
+
+            return [d[0] for d in dates]
+
+    async def get_recent_end_dates_with_shifts(
+        self, chat_id: int, days: int = 3
+    ) -> list[date]:
+        """Get last N dates based on shift end dates (for admin bot)"""
+        with get_db_session() as db:
+            from sqlalchemy import func
+            
+            dates = (
+                db.query(func.date(Shift.end_time))
+                .filter(
+                    Shift.chat_id == chat_id,
+                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
+                    Shift.is_closed == True
+                )
+                .distinct()
+                .order_by(func.date(Shift.end_time).desc())
                 .limit(days)
                 .all()
             )

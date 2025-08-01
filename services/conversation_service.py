@@ -1,7 +1,8 @@
-from common.enums import QuestionType
-from models import BotQuestion
-from config import get_db_session
 from typing import Optional, Union
+
+from common.enums import QuestionType
+from config import get_db_session
+from models import BotQuestion
 
 
 class ConversationService:
@@ -28,6 +29,7 @@ class ConversationService:
                 context_data=context_data,
             )
             session.add(new_question)
+            session.commit()  # Commit the transaction to save to database
             return new_question
 
     async def mark_as_replied(
@@ -49,6 +51,7 @@ class ConversationService:
 
             if question:
                 question.mark_as_replied()
+                session.commit()  # Commit the transaction to save changes
                 return question  # type: ignore
             return None
 

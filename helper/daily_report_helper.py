@@ -18,7 +18,7 @@ def format_time_12hour(dt: datetime) -> str:
     return dt.strftime("%I:%M%p").replace("AM", "AM").replace("PM", "PM")
 
 
-def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin", start_date: datetime = None, end_date: datetime = None) -> str:
+def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin") -> str:
     """Generate daily transaction report in the new format"""
     
     # Calculate totals and transaction counts
@@ -50,7 +50,7 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     day = report_date.day
     month_khmer = get_khmer_month_name(report_date.month)
     year = report_date.year
-    
+
     # Build the report using HTML formatting
     report = "<b>សរុបប្រតិបត្តិការ</b>"
     report += f"<b>ថ្ងៃ {day} {month_khmer} {year}</b>\nម៉ោងបូកសរុប <b>{trigger_time}</b>\n"

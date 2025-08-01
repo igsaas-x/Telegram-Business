@@ -5,5 +5,5 @@ class ServicePackage(Enum):
     TRIAL = "TRIAL"
     FREE = "FREE"
     BASIC = "BASIC"
-    UNLIMITED = "UNLIMITED"
+    STANDARD = "STANDARD"
     BUSINESS = "BUSINESS"

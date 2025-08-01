@@ -10,10 +10,10 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
+from common.enums import ServicePackage
 from handlers.business_event_handler import BusinessEventHandler
 from helper import force_log
 from services import ChatService, UserService, GroupPackageService
-from common.enums import ServicePackage
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -148,7 +148,16 @@ class AutosumBusinessBot:
                     if buttons
                     else None
                 )
-                await self.query.edit_message_text(message, reply_markup=keyboard)
+                try:
+                    await self.query.edit_message_text(message, reply_markup=keyboard)
+                except Exception as e:
+                    if "Message is not modified" in str(e):
+                        force_log(f"Message content is identical, skipping edit for chat {self.chat_id}")
+                        # Just answer the callback to remove loading state
+                        await self.query.answer()
+                    else:
+                        # Re-raise other exceptions
+                        raise e
 
             async def respond(self, message, buttons=None):
                 # For callback events, we should edit instead of respond

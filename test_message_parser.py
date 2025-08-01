@@ -134,6 +134,17 @@ Hash: 74f576d0""", '$', 16.0)
                 self.assertEqual(currency, expected_currency)
                 self.assertEqual(amount, expected_amount)
 
+    def test_sathapana_khqr_format(self):
+        """Test sathapana Bank KHQR payment format"""
+        message = "The amount 10.50 USD is paid from TIA PHALLA, ACLEDA Bank Plc., Bill No.: 52081784162 | KHQR on 2025-07-27 11.33.00 AM with Transaction ID: 099QORT252080682, Hash: bf3c3602, Shop-name: Dariya Restaurant"
+        
+        currency, amount = extract_amount_and_currency(message)
+        trx_id = extract_trx_id(message)
+        
+        self.assertEqual(currency, '$')
+        self.assertEqual(amount, 10.5)
+        self.assertEqual(trx_id, '099QORT252080682')
+
     def test_transaction_id_patterns(self):
         """Test various transaction ID patterns"""
         test_cases = [
@@ -144,6 +155,7 @@ Hash: 74f576d0""", '$', 16.0)
             ("Transaction completed, Txn Hash: b117ffd9", "b117ffd9"),
             ("TXN HASH: A1B2C3D4", "A1B2C3D4"),  # case sensitive
             ("Received 5,500 KHR from 010 574 279 Pen Chamnab, 10-Jul-2025 07:50AM. Ref.ID: 51910666401, at MIK YEK NEA.", "51910666401"),
+            ("The amount 10.50 USD is paid from TIA PHALLA, ACLEDA Bank Plc., Bill No.: 52081784162 | KHQR on 2025-07-27 11.33.00 AM with Transaction ID: 099QORT252080682, Hash: bf3c3602, Shop-name: Dariya Restaurant", "099QORT252080682"),
         ]
 
         for message, expected_trx_id in test_cases:
