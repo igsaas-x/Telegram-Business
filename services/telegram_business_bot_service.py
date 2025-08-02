@@ -162,7 +162,7 @@ class AutosumBusinessBot:
             async def delete(self):
                 """Delete the current message"""
                 try:
-                    await self.query.delete_message()
+                    await self.query.message.delete()
                 except Exception as e:
                     force_log(f"Error deleting message in chat {self.chat_id}: {e}")
 
@@ -174,7 +174,7 @@ class AutosumBusinessBot:
                     else None
                 )
                 try:
-                    await self.parent.bot.send_message(
+                    await self.parent.app.bot.send_message(
                         chat_id=self.chat_id,
                         text=message,
                         reply_markup=keyboard,
