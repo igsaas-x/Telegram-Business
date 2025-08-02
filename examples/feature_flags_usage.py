@@ -12,7 +12,9 @@ Example feature flags:
 - "multi_currency": Enable multi-currency support
 """
 
+from common.enums import FeatureFlags
 from services.group_package_service import GroupPackageService
+
 
 # Example usage functions
 async def example_usage():
@@ -23,24 +25,24 @@ async def example_usage():
     
     # 1. Set individual feature flags
     print("Setting individual feature flags...")
-    await service.set_feature_flag(chat_id, "transaction_annotation", True)
-    await service.set_feature_flag(chat_id, "daily_business_reports", True)
-    await service.set_feature_flag(chat_id, "advanced_analytics", False)
+    await service.set_feature_flag(chat_id, FeatureFlags.TRANSACTION_ANNOTATION.value, True)
+    await service.set_feature_flag(chat_id, FeatureFlags.DAILY_BUSINESS_REPORTS.value, True)
+    await service.set_feature_flag(chat_id, FeatureFlags.ADVANCED_ANALYTICS.value, False)
     
     # 2. Set multiple feature flags at once
     print("Setting multiple feature flags...")
     feature_flags = {
-        "custom_export": True,
-        "multi_currency": True,
-        "premium_support": True
+        FeatureFlags.CUSTOM_EXPORT.value: True,
+        FeatureFlags.MULTI_CURRENCY.value: True,
+        FeatureFlags.PREMIUM_SUPPORT.value: True
     }
     await service.update_feature_flags(chat_id, feature_flags)
     
     # 3. Check if features are enabled
     print("Checking feature flags...")
-    has_annotation = await service.has_feature(chat_id, "transaction_annotation")
-    has_reports = await service.get_feature_flag(chat_id, "daily_business_reports")
-    has_analytics = await service.get_feature_flag(chat_id, "advanced_analytics", default=False)
+    has_annotation = await service.has_feature(chat_id, FeatureFlags.TRANSACTION_ANNOTATION.value)
+    has_reports = await service.get_feature_flag(chat_id, FeatureFlags.DAILY_BUSINESS_REPORTS.value)
+    has_analytics = await service.get_feature_flag(chat_id, FeatureFlags.ADVANCED_ANALYTICS.value, default=False)
     
     print(f"Transaction annotation: {has_annotation}")
     print(f"Daily business reports: {has_reports}")
@@ -53,16 +55,16 @@ async def example_usage():
     
     # 5. Remove a feature flag
     print("Removing a feature flag...")
-    await service.remove_feature_flag(chat_id, "advanced_analytics")
+    await service.remove_feature_flag(chat_id, FeatureFlags.ADVANCED_ANALYTICS.value)
     
     # 6. Using feature flags in business logic
     print("Example business logic usage...")
-    if await service.has_feature(chat_id, "transaction_annotation"):
+    if await service.has_feature(chat_id, FeatureFlags.TRANSACTION_ANNOTATION.value):
         print("Show transaction annotation UI")
     else:
         print("Hide transaction annotation UI")
     
-    if await service.has_feature(chat_id, "daily_business_reports"):
+    if await service.has_feature(chat_id, FeatureFlags.DAILY_BUSINESS_REPORTS.value):
         print("Enable daily reports for business groups")
     else:
         print("Disable daily reports for business groups")
@@ -78,9 +80,9 @@ async def example_bot_integration():
         """Example menu handler with feature flags"""
         
         # Check if advanced features are enabled
-        has_annotation = await service.has_feature(chat_id, "transaction_annotation")
-        has_daily_reports = await service.has_feature(chat_id, "daily_business_reports")
-        has_custom_export = await service.has_feature(chat_id, "custom_export")
+        has_annotation = await service.has_feature(chat_id, FeatureFlags.TRANSACTION_ANNOTATION.value)
+        has_daily_reports = await service.has_feature(chat_id, FeatureFlags.DAILY_BUSINESS_REPORTS.value)
+        has_custom_export = await service.has_feature(chat_id, FeatureFlags.CUSTOM_EXPORT.value)
         
         menu_options = ["📊 Basic Reports", "💰 View Balance"]
         
@@ -98,27 +100,14 @@ async def example_bot_integration():
     async def handle_export_command(chat_id: int):
         """Example export handler with feature flags"""
         
-        if not await service.has_feature(chat_id, "custom_export"):
+        if not await service.has_feature(chat_id, FeatureFlags.CUSTOM_EXPORT.value):
             return "❌ Custom export feature is not enabled for your package"
         
         # Proceed with custom export logic
         return "✅ Custom export available"
 
 
-# Example feature flag constants
-class FeatureFlags:
-    """Constants for feature flag keys"""
-    
-    TRANSACTION_ANNOTATION = "transaction_annotation"
-    DAILY_BUSINESS_REPORTS = "daily_business_reports"
-    ADVANCED_ANALYTICS = "advanced_analytics"
-    CUSTOM_EXPORT = "custom_export"
-    MULTI_CURRENCY = "multi_currency"
-    PREMIUM_SUPPORT = "premium_support"
-    SHIFT_MANAGEMENT = "shift_management"
-    AUTOMATED_REPORTS = "automated_reports"
-    API_ACCESS = "api_access"
-    CUSTOM_BRANDING = "custom_branding"
+# Feature flag constants are now imported from common.enums.FeatureFlags
 
 
 # Example package-based feature defaults
@@ -129,26 +118,26 @@ async def setup_package_features(chat_id: int, package_type: str):
     
     if package_type == "TRIAL":
         features = {
-            FeatureFlags.TRANSACTION_ANNOTATION: False,
-            FeatureFlags.DAILY_BUSINESS_REPORTS: False,
-            FeatureFlags.ADVANCED_ANALYTICS: False,
-            FeatureFlags.CUSTOM_EXPORT: False,
+            FeatureFlags.TRANSACTION_ANNOTATION.value: False,
+            FeatureFlags.DAILY_BUSINESS_REPORTS.value: False,
+            FeatureFlags.ADVANCED_ANALYTICS.value: False,
+            FeatureFlags.CUSTOM_EXPORT.value: False,
         }
     elif package_type == "STANDARD":
         features = {
-            FeatureFlags.TRANSACTION_ANNOTATION: True,
-            FeatureFlags.DAILY_BUSINESS_REPORTS: True,
-            FeatureFlags.ADVANCED_ANALYTICS: False,
-            FeatureFlags.CUSTOM_EXPORT: False,
+            FeatureFlags.TRANSACTION_ANNOTATION.value: True,
+            FeatureFlags.DAILY_BUSINESS_REPORTS.value: True,
+            FeatureFlags.ADVANCED_ANALYTICS.value: False,
+            FeatureFlags.CUSTOM_EXPORT.value: False,
         }
     elif package_type == "BUSINESS":
         features = {
-            FeatureFlags.TRANSACTION_ANNOTATION: True,
-            FeatureFlags.DAILY_BUSINESS_REPORTS: True,
-            FeatureFlags.ADVANCED_ANALYTICS: True,
-            FeatureFlags.CUSTOM_EXPORT: True,
-            FeatureFlags.SHIFT_MANAGEMENT: True,
-            FeatureFlags.API_ACCESS: True,
+            FeatureFlags.TRANSACTION_ANNOTATION.value: True,
+            FeatureFlags.DAILY_BUSINESS_REPORTS.value: True,
+            FeatureFlags.ADVANCED_ANALYTICS.value: True,
+            FeatureFlags.CUSTOM_EXPORT.value: True,
+            FeatureFlags.SHIFT_MANAGEMENT.value: True,
+            FeatureFlags.API_ACCESS.value: True,
         }
     else:
         features = {}

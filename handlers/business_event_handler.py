@@ -1,6 +1,6 @@
 from typing import List
 
-from common.enums import ServicePackage
+from common.enums import ServicePackage, FeatureFlags
 from helper import DateUtils, shift_report_format, current_shift_report_format
 from helper.logger_utils import force_log
 from models import User
@@ -67,21 +67,37 @@ class BusinessEventHandler:
         # await self.check_auto_close_shift(chat_id)
 
         current_shift = await self.shift_service.get_current_shift(chat_id)
+        
+        # Check if weekly/monthly reports feature is enabled
+        has_weekly_monthly_reports = await self.group_package_service.has_feature(
+            chat_id, FeatureFlags.WEEKLY_MONTHLY_REPORTS.value
+        )
 
         if current_shift:
             buttons = [
                 [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
-                # [("🛑 បិទបញ្ជី", "close_shift")],
-                [("❌ ត្រលប់ក្រោយ", "close_menu")],
             ]
+            
+            # Add weekly/monthly reports if feature is enabled
+            if has_weekly_monthly_reports:
+                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+            
+            buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
-                [("❌ បិទ", "close_menu")],
             ]
+            
+            # Add weekly/monthly reports if feature is enabled
+            if has_weekly_monthly_reports:
+                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+            
+            buttons.append([("❌ បិទ", "close_menu")])
 
         message = f"""
 ជ្រើសរើសជម្រើសខាងក្រោម
@@ -157,6 +173,14 @@ class BusinessEventHandler:
             await self.show_specific_shift_report(event, data)
         elif data.startswith("date_"):
             await self.show_date_shifts(event, data)
+        elif data == "weekly_reports":
+            await self.show_weekly_reports(event)
+        elif data == "monthly_reports":
+            await self.show_monthly_reports(event)
+        elif data.startswith("week_"):
+            await self.show_weekly_report(event, data)
+        elif data.startswith("month_"):
+            await self.show_monthly_report(event, data)
         else:
             # Fallback to regular command handler
             await self.command_handler.handle_callback_query(event)
@@ -664,3 +688,187 @@ Telegram: https://t.me/HK_688
             message = "❌ មានបញ្ហាក្នុងការទាញយកស្ថានភាពការកំណត់។"
 
         await event.respond(message)
+
+    async def show_weekly_reports(self, event):
+        """Show weekly report options for current month"""
+        try:
+            from datetime import datetime
+            from calendar import monthrange
+            
+            now = DateUtils.now()
+            current_month = now.month
+            current_year = now.year
+            
+            # Get the number of days in current month
+            _, days_in_month = monthrange(current_year, current_month)
+            
+            message = f"📆 របាយការណ៍ប្រចាំសប្តាហ៍ - {now.strftime('%B %Y')}\n\nជ្រើសរើសសប្តាហ៍:"
+            
+            buttons = []
+            
+            # Week 1: 1-7
+            week1_end = min(7, days_in_month)
+            buttons.append([(f"សប្តាហ៍ 1 (1-{week1_end})", f"week_{current_year}-{current_month:02d}-1")])
+            
+            # Week 2: 8-14
+            if days_in_month >= 8:
+                week2_end = min(14, days_in_month)
+                buttons.append([(f"សប្តាហ៍ 2 (8-{week2_end})", f"week_{current_year}-{current_month:02d}-2")])
+            
+            # Week 3: 15-21
+            if days_in_month >= 15:
+                week3_end = min(21, days_in_month)
+                buttons.append([(f"សប្តាហ៍ 3 (15-{week3_end})", f"week_{current_year}-{current_month:02d}-3")])
+            
+            # Week 4: 22-end of month
+            if days_in_month >= 22:
+                buttons.append([(f"សប្តាហ៍ 4 (22-{days_in_month})", f"week_{current_year}-{current_month:02d}-4")])
+            
+            buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
+            
+            await event.edit(message, buttons=buttons)
+            
+        except Exception as e:
+            force_log(f"Error showing weekly reports: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+
+    async def show_monthly_reports(self, event):
+        """Show monthly report options"""
+        try:
+            from datetime import datetime
+            
+            now = DateUtils.now()
+            current_year = now.year
+            
+            message = f"📊 របាយការណ៍ប្រចាំខែ - {current_year}\n\nជ្រើសរើសខែ:"
+            
+            buttons = []
+            
+            # Show months in two columns like the main bot
+            for month in range(1, 13, 2):
+                month_date_1 = datetime(current_year, month, 1)
+                label_1 = month_date_1.strftime("%B %Y")
+                callback_value_1 = month_date_1.strftime("%Y-%m")
+                
+                row = [(label_1, f"month_{callback_value_1}")]
+                
+                if month + 1 <= 12:
+                    month_date_2 = datetime(current_year, month + 1, 1)
+                    label_2 = month_date_2.strftime("%B %Y")
+                    callback_value_2 = month_date_2.strftime("%Y-%m")
+                    row.append((label_2, f"month_{callback_value_2}"))
+                
+                buttons.append(row)
+            
+            buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
+            
+            await event.edit(message, buttons=buttons)
+            
+        except Exception as e:
+            force_log(f"Error showing monthly reports: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+
+    async def show_weekly_report(self, event, data):
+        """Show report for a specific week"""
+        chat_id = int(event.chat_id)
+        week_data = data.replace("week_", "")
+        
+        try:
+            from datetime import datetime
+            from calendar import monthrange
+            
+            # Parse week data: YYYY-MM-W (e.g., "2024-02-1")
+            parts = week_data.split("-")
+            year = int(parts[0])
+            month = int(parts[1])
+            week_number = int(parts[2])
+            
+            # Calculate week date range
+            _, days_in_month = monthrange(year, month)
+            
+            if week_number == 1:
+                start_day = 1
+                end_day = min(7, days_in_month)
+            elif week_number == 2:
+                start_day = 8
+                end_day = min(14, days_in_month)
+            elif week_number == 3:
+                start_day = 15
+                end_day = min(21, days_in_month)
+            elif week_number == 4:
+                start_day = 22
+                end_day = days_in_month
+            else:
+                raise ValueError("Invalid week number")
+            
+            start_date = datetime(year, month, start_day)
+            end_date = datetime(year, month, end_day, 23, 59, 59)
+            
+            # Get income data for the week
+            incomes = await self.income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            
+            if not incomes:
+                message = f"""
+📆 របាយការណ៍សប្តាហ៍ {week_number} ({start_day}-{end_day} {start_date.strftime('%B %Y')})
+
+🔴 គ្មានប្រតិបត្តិការសម្រាប់សប្តាហ៍នេះទេ។
+"""
+            else:
+                # Use weekly report format similar to telegram bot service
+                from helper import weekly_transaction_report
+                message = weekly_transaction_report(incomes, start_date, end_date)
+            
+            await event.edit(message, buttons=None)
+            
+        except Exception as e:
+            force_log(f"Error showing weekly report: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+
+    async def show_monthly_report(self, event, data):
+        """Show report for a specific month"""
+        chat_id = int(event.chat_id)
+        month_data = data.replace("month_", "")
+        
+        try:
+            from datetime import datetime
+            from calendar import monthrange
+            
+            # Parse month data: YYYY-MM (e.g., "2024-02")
+            start_date = datetime.strptime(month_data, "%Y-%m")
+            
+            # Get last day of month
+            _, last_day = monthrange(start_date.year, start_date.month)
+            end_date = start_date.replace(day=last_day, hour=23, minute=59, second=59)
+            
+            # Get income data for the month
+            incomes = await self.income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            
+            if not incomes:
+                period_text = start_date.strftime("%B %Y")
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+            else:
+                # Use monthly report format similar to telegram bot service
+                from helper import monthly_transaction_report
+                message = monthly_transaction_report(incomes, start_date, end_date)
+            
+            await event.edit(message, buttons=None)
+            
+        except Exception as e:
+            force_log(f"Error showing monthly report: {e}", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
