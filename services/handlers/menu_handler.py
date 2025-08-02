@@ -174,11 +174,20 @@ class MenuHandler:
             year = now.year
             keyboard = []
             
-            for month in range(1, 13):
-                month_date = datetime(year, month, 1)
-                label = month_date.strftime("%B %Y")
-                callback_value = month_date.strftime("%Y-%m")
-                keyboard.append([InlineKeyboardButton(label, callback_data=f"summary_month_{callback_value}")])
+            for month in range(1, 13, 2):
+                month_date_1 = datetime(year, month, 1)
+                label_1 = month_date_1.strftime("%B %Y")
+                callback_value_1 = month_date_1.strftime("%Y-%m")
+                
+                row = [InlineKeyboardButton(label_1, callback_data=f"summary_month_{callback_value_1}")]
+                
+                if month + 1 <= 12:
+                    month_date_2 = datetime(year, month + 1, 1)
+                    label_2 = month_date_2.strftime("%B %Y")
+                    callback_value_2 = month_date_2.strftime("%Y-%m")
+                    row.append(InlineKeyboardButton(label_2, callback_data=f"summary_month_{callback_value_2}"))
+                
+                keyboard.append(row)
             
             keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
             
