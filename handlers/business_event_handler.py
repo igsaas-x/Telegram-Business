@@ -345,7 +345,7 @@ class BusinessEventHandler:
         await event.edit(message, buttons=buttons)
 
     async def show_date_shifts(self, event, data):
-        """Show shifts for a specific date"""
+        """Show all shift reports for a specific date in one response"""
         chat_id = int(event.chat_id)
         date_str = data.replace("date_", "")
         force_log(
@@ -354,51 +354,38 @@ class BusinessEventHandler:
 
         try:
             from datetime import datetime
+            from helper import shift_report
 
-            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            force_log(f"Parsed date: {selected_date}")
-            shifts = await self.shift_service.get_shifts_by_end_date(chat_id, selected_date)
-            force_log(f"Found {len(shifts)} shifts for date {selected_date}")
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d")
+            parsed_date = selected_date.date()
+            force_log(f"Parsed date: {parsed_date}")
+            shifts = await self.shift_service.get_shifts_by_end_date(chat_id, parsed_date)
+            force_log(f"Found {len(shifts)} shifts for date {parsed_date}")
 
             if not shifts:
                 message = f"""
-📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}
+📅 វេនសម្រាប់ថ្ងៃ {parsed_date.strftime('%d %b %Y')}
 
 🔴 គ្មានវេនសម្រាប់ថ្ងៃនេះ។
 """
-                buttons = [
-                    [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
-                    [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
-                ]
             else:
-                message = f"📅 វេនសម្រាប់ថ្ងៃ {selected_date.strftime('%d %b %Y')}\n\nជ្រើសរើសវេនដែលអ្នកចង់មើល:"
-
-                buttons = []
+                # Generate reports for all shifts on that date
+                reports = []
                 for shift in shifts:
-                    force_log(f"Processing shift {shift.id}, number {shift.number}")
-                    shift_summary = await self.shift_service.get_shift_income_summary(
-                        shift.id, chat_id
-                    )
-                    force_log(f"Got shift summary: {shift_summary}")
-                    start_time = shift.start_time.strftime("%I:%M %p")
-                    end_time = (
-                        shift.end_time.strftime("%I:%M %p")
-                        if shift.end_time
-                        else "កំពុងបន្ត"
-                    )
-                    status = "🔴" if shift.is_closed else "🟢"
+                    try:
+                        report = await shift_report(shift.id, shift.number, selected_date)
+                        reports.append(report)
+                    except Exception as e:
+                        force_log(f"Error generating report for shift {shift.id}: {e}", "ERROR")
+                        reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
+                
+                # Combine all reports
+                if len(reports) == 1:
+                    message = reports[0]
+                else:
+                    message = "".join(reports)
 
-                    button_text = (
-                        f"{status} វេន #{shift.number} ({start_time}-{end_time})"
-                    )
-                    buttons.append([(button_text, f"shift_{shift.id}")])
-
-                buttons.extend(
-                    [
-                        [("🔙 ត្រឡប់ទៅថ្ងៃផ្សេង", "other_days_report")],
-                        [("🏠 ត្រឡប់ទៅមីនុយ", "back_to_menu")],
-                    ]
-                )
+            buttons = None
 
         except Exception as e:
             force_log(f"Error showing date shifts: {e}", "ERROR")
