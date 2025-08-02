@@ -826,7 +826,8 @@ Telegram: https://t.me/HK_688
                 from helper import weekly_transaction_report
                 message = weekly_transaction_report(incomes, start_date, end_date)
             
-            await event.edit(message, buttons=None)
+            await event.delete()
+            await event.respond(message, parse_mode='HTML')
             
         except Exception as e:
             force_log(f"Error showing weekly report: {e}", "ERROR")
@@ -865,7 +866,8 @@ Telegram: https://t.me/HK_688
                 from helper import monthly_transaction_report
                 message = monthly_transaction_report(incomes, start_date, end_date)
             
-            await event.edit(message, buttons=None)
+            await event.delete()
+            await event.respond(message, parse_mode='HTML')
             
         except Exception as e:
             force_log(f"Error showing monthly report: {e}", "ERROR")
