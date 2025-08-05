@@ -64,8 +64,13 @@ class EventHandler:
             return None, False
 
     async def menu(self, event):
+        # Debug logging to understand what's happening
+        force_log(f"Menu called - Chat ID: {event.chat_id}, is_private: {event.is_private}, chat type: {type(event.chat)}")
+        
         if event.is_private:
-            await event.respond(contact_message)
+            force_log("Detected as private chat, sending group-only message")
+            await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
+            return
 
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
