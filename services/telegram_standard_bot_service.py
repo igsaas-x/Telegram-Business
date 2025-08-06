@@ -16,6 +16,23 @@ class TelegramBotService:
         self.user_service = UserService()
         self.chat_service = ChatService()
 
+    async def send_message_to_chat(self, chat_id: int, message: str):
+        """
+        Send a message to a specific chat
+        
+        Args:
+            chat_id: The chat ID to send the message to
+            message: The message text to send
+        """
+        try:
+            if self.bot:
+                await self.bot.send_message(chat_id, message)
+                force_log(f"Message sent to chat {chat_id}: {message[:50]}...")
+            else:
+                force_log("Bot is not initialized, cannot send message")
+        except Exception as e:
+            force_log(f"Failed to send message to chat {chat_id}: {str(e)}")
+
     async def start(self, bot_token: str):
         self.bot = TelegramClient(
             "bot", int(os.getenv("API_ID1")), os.getenv("API_HASH1")  # type: ignore
