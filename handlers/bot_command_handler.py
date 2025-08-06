@@ -74,8 +74,10 @@ class EventHandler:
 
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
+        force_log(f"Chat found: {chat is not None}, is_active: {chat.is_active if chat else 'N/A'}, created_at: {chat.created_at if chat else 'N/A'}")
         if not chat:
             # Chat is not registered - ask user to register first
+            force_log("Chat not found in database - not registered")
             message = (
                 "❌ This group is not registered.\n\n"
                 "Please use /register to register this group, or contact admin for assistance:\n"
@@ -95,13 +97,20 @@ class EventHandler:
             trial_end = DateUtils.localize_datetime(trial_end)
 
             if DateUtils.now() > trial_end:
-                # Trial expired - ask user to contact admin
+                # Trial expired - ask user to register or contact admin
+                force_log("Trial period expired, asking user to register or contact admin")
+
+                register_message = (
+                    "❌ This group's trial period has expired.\n\n"
+                    "Please use /register to register this group again, or contact admin for assistance:\n"
+                    "https://t.me/HK_688"
+                )
 
                 # Check if this is a callback (return button) or new command
                 if hasattr(event, "callback_query") and event.callback_query:
-                    await event.edit(contact_message)
+                    await event.edit(register_message)
                 else:
-                    await event.respond(contact_message)
+                    await event.respond(register_message)
                 return
             # If within trial period, continue to show menu (don't update is_active)
 
@@ -164,9 +173,15 @@ class EventHandler:
 
         # Add a menu button to the response message for successful registration
         if success:
+            # Make the chat active during registration
+            try:
+                await chat_service.update_chat_status(chat_id, True)
+                force_log(f"Set chat_id {chat_id} as active during registration")
+            except Exception as status_error:
+                force_log(f"Error setting chat status to active for chat_id {chat_id}: {status_error}")
+            
             # Assign TRIAL package for normal bot registrations
             try:
-
                 await self.group_package_service.create_group_package(
                     chat_id, ServicePackage.TRIAL
                 )

@@ -90,7 +90,7 @@ class TelegramBotService:
                             f"Chat {event.chat_id} already registered with same user"
                         )
                         await event.respond(
-                            f"Chat ID {event.chat_id} is already registered."
+                            f"Chat ID {event.chat_id} is already registered with the same user."
                         )
                     return
 
