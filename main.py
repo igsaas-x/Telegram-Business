@@ -9,11 +9,12 @@ from alembic.config import Config
 from config import load_environment
 from helper.credential_loader import CredentialLoader
 from schedulers import AutoCloseScheduler
+from schedulers.package_expiry_scheduler import PackageExpiryScheduler
 from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
-from services.autosum_business_bot_service import AutosumBusinessBot
 from services.telegram_admin_bot_service import TelegramAdminBot
-from services.telegram_bot_service import TelegramBotService
+from services.telegram_business_bot_service import AutosumBusinessBot
 from services.telegram_private_bot_service import TelegramPrivateBot
+from services.telegram_standard_bot_service import TelegramBotService
 from services.telethon_client_service import TelethonClientService
 
 load_environment()
@@ -73,6 +74,11 @@ async def main(loader: CredentialLoader) -> None:
         private_bot = TelegramPrivateBot(loader.private_chat_bot_token)
         auto_close_scheduler = AutoCloseScheduler(bot_service=business_bot)
         trial_expiry_scheduler = TrialExpiryScheduler()
+        package_expiry_scheduler = PackageExpiryScheduler(
+            standard_bot_service=telegram_bot_service,
+            business_bot_service=business_bot,
+            admin_bot_service=admin_bot
+        )
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -94,6 +100,7 @@ async def main(loader: CredentialLoader) -> None:
             asyncio.create_task(admin_bot.start_polling()),
             asyncio.create_task(auto_close_scheduler.start_scheduler()),
             asyncio.create_task(trial_expiry_scheduler.start_scheduler()),
+            asyncio.create_task(package_expiry_scheduler.start_scheduler()),
         ]
 
         # Add business bot only if token is provided

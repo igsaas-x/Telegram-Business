@@ -28,7 +28,13 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     
     # Format date range for title
     start_day = start_date.day
-    end_day = end_date.day - 1  # Subtract 1 since end_date is exclusive
+    # Check if end_date is exclusive (00:00:00) or inclusive (23:59:59)
+    if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
+        # Standard bot format: end_date is exclusive (next day)
+        end_day = end_date.day - 1
+    else:
+        # Business bot format: end_date is inclusive (23:59:59 of actual end day)
+        end_day = end_date.day
     month_khmer = get_khmer_month_name(end_date.month)
     year = end_date.year
     
@@ -41,7 +47,7 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     current_date = start_date.date()
     end_date_actual = end_date.date()
     
-    while current_date < end_date_actual:
+    while current_date <= end_date_actual:
         day_num = current_date.day
         day_data = daily_data.get(current_date, {"KHR": 0, "USD": 0, "count": 0})
         
@@ -57,7 +63,7 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
         })
         
         current_date = current_date.replace(day=current_date.day + 1) if current_date.day < 31 else current_date.replace(month=current_date.month + 1, day=1)
-        if current_date >= end_date_actual:
+        if current_date > end_date_actual:
             break
     
     # Calculate maximum widths for alignment
