@@ -108,28 +108,22 @@ class TelethonClientService:
             try:
                 sender = await event.get_sender()
                 is_bot = getattr(sender, "bot", False)
-
-                # Ignore specific bot
                 username = getattr(sender, "username", "") or ""
 
-                # Check if this is a private chat (not a group)
-                if event.is_private and not is_bot and username != "autosum_kh":
-                    force_log(f"Private chat detected, sending auto-response")
-                    await event.respond("សូមទាក់ទងទៅអ្នកគ្រប់គ្រង: https://t.me/HK_688")
-                    return
-
-                # Only listen to bot messages, ignore human messages
-                if not is_bot:
-                    force_log(f"Message from human user, ignoring")
-                    return
-
-                if username == "AutosumBusinessBot" or username == "AutoSum_bot":
-                    force_log(f"Message from Autosum, ignoring")
-                    return
-
-                lowercase_username = username.lower()
-                if "salmon" in lowercase_username or "report" in lowercase_username or "kambaul" in lowercase_username:
-                    force_log(f"Message from user with 'salmon/report/kambaul' in username ({username}), ignoring")
+                # Only process messages from the specified bots
+                allowed_bots = {
+                    "ACLEDABankBot",
+                    "PayWayByABA_bot",
+                    "PLBITBot",
+                    "CanadiaMerchant_bot",
+                    "HLBCAM_Bot",
+                    "vattanac_bank_merchant_prod_bot",
+                    "CPBankBot",
+                    "SathapanaBank_bot",
+                    "chipmongbankpaymentbot"
+                }
+                if username not in allowed_bots:
+                    force_log(f"Message from bot '{username}' not in allowed list, ignoring.")
                     return
 
                 # Skip if no message text
