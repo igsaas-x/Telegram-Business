@@ -47,70 +47,69 @@ class PackageExpiryScheduler:
                     )
                 ).all()
 
-                notification_count = 0
+                # Temporarily disable user group notifications
+                # notification_count = 0
+                # for group_package in expiring_packages:
+                #     try:
+                #         chat_group = group_package.chat_group
+                #         if not chat_group:
+                #             force_log(f"No chat group found for package ID {group_package.id}")
+                #             continue
+                #
+                #         # Format the expiry date for display
+                #         expiry_date_str = group_package.package_end_date.strftime("%Y-%m-%d %H:%M")
+                #
+                #         # Create notification message
+                #         message = (
+                #             f"⚠️ **Package Expiry Notice** ⚠️\n\n"
+                #             f"Dear members,\n\n"
+                #             f"Your {group_package.package.value} package is about to expire!\n"
+                #             f"📅 **Expiry Date:** {expiry_date_str} (Cambodia Time)\n"
+                #             f"⏰ **Time Remaining:** 3 days\n\n"
+                #             f"Please renew your package to continue enjoying our services without interruption.\n\n"
+                #             f"Contact support for renewal assistance."
+                #         )
+                #
+                #         # Choose the appropriate bot service based on package type
+                #         if group_package.package == ServicePackage.BUSINESS:
+                #             # Use business bot for BUSINESS packages
+                #             if self.business_bot_service:
+                #                 success = await self.business_bot_service.send_message(chat_group.chat_id, message)
+                #                 if success:
+                #                     notification_count += 1
+                #                     force_log(
+                #                         f"Sent expiry notification via business bot to group {chat_group.chat_id} "
+                #                         f"(Package: {group_package.package.value}, "
+                #                         f"Expires: {expiry_date_str})",
+                #                         "package_expiry_scheduler"
+                #                     )
+                #                 else:
+                #                     force_log(
+                #                         f"Failed to send notification via business bot to group {chat_group.chat_id}",
+                #                         "package_expiry_scheduler"
+                #                     )
+                #             else:
+                #                 force_log("Business bot service not available for BUSINESS package notification", "package_expiry_scheduler")
+                #         else:
+                #             # Use standard bot for BASIC and STANDARD packages
+                #             await self.standard_bot_service.send_message_to_chat(chat_group.chat_id, message)
+                #             notification_count += 1
+                #             force_log(
+                #                 f"Sent expiry notification via standard bot to group {chat_group.chat_id} "
+                #                 f"(Package: {group_package.package.value}, "
+                #                 f"Expires: {expiry_date_str})",
+                #                 "package_expiry_scheduler"
+                #             )
+                #
+                #     except Exception as e:
+                #         force_log(
+                #             f"Failed to send expiry notification to group {group_package.chat_group_id}: {str(e)}",
+                #             "package_expiry_scheduler"
+                #         )
 
-                for group_package in expiring_packages:
-                    try:
-                        chat_group = group_package.chat_group
-                        if not chat_group:
-                            force_log(f"No chat group found for package ID {group_package.id}")
-                            continue
-
-                        # Format the expiry date for display
-                        expiry_date_str = group_package.package_end_date.strftime("%Y-%m-%d %H:%M")
-                        
-                        # Create notification message
-                        message = (
-                            f"⚠️ **Package Expiry Notice** ⚠️\n\n"
-                            f"Dear members,\n\n"
-                            f"Your {group_package.package.value} package is about to expire!\n"
-                            f"📅 **Expiry Date:** {expiry_date_str} (Cambodia Time)\n"
-                            f"⏰ **Time Remaining:** 3 days\n\n"
-                            f"Please renew your package to continue enjoying our services without interruption.\n\n"
-                            f"Contact support for renewal assistance."
-                        )
-
-                        # Choose the appropriate bot service based on package type
-                        if group_package.package == ServicePackage.BUSINESS:
-                            # Use business bot for BUSINESS packages
-                            if self.business_bot_service:
-                                success = await self.business_bot_service.send_message(chat_group.chat_id, message)
-                                if success:
-                                    notification_count += 1
-                                    force_log(
-                                        f"Sent expiry notification via business bot to group {chat_group.chat_id} "
-                                        f"(Package: {group_package.package.value}, "
-                                        f"Expires: {expiry_date_str})",
-                                        "package_expiry_scheduler"
-                                    )
-                                else:
-                                    force_log(
-                                        f"Failed to send notification via business bot to group {chat_group.chat_id}",
-                                        "package_expiry_scheduler"
-                                    )
-                            else:
-                                force_log("Business bot service not available for BUSINESS package notification", "package_expiry_scheduler")
-                        else:
-                            # Use standard bot for BASIC and STANDARD packages
-                            await self.standard_bot_service.send_message_to_chat(chat_group.chat_id, message)
-                            notification_count += 1
-                            force_log(
-                                f"Sent expiry notification via standard bot to group {chat_group.chat_id} "
-                                f"(Package: {group_package.package.value}, "
-                                f"Expires: {expiry_date_str})",
-                                "package_expiry_scheduler"
-                            )
-
-                    except Exception as e:
-                        force_log(
-                            f"Failed to send expiry notification to group {group_package.chat_group_id}: {str(e)}",
-                            "package_expiry_scheduler"
-                        )
-
-                if notification_count > 0:
-                    force_log(f"Successfully sent {notification_count} package expiry notifications")
-                    
-                    # Send admin alert if there were expiring packages
+                if expiring_packages:
+                    force_log(f"Found {len(expiring_packages)} packages expiring in 3 days")
+                    # Send admin alert only
                     await self.send_admin_alert(expiring_packages)
                 else:
                     force_log("No packages found expiring in 3 days")
