@@ -166,6 +166,10 @@ jobs:
           
           pip install -r requirements.txt
           
+          # Deploy telethon service file
+          sudo cp .github/service/mytelethon.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
           # Stop any existing telethon service
           sudo systemctl stop mytelethon || true
           
@@ -210,6 +214,10 @@ jobs:
           EOF
           
           pip install -r requirements.txt
+          
+          # Deploy bot service file
+          sudo cp .github/service/mytelegrambot.service /etc/systemd/system/
+          sudo systemctl daemon-reload
           
           # Stop any existing bot service
           sudo systemctl stop mytelegrambot || true
