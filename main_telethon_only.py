@@ -3,9 +3,6 @@ import logging
 import signal
 from typing import Set
 
-from alembic import command
-from alembic.config import Config
-
 from config import load_environment
 from helper.credential_loader import CredentialLoader
 from services.telethon_client_service import TelethonClientService
@@ -62,10 +59,6 @@ async def main(loader: CredentialLoader) -> None:
     try:
         logger.info("Starting Telethon Client Only Mode...")
         telethon_client_service = TelethonClientService()
-
-        # Run database migrations
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
 
         loop = asyncio.get_running_loop()
         handle_signals(loop)
