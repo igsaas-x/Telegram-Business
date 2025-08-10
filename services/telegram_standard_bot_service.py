@@ -76,7 +76,9 @@ class TelegramBotService:
                     await update.message.reply_text("❌ This bot only works in groups. Please add this bot to a group to use it.")
                     return
                 
-                await self.event_handler.menu(update)
+                # Create telethon-like event object for compatibility
+                telethon_event = self._create_telethon_event_adapter(update)
+                await self.event_handler.menu(telethon_event)
             except Exception as e:
                 force_log(f"Error in menu_handler: {e}")
                 await update.message.reply_text("An error occurred. Please try again.")
@@ -126,7 +128,9 @@ class TelegramBotService:
                     return
 
                 force_log(f"Proceeding with new registration for chat {chat_id}")
-                await self.event_handler.register(update, registered_user)
+                # Create telethon-like event object for compatibility
+                telethon_event = self._create_telethon_event_adapter(update)
+                await self.event_handler.register(telethon_event, registered_user)
             except Exception as e:
                 print(f"Error on registration {e}")
                 force_log(f"Error in register_handler: {e}")
@@ -144,7 +148,9 @@ class TelegramBotService:
 
         async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
-                await self.event_handler.callback(update)
+                # Create telethon-like event object for compatibility
+                telethon_event = self._create_telethon_event_adapter(update)
+                await self.event_handler.callback(telethon_event)
             except Exception as e:
                 print(f"Error in callback_handler: {e}")
                 force_log(f"Error in callback_handler: {e}")
@@ -170,7 +176,9 @@ class TelegramBotService:
                     return  # Don't process this message further
 
                 # If not a migration event, process normally
-                await self.event_handler.message(update)
+                # Create telethon-like event object for compatibility  
+                telethon_event = self._create_telethon_event_adapter(update)
+                await self.event_handler.message(telethon_event)
             except Exception as e:
                 force_log(f"Error in message_handler: {e}")
                 # Don't respond here as it might cause message loops for regular messages
@@ -181,3 +189,29 @@ class TelegramBotService:
         self.application.add_handler(CommandHandler("contact_us", contact_us_handler))
         self.application.add_handler(CallbackQueryHandler(callback_handler))
         self.application.add_handler(MessageHandler(filters.ALL, message_handler))
+
+    def _create_telethon_event_adapter(self, update: Update):
+        """Create a telethon-like event object for compatibility with existing EventHandler"""
+        bot_instance = self.bot
+        
+        class TelethonEventAdapter:
+            def __init__(self, update: Update):
+                self.update = update
+                self.chat_id = update.effective_chat.id if update.effective_chat else None
+                self.message = update.message or update.callback_query.message if update.callback_query else None
+                self.is_private = update.effective_chat.type == 'private' if update.effective_chat else False
+                self.data = update.callback_query.data if update.callback_query else None
+                self.client = bot_instance  # For compatibility, though may not work for all methods
+            
+            async def respond(self, message: str):
+                """Telethon-like respond method"""
+                if self.update.callback_query:
+                    await self.update.callback_query.message.reply_text(message)
+                elif self.update.message:
+                    await self.update.message.reply_text(message)
+            
+            async def get_sender(self):
+                """Return the user who sent the message"""
+                return self.update.effective_user
+
+        return TelethonEventAdapter(update)
