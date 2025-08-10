@@ -154,10 +154,10 @@ jobs:
           
           # Create .env file with secrets from GitHub
           cat > .env << EOF
-          DB_NAME=telegram_bot
-          DB_USER=root
-          DB_PASSWORD=root
-          DB_HOST=localhost
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
           
           PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
           API_ID1=${{ secrets.API_ID1 }}
@@ -197,10 +197,10 @@ jobs:
           
           # Create .env file with secrets from GitHub
           cat > .env << EOF
-          DB_NAME=telegram_bot
-          DB_USER=root
-          DB_PASSWORD=root
-          DB_HOST=localhost
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
           
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           BOT_NAME=${{ secrets.BOT_NAME }}
