@@ -6,6 +6,7 @@ on:
 jobs:
   deploy-telethon:
     runs-on: ubuntu-latest
+    environment: Beta
     
     steps:
     - uses: actions/checkout@v3

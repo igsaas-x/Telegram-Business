@@ -20,7 +20,7 @@ from services import UserService, ChatService
 class TelegramBotService:
     def __init__(self):
         self.bot: Bot = None  # type: ignore
-        self.application: Application = None  # type: ignore
+        self.app: Application = None  # type: ignore
         self.event_handler = EventHandler()
         self.user_service = UserService()
         self.chat_service = ChatService()
@@ -43,16 +43,16 @@ class TelegramBotService:
             force_log(f"Failed to send message to chat {chat_id}: {str(e)}")
 
     async def start(self, bot_token: str):
-        self.application = ApplicationBuilder().token(bot_token).build()
-        self.bot = self.application.bot
+        self.app = ApplicationBuilder().token(bot_token).build()
+        self.bot = self.app.bot
         
         self._register_handlers()
 
         try:
             force_log("Bot is running...")
-            await self.application.initialize()
-            await self.application.start()
-            await self.application.updater.start_polling()
+            await self.app.initialize()
+            await self.app.start()
+            await self.app.updater.start_polling()
             
             # Keep running until cancelled
             while True:
@@ -63,10 +63,10 @@ class TelegramBotService:
             force_log(f"Bot crashed with error: {e}")
             raise
         finally:
-            if self.application:
-                await self.application.updater.stop()
-                await self.application.stop()
-                await self.application.shutdown()
+            if self.app:
+                await self.app.updater.stop()
+                await self.app.stop()
+                await self.app.shutdown()
 
     def _register_handlers(self):
         async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -184,11 +184,11 @@ class TelegramBotService:
                 # Don't respond here as it might cause message loops for regular messages
 
         # Add handlers to application
-        self.application.add_handler(CommandHandler("menu", menu_handler))
-        self.application.add_handler(CommandHandler("register", register_handler))
-        self.application.add_handler(CommandHandler("contact_us", contact_us_handler))
-        self.application.add_handler(CallbackQueryHandler(callback_handler))
-        self.application.add_handler(MessageHandler(filters.ALL, message_handler))
+        self.app.add_handler(CommandHandler("menu", menu_handler))
+        self.app.add_handler(CommandHandler("register", register_handler))
+        self.app.add_handler(CommandHandler("contact_us", contact_us_handler))
+        self.app.add_handler(CallbackQueryHandler(callback_handler))
+        self.app.add_handler(MessageHandler(filters.ALL, message_handler))
 
     def _create_telethon_event_adapter(self, update: Update):
         """Create a telethon-like event object for compatibility with existing EventHandler"""
