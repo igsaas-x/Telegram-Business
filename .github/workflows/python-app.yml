@@ -133,7 +133,7 @@ jobs:
 
   deploy-telethon-only:
     needs: build-telethon
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (success() || failure())
     runs-on: ubuntu-latest
     
     steps:
@@ -180,7 +180,7 @@ jobs:
 
   deploy-bots-only:
     needs: build-bots
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (success() || failure())
     runs-on: ubuntu-latest
     
     steps:

@@ -1,0 +1,52 @@
+name: Deploy Bots
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  deploy-bots:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy Bots via SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          cd telegram-listener
+          git restore .env
+          git pull origin develop
+          source myenv/bin/activate
+          
+          # Create .env file with secrets from GitHub
+          cat > .env << EOF
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          BOT_NAME=${{ secrets.BOT_NAME }}
+          ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
+          AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
+          PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
+          EOF
+          
+          pip install -r requirements.txt
+          
+          # Deploy bot service file
+          sudo cp .github/service/mytelegrambot.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
+          # Stop any existing bot service
+          sudo systemctl stop mytelegrambot || true
+          
+          # Start bots only
+          sudo systemctl start mytelegrambot
+          sudo systemctl enable mytelegrambot
+          echo "=== BOTS DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
