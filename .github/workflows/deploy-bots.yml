@@ -21,6 +21,7 @@ jobs:
         script: |
           cd telegram-listener
           git restore .env
+          git switch develop
           git pull origin develop
           source myenv/bin/activate
           
