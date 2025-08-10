@@ -24,13 +24,13 @@ class MessageVerificationScheduler:
     async def start_scheduler(self):
         """Start the scheduler to run every 10 minutes"""
         self.is_running = True
-        force_log("Message verification scheduler started - will run every 10 minutes")
+        force_log("Message verification scheduler started - will run every 20 minutes")
 
         while self.is_running:
             try:
                 await self.verify_messages()
                 # Wait 10 minutes (600 seconds) before next run
-                await asyncio.sleep(600)
+                await asyncio.sleep(1200)
             except Exception as e:
                 force_log(f"Error in scheduler loop: {e}")
                 # Wait 1 minute before retrying if there's an error
@@ -52,7 +52,7 @@ class MessageVerificationScheduler:
 
             # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)
-            thirty_minutes_ago = now - datetime.timedelta(minutes=120)
+            thirty_minutes_ago = now - datetime.timedelta(minutes=30)
             force_log(f"Checking messages from {thirty_minutes_ago} to {now}")
 
             verification_count = 0
