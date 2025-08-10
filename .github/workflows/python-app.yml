@@ -149,7 +149,7 @@ jobs:
         script: |
           cd telegram-listener
           git restore .env
-          git pull origin main
+          git pull origin develop
           source myenv/bin/activate
           
           # Create .env file with secrets from GitHub
@@ -196,7 +196,7 @@ jobs:
         script: |
           cd telegram-listener
           git restore .env
-          git pull origin main
+          git pull origin develop
           source myenv/bin/activate
           
           # Create .env file with secrets from GitHub
