@@ -23,7 +23,16 @@ jobs:
           git restore .env
           git switch develop
           git pull origin develop
+          
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "myenv" ]; then
+            python3 -m venv myenv
+          fi
+          
           source myenv/bin/activate
+          
+          # Ensure pip is up to date
+          python -m pip install --upgrade pip
           
           # Create .env file with secrets from GitHub
           cat > .env << EOF
