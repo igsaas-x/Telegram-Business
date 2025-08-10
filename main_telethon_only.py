@@ -120,7 +120,7 @@ async def main(loader: CredentialLoader) -> None:
 if __name__ == "__main__":
     try:
         loader = CredentialLoader()
-        loader.load_credentials()
+        loader.load_credentials(mode="telethon_only")
         asyncio.run(main(loader))
 
     except KeyboardInterrupt:

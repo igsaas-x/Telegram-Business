@@ -38,12 +38,12 @@ class CredentialLoader:
             setattr(self, f'api_hash{i}', "")
             setattr(self, f'phone_number{i}', "")
 
-    def load_credentials(self, require_telethon: bool = True) -> dict:
+    def load_credentials(self, mode: str = "both") -> dict:
         """
         Load the credentials from the environment variables.
         
         Args:
-            require_telethon: Whether to require telethon credentials (default: True)
+            mode: Credential loading mode - "both", "bots_only", or "telethon_only"
         """
         print("Loading credentials...")
         missing = []
@@ -68,10 +68,16 @@ class CredentialLoader:
             setattr(self, f'api_hash{i}', os.getenv(f'API_HASH{i}') or "")
             setattr(self, f'phone_number{i}', os.getenv(f'PHONE_NUMBER{i}') or "")
 
-        # Determine which variables are required
-        required_vars = self.BOT_REQUIRED_ENV_VARS.copy()
-        if require_telethon:
-            required_vars.extend(self.TELETHON_REQUIRED_ENV_VARS)
+        # Determine which variables are required based on mode
+        required_vars = []
+        if mode == "both":
+            required_vars = self.BOT_REQUIRED_ENV_VARS + self.TELETHON_REQUIRED_ENV_VARS
+        elif mode == "bots_only":
+            required_vars = self.BOT_REQUIRED_ENV_VARS
+        elif mode == "telethon_only":
+            required_vars = self.TELETHON_REQUIRED_ENV_VARS
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Use 'both', 'bots_only', or 'telethon_only'")
 
         # Check for missing required variables
         for var in required_vars:
@@ -79,9 +85,8 @@ class CredentialLoader:
                 missing.append(var)
 
         if missing:
-            credential_type = "telethon and bot" if require_telethon else "bot"
             error_msg = (
-                f"Missing required {credential_type} environment variables: {', '.join(missing)}\n"
+                f"Missing required {mode} environment variables: {', '.join(missing)}\n"
             )
             error_msg += "For local development, set these in your .env file.\n"
             error_msg += "For CI/CD deployment, set these as GitHub Secrets in your repository settings."
