@@ -35,6 +35,11 @@ jobs:
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
           AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
           PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
+          
+          # Telethon credentials (dummy values for bots-only mode)
+          PHONE_NUMBER1=dummy
+          API_ID1=dummy
+          API_HASH1=dummy
           EOF
           
           pip install -r requirements.txt
