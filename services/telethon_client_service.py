@@ -120,7 +120,8 @@ class TelethonClientService:
                     "vattanac_bank_merchant_prod_bot",
                     "CPBankBot",
                     "SathapanaBank_bot",
-                    "chipmongbankpaymentbot"
+                    "chipmongbankpaymentbot",
+                    "prasac_merchant_payment_bot"
                 }
                 if username not in allowed_bots:
                     force_log(f"Message from bot '{username}' not in allowed list, ignoring.")
