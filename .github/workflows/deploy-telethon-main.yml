@@ -1,0 +1,62 @@
+name: Deploy Telethon Client (Main)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  deploy-telethon:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy Telethon Client via SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          cd telegram-listener
+          git restore .env
+          git switch main
+          git pull origin main
+          
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "/root/telegram-listener/myenv" ]; then
+            echo "Creating virtual environment..."
+            python3 -m venv /root/telegram-listener/myenv --system-site-packages
+          fi
+          
+          echo "Activating virtual environment..."
+          source /root/telegram-listener/myenv/bin/activate
+          
+          # Ensure pip is up to date
+          python3 -m pip install --upgrade pip
+          
+          # Create .env file with secrets from GitHub
+          cat > .env << EOF
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          
+          PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
+          API_ID1=${{ secrets.API_ID1 }}
+          API_HASH1=${{ secrets.API_HASH1 }}
+          EOF
+          
+          pip install -r requirements.txt
+          
+          # Deploy telethon service file
+          sudo cp .github/service/mytelethon.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
+          # Stop any existing telethon service
+          sudo systemctl stop mytelethon || true
+          
+          # Start telethon client only
+          sudo systemctl start mytelethon
+          sudo systemctl enable mytelethon
+          echo "=== TELETHON CLIENT DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
