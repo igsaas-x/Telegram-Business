@@ -7,6 +7,7 @@ from handlers import EventHandler
 from helper.logger_utils import force_log
 from models import User
 from services import UserService, ChatService
+from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 
 
 class TelegramBotService:
@@ -57,6 +58,19 @@ class TelegramBotService:
                 # Check if this is a private chat
                 if event.is_private:
                     await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
+                    return
+                
+                # Check if this group is bound to a private chat
+                private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(event.chat_id)
+                if private_chats:
+                    message = f"""
+🔗 This group is already bound to private chat(s).
+
+For reports and management, please check the bound private chat(s).
+
+Private chat IDs: {', '.join(map(str, private_chats))}
+                    """
+                    await event.respond(message)
                     return
                 
                 await self.event_handler.menu(event)

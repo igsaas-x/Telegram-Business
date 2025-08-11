@@ -16,6 +16,7 @@ from common.enums import ServicePackage
 from handlers.business_event_handler import BusinessEventHandler
 from helper import force_log
 from services import ChatService, UserService, GroupPackageService
+from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -133,6 +134,20 @@ class AutosumBusinessBot:
         force_log(
             f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}", "AutosumBusinessBot"
         )
+        
+        # Check if this group is bound to a private chat
+        chat_id = int(update.effective_chat.id)
+        private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat_id)
+        if private_chats:
+            message = f"""
+🔗 This group is already bound to private chat(s).
+
+For reports and management, please check the bound private chat(s).
+
+Private chat IDs: {', '.join(map(str, private_chats))}
+            """
+            await update.message.reply_text(message)
+            return ConversationHandler.END
 
         # Create a mock event object for the business event handler
         class MockEvent:
