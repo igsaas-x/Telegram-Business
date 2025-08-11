@@ -19,7 +19,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column('income_balance', sa.Column('note', sa.Text, nullable=True))
+    # Check if column exists before adding it
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('income_balance')]
+    
+    if 'note' not in columns:
+        op.add_column('income_balance', sa.Column('note', sa.Text, nullable=True))
 
 
 def downgrade() -> None:
