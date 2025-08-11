@@ -31,7 +31,7 @@ class UserService:
             user = User(
                 first_name=sender.first_name,
                 last_name=sender.last_name,
-                phone_number=getattr(sender, 'phone', None),
+                phone_number=sender.phone,
                 identifier=sender.id,
                 username=sender.username,
                 is_active=False,
