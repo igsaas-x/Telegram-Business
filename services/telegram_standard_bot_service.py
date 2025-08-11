@@ -220,12 +220,40 @@ class TelegramBotService:
                 
                 self.client = ClientWrapper(bot_instance)
             
-            async def respond(self, message: str, buttons=None):
+            async def respond(self, message: str, buttons=None, parse_mode=None):
                 """Telethon-like respond method"""
                 if self.update.callback_query:
-                    await self.update.callback_query.message.reply_text(message)
+                    await self.update.callback_query.message.reply_text(message, parse_mode=parse_mode)
                 elif self.update.message:
-                    await self.update.message.reply_text(message)
+                    await self.update.message.reply_text(message, parse_mode=parse_mode)
+            
+            async def edit(self, message: str, buttons=None):
+                """Edit the message (for callback queries)"""
+                if self.update.callback_query and self.update.callback_query.message:
+                    try:
+                        await self.update.callback_query.message.edit_text(message)
+                    except Exception as e:
+                        force_log(f"Error editing message: {e}")
+                        # Fallback to sending a new message
+                        await self.update.callback_query.message.reply_text(message)
+            
+            async def delete(self):
+                """Delete the message"""
+                try:
+                    if self.update.callback_query and self.update.callback_query.message:
+                        await self.update.callback_query.message.delete()
+                    elif self.update.message:
+                        await self.update.message.delete()
+                except Exception as e:
+                    force_log(f"Error deleting message: {e}")
+            
+            async def answer(self, text=None, alert=False):
+                """Answer callback query"""
+                if self.update.callback_query:
+                    try:
+                        await self.update.callback_query.answer(text=text, show_alert=alert)
+                    except Exception as e:
+                        force_log(f"Error answering callback query: {e}")
             
             async def get_sender(self):
                 """Return the user who sent the message"""
