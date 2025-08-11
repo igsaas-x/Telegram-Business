@@ -27,7 +27,7 @@ jobs:
           # Create virtual environment if it doesn't exist
           if [ ! -d "/root/telegram-listener/myenv" ]; then
             echo "Creating virtual environment..."
-            python3 -m venv /root/telegram-listener/myenv --system-site-packages
+            python3 -m venv /root/telegram-listener/myenv
           fi
           
           echo "Activating virtual environment..."
