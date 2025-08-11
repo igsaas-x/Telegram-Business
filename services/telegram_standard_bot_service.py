@@ -1,6 +1,6 @@
 import asyncio
 
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -220,22 +220,51 @@ class TelegramBotService:
                 
                 self.client = ClientWrapper(bot_instance)
             
+            def _convert_telethon_buttons(self, buttons):
+                """Convert telethon Button objects to python-telegram-bot InlineKeyboard"""
+                if not buttons:
+                    return None
+                
+                keyboard = []
+                for row in buttons:
+                    keyboard_row = []
+                    for button in row:
+                        if hasattr(button, 'text') and hasattr(button, 'data'):
+                            # Inline button with callback data
+                            keyboard_row.append(InlineKeyboardButton(button.text, callback_data=button.data))
+                        elif hasattr(button, 'text') and hasattr(button, 'url'):
+                            # URL button
+                            keyboard_row.append(InlineKeyboardButton(button.text, url=button.url))
+                        else:
+                            # Try to extract text and data/url from button attributes
+                            text = getattr(button, 'text', str(button))
+                            if hasattr(button, 'data'):
+                                keyboard_row.append(InlineKeyboardButton(text, callback_data=button.data))
+                            elif hasattr(button, 'url'):
+                                keyboard_row.append(InlineKeyboardButton(text, url=button.url))
+                    if keyboard_row:
+                        keyboard.append(keyboard_row)
+                
+                return InlineKeyboardMarkup(keyboard) if keyboard else None
+            
             async def respond(self, message: str, buttons=None, parse_mode=None):
                 """Telethon-like respond method"""
+                reply_markup = self._convert_telethon_buttons(buttons)
                 if self.update.callback_query:
-                    await self.update.callback_query.message.reply_text(message, parse_mode=parse_mode)
+                    await self.update.callback_query.message.reply_text(message, reply_markup=reply_markup, parse_mode=parse_mode)
                 elif self.update.message:
-                    await self.update.message.reply_text(message, parse_mode=parse_mode)
+                    await self.update.message.reply_text(message, reply_markup=reply_markup, parse_mode=parse_mode)
             
             async def edit(self, message: str, buttons=None):
                 """Edit the message (for callback queries)"""
+                reply_markup = self._convert_telethon_buttons(buttons)
                 if self.update.callback_query and self.update.callback_query.message:
                     try:
-                        await self.update.callback_query.message.edit_text(message)
+                        await self.update.callback_query.message.edit_text(message, reply_markup=reply_markup)
                     except Exception as e:
                         force_log(f"Error editing message: {e}")
                         # Fallback to sending a new message
-                        await self.update.callback_query.message.reply_text(message)
+                        await self.update.callback_query.message.reply_text(message, reply_markup=reply_markup)
             
             async def delete(self):
                 """Delete the message"""
