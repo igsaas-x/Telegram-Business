@@ -198,6 +198,7 @@ class TelegramBotService:
             def __init__(self, update: Update):
                 self.update = update
                 self.chat_id = update.effective_chat.id if update.effective_chat else None
+                self.chat = update.effective_chat  # Add chat attribute
                 self.message = update.message or update.callback_query.message if update.callback_query else None
                 self.is_private = update.effective_chat.type == 'private' if update.effective_chat else False
                 self.data = update.callback_query.data if update.callback_query else None
