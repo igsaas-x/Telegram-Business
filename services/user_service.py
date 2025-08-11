@@ -1,5 +1,5 @@
-from models import User
 from config import get_db_session
+from models import User
 
 
 class UserService:
@@ -31,7 +31,7 @@ class UserService:
             user = User(
                 first_name=sender.first_name,
                 last_name=sender.last_name,
-                phone_number=sender.phone,
+                phone_number=getattr(sender, 'phone', None),
                 identifier=sender.id,
                 username=sender.username,
                 is_active=False,
