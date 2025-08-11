@@ -1,0 +1,68 @@
+name: Deploy Bots
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  deploy-bots:
+    runs-on: ubuntu-latest
+    environment: Beta
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy Bots via SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 22
+        script: |
+          cd telegram-listener
+          git restore .env
+          git switch develop
+          git pull origin develop
+          
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "/root/telegram-listener/myenv" ]; then
+            echo "Creating virtual environment..."
+            python3 -m venv /root/telegram-listener/myenv --system-site-packages
+          fi
+          
+          echo "Activating virtual environment..."
+          source /root/telegram-listener/myenv/bin/activate
+          
+          # Ensure pip is up to date
+          python3 -m pip install --upgrade pip
+          
+          # Create .env file with secrets from GitHub
+          cat > .env << EOF
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          
+          API_ID1=${{ secrets.API_ID1 }}
+          API_HASH1=${{ secrets.API_HASH1 }}
+          
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          BOT_NAME=${{ secrets.BOT_NAME }}
+          ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
+          AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
+          PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
+          EOF
+          
+          pip install -r requirements.txt
+          
+          # Deploy bot service file
+          sudo cp .github/service/mytelegrambot.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
+          # Stop any existing bot service
+          sudo systemctl stop mytelegrambot || true
+          
+          # Start bots only
+          sudo systemctl start mytelegrambot
+          sudo systemctl enable mytelegrambot
+          echo "=== BOTS DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="

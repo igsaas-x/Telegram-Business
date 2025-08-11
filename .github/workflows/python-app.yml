@@ -7,7 +7,7 @@ on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  build:
+  build-telethon:
     runs-on: ubuntu-latest
     
     steps:
@@ -24,43 +24,34 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install flake8 pytest
     
-    - name: Lint with flake8
+    - name: Lint Telethon code with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 main_telethon_only.py services/telethon_client_service.py --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 main_telethon_only.py services/telethon_client_service.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       continue-on-error: true  # Don't fail the build for linting issues
     
-    - name: Check code formatting
+    - name: Check Telethon code formatting
       run: |
         pip install black
-        black --check .
+        black --check main_telethon_only.py services/telethon_client_service.py
       continue-on-error: true  # Don't fail the build for formatting issues
     
-    - name: Run tests
-      run: |
-        python test_message_parser.py
-
-    - name: Verify required secrets are set
+    - name: Verify Telethon required secrets are set
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
       env:
         CHECK_HOST: ${{ secrets.HOST != '' && 'true' || 'false' }}
         CHECK_USERNAME: ${{ secrets.USERNAME != '' && 'true' || 'false' }}
         CHECK_PASSWORD: ${{ secrets.PASSWORD != '' && 'true' || 'false' }}
-        CHECK_BOT_TOKEN: ${{ secrets.BOT_TOKEN != '' && 'true' || 'false' }}
-        CHECK_BOT_NAME: ${{ secrets.BOT_NAME != '' && 'true' || 'false' }}
         CHECK_PHONE_NUMBER1: ${{ secrets.PHONE_NUMBER1 != '' && 'true' || 'false' }}
         CHECK_API_ID1: ${{ secrets.API_ID1 != '' && 'true' || 'false' }}
         CHECK_API_HASH1: ${{ secrets.API_HASH1 != '' && 'true' || 'false' }}
-        CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
-        CHECK_AUTOSUM_BUSINESS_BOT_TOKEN: ${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN != '' && 'true' || 'false' }}
-        CHECK_PRIVATE_CHAT_BOT: ${{ secrets.PRIVATE_CHAT_BOT != '' && 'true' || 'false' }}
       run: |
         MISSING_SECRETS=0
-        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_BOT_TOKEN" "CHECK_BOT_NAME" "CHECK_PHONE_NUMBER1" "CHECK_API_ID1" "CHECK_API_HASH1" "CHECK_ADMIN_BOT_TOKEN" "CHECK_AUTOSUM_BUSINESS_BOT_TOKEN" "CHECK_PRIVATE_CHAT_BOT")
+        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_PHONE_NUMBER1" "CHECK_API_ID1" "CHECK_API_HASH1")
         
-        echo "Checking for required secrets..."
+        echo "Checking for required Telethon secrets..."
         for SECRET in "${REQUIRED_SECRETS[@]}"
         do
           if [ -z "${!SECRET}" ] || [ "${!SECRET}" = "false" ]; then
@@ -75,45 +66,68 @@ jobs:
           exit 1
         fi
 
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  build-bots:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
     
-    # Deploy using SSH (simple version with no conditionals)
-    - name: Deploy via SSH with password
-      uses: appleboy/ssh-action@v0.1.10
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        port: 22
-        script: |
-          cd telegram-listener
-          git restore .env
-          git pull origin main
-          source myenv/bin/activate
-          
-          # Create .env file with secrets from GitHub
-          cat > .env << EOF
-          DB_NAME=telegram_bot
-          DB_USER=root
-          DB_PASSWORD=root
-          DB_HOST=localhost
-          
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          BOT_NAME=${{ secrets.BOT_NAME }}
-          PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
-          API_ID1=${{ secrets.API_ID1 }}
-          API_HASH1=${{ secrets.API_HASH1 }}
-          ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
-          AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
-          PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
-          EOF
-          
-          pip install -r requirements.txt
-          sudo systemctl restart mytelegrambot
-          echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY: $(date) ==="
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install flake8 pytest
+    
+    - name: Lint Bots code with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 main_bots_only.py services/ --exclude=services/telethon_client_service.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
+        flake8 main_bots_only.py services/ --exclude=services/telethon_client_service.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true  # Don't fail the build for linting issues
+    
+    - name: Check Bots code formatting
+      run: |
+        pip install black
+        black --check main_bots_only.py services/ --exclude=services/telethon_client_service.py
+      continue-on-error: true  # Don't fail the build for formatting issues
+    
+    - name: Run tests
+      run: |
+        python test_message_parser.py
+
+    - name: Verify Bots required secrets are set
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      env:
+        CHECK_HOST: ${{ secrets.HOST != '' && 'true' || 'false' }}
+        CHECK_USERNAME: ${{ secrets.USERNAME != '' && 'true' || 'false' }}
+        CHECK_PASSWORD: ${{ secrets.PASSWORD != '' && 'true' || 'false' }}
+        CHECK_BOT_TOKEN: ${{ secrets.BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_BOT_NAME: ${{ secrets.BOT_NAME != '' && 'true' || 'false' }}
+        CHECK_ADMIN_BOT_TOKEN: ${{ secrets.ADMIN_BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_AUTOSUM_BUSINESS_BOT_TOKEN: ${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN != '' && 'true' || 'false' }}
+        CHECK_PRIVATE_CHAT_BOT: ${{ secrets.PRIVATE_CHAT_BOT != '' && 'true' || 'false' }}
+      run: |
+        MISSING_SECRETS=0
+        REQUIRED_SECRETS=("CHECK_HOST" "CHECK_USERNAME" "CHECK_PASSWORD" "CHECK_BOT_TOKEN" "CHECK_BOT_NAME" "CHECK_ADMIN_BOT_TOKEN" "CHECK_AUTOSUM_BUSINESS_BOT_TOKEN" "CHECK_PRIVATE_CHAT_BOT")
+        
+        echo "Checking for required Bot secrets..."
+        for SECRET in "${REQUIRED_SECRETS[@]}"
+        do
+          if [ -z "${!SECRET}" ] || [ "${!SECRET}" = "false" ]; then
+            echo "❌ Missing or empty secret: $SECRET"
+            MISSING_SECRETS=1
+          else
+            echo "✅ Found secret: $SECRET"
+          fi
+        done
+        if [ $MISSING_SECRETS -eq 1 ]; then
+          echo "Aborting due to missing secrets."
+          exit 1
+        fi
+

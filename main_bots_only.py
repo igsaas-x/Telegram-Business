@@ -15,7 +15,6 @@ from services.telegram_admin_bot_service import TelegramAdminBot
 from services.telegram_business_bot_service import AutosumBusinessBot
 from services.telegram_private_bot_service import TelegramPrivateBot
 from services.telegram_standard_bot_service import TelegramBotService
-from services.telethon_client_service import TelethonClientService
 
 load_environment()
 
@@ -33,7 +32,7 @@ class ForceFileHandler(logging.FileHandler):
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[ForceFileHandler("telegram_bot.log"), logging.StreamHandler()],
+    handlers=[ForceFileHandler("telegram_bots.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -64,11 +63,11 @@ async def shutdown(loop: asyncio.AbstractEventLoop) -> None:
 
 async def main(loader: CredentialLoader) -> None:
     """
-    Main function
+    Main function for bots only (no telethon client)
     """
     try:
+        logger.info("Starting Bots Only Mode...")
         telegram_bot_service = TelegramBotService()
-        telethon_client_service = TelethonClientService()
         admin_bot = TelegramAdminBot(loader.admin_bot_token)
         business_bot = AutosumBusinessBot(loader.autosum_business_bot_token)
         private_bot = TelegramPrivateBot(loader.private_chat_bot_token)
@@ -80,23 +79,16 @@ async def main(loader: CredentialLoader) -> None:
             admin_bot_service=admin_bot
         )
 
+        # Run database migrations
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
 
         loop = asyncio.get_running_loop()
         handle_signals(loop)
 
-        # # Set telethon client reference in admin bot for username lookup
-        # admin_bot.set_telethon_client(telethon_client_service)
-        
-        # Start all services
+        # Start bot services only (no telethon client)
         service_tasks = [
             asyncio.create_task(telegram_bot_service.start(loader.bot_token)),
-            asyncio.create_task(
-                telethon_client_service.start(
-                    loader.phone_number1, loader.api_id1, loader.api_hash1
-                )
-            ),
             asyncio.create_task(admin_bot.start_polling()),
             asyncio.create_task(auto_close_scheduler.start_scheduler()),
             asyncio.create_task(trial_expiry_scheduler.start_scheduler()),
@@ -118,18 +110,20 @@ async def main(loader: CredentialLoader) -> None:
             logger.warning("Private bot token not provided, skipping private bot")
 
         tasks.update(service_tasks)
+        logger.info(f"All {len(service_tasks)} bot services started successfully")
+        
         await asyncio.gather(*service_tasks)
 
     except Exception as e:
-        print(f"Error in main: {e}")
+        logger.error(f"Error in main: {e}")
         raise
 
 
 if __name__ == "__main__":
     try:
         loader = CredentialLoader()
-        loader.load_credentials()
+        loader.load_credentials(mode="bots_only")
         asyncio.run(main(loader))
 
     except KeyboardInterrupt:
-        print("\nBot stopped by user")
+        print("\nBots stopped by user")

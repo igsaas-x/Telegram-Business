@@ -2,12 +2,15 @@ import os
 
 
 class CredentialLoader:
-    REQUIRED_ENV_VARS = [
+    BOT_REQUIRED_ENV_VARS = [
         "BOT_TOKEN",
         "BOT_NAME",
         "DB_USER",
         "DB_HOST",
         "DB_NAME",
+    ]
+    
+    TELETHON_REQUIRED_ENV_VARS = [
         "API_ID1",
         "API_HASH1",
         "PHONE_NUMBER1",
@@ -28,10 +31,24 @@ class CredentialLoader:
         self.admin_bot_token: str = ""
         self.autosum_business_bot_token: str = ""
         self.private_chat_bot_token: str = ""
+        
+        # Support for multiple phone numbers (2-9)
+        for i in range(2, 10):
+            setattr(self, f'api_id{i}', "")
+            setattr(self, f'api_hash{i}', "")
+            setattr(self, f'phone_number{i}', "")
 
-    def load_credentials(self) -> dict:
+    def load_credentials(self, mode: str = "both") -> dict:
+        """
+        Load the credentials from the environment variables.
+        
+        Args:
+            mode: Credential loading mode - "both", "bots_only", or "telethon_only"
+        """
         print("Loading credentials...")
         missing = []
+        
+        # Load all environment variables
         self.bot_token = os.getenv("BOT_TOKEN") or ""
         self.bot_name = os.getenv("BOT_NAME") or ""
         self.db_user = os.getenv("DB_USER") or ""
@@ -45,13 +62,31 @@ class CredentialLoader:
         self.autosum_business_bot_token = os.getenv("AUTOSUM_BUSINESS_BOT_TOKEN") or ""
         self.private_chat_bot_token = os.getenv("PRIVATE_CHAT_BOT") or ""
 
-        for var in self.REQUIRED_ENV_VARS:
+        # Load additional phone number configurations (2-9)
+        for i in range(2, 10):
+            setattr(self, f'api_id{i}', os.getenv(f'API_ID{i}') or "")
+            setattr(self, f'api_hash{i}', os.getenv(f'API_HASH{i}') or "")
+            setattr(self, f'phone_number{i}', os.getenv(f'PHONE_NUMBER{i}') or "")
+
+        # Determine which variables are required based on mode
+        required_vars = []
+        if mode == "both":
+            required_vars = self.BOT_REQUIRED_ENV_VARS + self.TELETHON_REQUIRED_ENV_VARS
+        elif mode == "bots_only":
+            required_vars = self.BOT_REQUIRED_ENV_VARS
+        elif mode == "telethon_only":
+            required_vars = self.TELETHON_REQUIRED_ENV_VARS
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Use 'both', 'bots_only', or 'telethon_only'")
+
+        # Check for missing required variables
+        for var in required_vars:
             if not getattr(self, var.lower()):
                 missing.append(var)
 
         if missing:
             error_msg = (
-                f"Missing required environment variables: {', '.join(missing)}\n"
+                f"Missing required {mode} environment variables: {', '.join(missing)}\n"
             )
             error_msg += "For local development, set these in your .env file.\n"
             error_msg += "For CI/CD deployment, set these as GitHub Secrets in your repository settings."

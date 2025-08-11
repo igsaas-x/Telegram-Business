@@ -22,14 +22,14 @@ class MessageVerificationScheduler:
         self.is_running = False
 
     async def start_scheduler(self):
-        """Start the scheduler to run every 10 minutes"""
+        """Start the scheduler to run every 20 minutes"""
         self.is_running = True
         force_log("Message verification scheduler started - will run every 20 minutes")
 
         while self.is_running:
             try:
                 await self.verify_messages()
-                # Wait 10 minutes (600 seconds) before next run
+                # Wait 20 minutes (1200 seconds) before next run
                 await asyncio.sleep(1200)
             except Exception as e:
                 force_log(f"Error in scheduler loop: {e}")

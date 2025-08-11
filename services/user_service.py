@@ -1,5 +1,5 @@
-from models import User
 from config import get_db_session
+from models import User
 
 
 class UserService:
