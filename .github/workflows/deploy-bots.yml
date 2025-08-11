@@ -43,6 +43,9 @@ jobs:
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_HOST=${{ secrets.DB_HOST }}
           
+          API_ID1=${{ secrets.API_ID1 }}
+          API_HASH1=${{ secrets.API_HASH1 }}
+          
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           BOT_NAME=${{ secrets.BOT_NAME }}
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
