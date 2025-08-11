@@ -202,9 +202,25 @@ class TelegramBotService:
                 self.message = update.message or update.callback_query.message if update.callback_query else None
                 self.is_private = update.effective_chat.type == 'private' if update.effective_chat else False
                 self.data = update.callback_query.data if update.callback_query else None
-                self.client = bot_instance  # For compatibility, though may not work for all methods
+                
+                # Create a client wrapper for compatibility
+                class ClientWrapper:
+                    def __init__(self, bot):
+                        self.bot = bot
+                    
+                    async def get_participants(self, chat_id):
+                        """Get chat members using python-telegram-bot API"""
+                        try:
+                            chat_members = await self.bot.get_chat_administrators(chat_id)
+                            # Add regular members if possible (this is limited in Bot API)
+                            return chat_members
+                        except Exception as e:
+                            force_log(f"Error getting participants: {e}")
+                            return []
+                
+                self.client = ClientWrapper(bot_instance)
             
-            async def respond(self, message: str):
+            async def respond(self, message: str, buttons=None):
                 """Telethon-like respond method"""
                 if self.update.callback_query:
                     await self.update.callback_query.message.reply_text(message)
