@@ -68,6 +68,8 @@ class CredentialLoader:
             api_hash_val = os.getenv(f'API_HASH{i}')
             phone_val = os.getenv(f'PHONE_NUMBER{i}')
             
+            print(f"Loading config {i}: API_ID{i}={api_id_val}, API_HASH{i}={api_hash_val}, PHONE_NUMBER{i}={phone_val}")
+            
             setattr(self, f'api_id{i}', api_id_val if api_id_val else None)
             setattr(self, f'api_hash{i}', api_hash_val if api_hash_val else None)
             setattr(self, f'phone_number{i}', phone_val if phone_val else None)

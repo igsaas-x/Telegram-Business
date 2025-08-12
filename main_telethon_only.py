@@ -72,6 +72,8 @@ async def main(loader: CredentialLoader) -> None:
             api_hash = getattr(loader, f'api_hash{i}', None)
             phone_number = getattr(loader, f'phone_number{i}', None)
             
+            logger.info(f"Checking config {i}: api_id={api_id}, api_hash={api_hash}, phone={phone_number}")
+            
             if api_id and api_hash and phone_number:
                 phone_configs.append({
                     'phone': phone_number,
@@ -79,6 +81,8 @@ async def main(loader: CredentialLoader) -> None:
                     'api_hash': api_hash
                 })
                 logger.info(f"Found configuration for phone number {i}: {phone_number}")
+            else:
+                logger.info(f"Skipping config {i}: missing values")
 
         if not phone_configs:
             raise ValueError("No phone number configurations found")
