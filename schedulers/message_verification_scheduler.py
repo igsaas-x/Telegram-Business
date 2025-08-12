@@ -8,9 +8,10 @@ from telethon import TelegramClient
 from telethon.errors import FloodWaitError, RPCError
 from telethon.tl.types import Message
 
+from common.enums import ServicePackage
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService, ShiftService
+from services import ChatService, IncomeService, ShiftService, GroupPackageService
 
 
 class MessageVerificationScheduler:
@@ -20,6 +21,7 @@ class MessageVerificationScheduler:
         self.chat_service = ChatService()
         self.income_service = IncomeService()
         self.shift_service = ShiftService()
+        self.group_package_service = GroupPackageService()
         self.is_running = False
 
     async def start_scheduler(self):
@@ -260,8 +262,27 @@ class MessageVerificationScheduler:
             sender = await message.get_sender()
             username = getattr(sender, "username", "") or ""
             
+            # Check if chat has BUSINESS package to get current shift ID
+            shift_id_for_income = 0  # Default: no shift or auto-create
+            enable_shift_for_income = chat.enable_shift
+            
+            package = await self.group_package_service.get_package_by_chat_id(chat_id)
+            if package and package.package == ServicePackage.BUSINESS:
+                # For business packages, get the current shift ID
+                current_shift = await self.shift_service.get_current_shift(chat_id)
+                if current_shift:
+                    shift_id_for_income = current_shift.id
+                    enable_shift_for_income = True
+                    force_log(f"Chat {chat_id} has BUSINESS package, using current shift ID: {shift_id_for_income}")
+                else:
+                    # No current shift exists, create one
+                    new_shift = await self.shift_service.create_shift(chat_id)
+                    shift_id_for_income = new_shift.id
+                    enable_shift_for_income = True
+                    force_log(f"Chat {chat_id} has BUSINESS package, created new shift ID: {shift_id_for_income}")
+            
             # Store the message as income
-            force_log(f"Storing income for message {message_id}")
+            force_log(f"Storing income for message {message_id} with shift_id={shift_id_for_income}, enable_shift={enable_shift_for_income}")
             result = await self.income_service.insert_income(
                 chat_id,
                 amount,
@@ -270,8 +291,8 @@ class MessageVerificationScheduler:
                 message_id,
                 message_text,
                 trx_id,
-                None,  # shift_id
-                chat.enable_shift,  # enable_shift
+                shift_id_for_income,  # actual shift ID
+                enable_shift_for_income,  # enable_shift
                 username,  # sent_by
             )
 
