@@ -234,14 +234,14 @@ class TelethonClientService:
                 force_log(f"Traceback: {traceback.format_exc()}")
 
         # Start command handler for private chats
-        @self.client.on(events.NewMessage(pattern="/start"))  # type: ignore
+        @self.client.on(events.NewMessage(pattern="/register"))  # type: ignore
         async def start_handler(event):
             try:
                 force_log(f"Start command from chat {event.chat_id}")
                 
                 # Only process private chats (not groups)
-                if not event.is_private:
-                    force_log("Start command received in group chat, ignoring")
+                if event.is_private:
+                    force_log("Start command received in private chat, ignoring")
                     return
                 
                 # Get sender information
