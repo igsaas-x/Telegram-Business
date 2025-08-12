@@ -14,8 +14,9 @@ from services import ChatService, IncomeService, ShiftService
 
 
 class MessageVerificationScheduler:
-    def __init__(self, telethon_client: TelegramClient):
+    def __init__(self, telethon_client: TelegramClient, mobile_number: str | None = None):
         self.client = telethon_client
+        self.mobile_number = mobile_number
         self.chat_service = ChatService()
         self.income_service = IncomeService()
         self.shift_service = ShiftService()
@@ -46,9 +47,15 @@ class MessageVerificationScheduler:
         force_log("Starting message verification job...")
 
         try:
-            # Get all chat IDs from database (excluding FREE package chats)
-            chat_ids = await self.chat_service.get_all_active_chat_ids_excluding_free()
-            force_log(f"Found {len(chat_ids)} non-free chats to verify")
+            # Get chat IDs based on which telethon client this is
+            if self.mobile_number is None:
+                # This is the main client (phone_number1) - handle chats with NULL registered_by
+                chat_ids = await self.chat_service.get_active_chat_ids_by_registered_by(None)
+                force_log(f"Main client: Found {len(chat_ids)} chats with NULL registered_by to verify")
+            else:
+                # This is an additional client - handle only chats registered by this mobile number
+                chat_ids = await self.chat_service.get_active_chat_ids_by_registered_by(self.mobile_number)
+                force_log(f"Additional client ({self.mobile_number}): Found {len(chat_ids)} chats registered by this number to verify")
 
             # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)

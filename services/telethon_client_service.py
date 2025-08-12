@@ -70,11 +70,14 @@ class TelethonClientService:
             force_log(f"Error getting username by phone {phone_number}: {e}")
             return None
 
-    async def start(self, mobile, api_id, api_hash):
+    async def start(self, mobile, api_id, api_hash, is_primary: bool = False):
         session_file = f"{mobile}.session"
         
         # Store mobile number for use in register handler
         self.mobile_number = mobile
+        
+        # For scheduler purposes, primary client gets None to handle NULL registered_by chats
+        self.scheduler_mobile = None if is_primary else mobile
 
         # Handle persistent timestamp errors by removing corrupted session
         try:
@@ -104,7 +107,7 @@ class TelethonClientService:
         force_log("Telethon client event handlers registered successfully")
 
         # Initialize and start the message verification scheduler
-        self.scheduler = MessageVerificationScheduler(self.client)  # type: ignore
+        self.scheduler = MessageVerificationScheduler(self.client, self.scheduler_mobile)  # type: ignore
         force_log("Starting message verification scheduler...")
 
         @self.client.on(events.NewMessage)  # type: ignore
