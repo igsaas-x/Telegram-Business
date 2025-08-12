@@ -45,6 +45,10 @@ jobs:
           PHONE_NUMBER1=${{ secrets.PHONE_NUMBER1 }}
           API_ID1=${{ secrets.API_ID1 }}
           API_HASH1=${{ secrets.API_HASH1 }}
+          
+          PHONE_NUMBER2=${{ secrets.PHONE_NUMBER2 }}
+          API_ID2=${{ secrets.API_ID2 }}
+          API_HASH2=${{ secrets.API_HASH2 }}
           EOF
           
           pip install -r requirements.txt
