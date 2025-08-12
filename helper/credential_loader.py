@@ -34,9 +34,9 @@ class CredentialLoader:
         
         # Support for multiple phone numbers (2-9)
         for i in range(2, 10):
-            setattr(self, f'api_id{i}', "")
-            setattr(self, f'api_hash{i}', "")
-            setattr(self, f'phone_number{i}', "")
+            setattr(self, f'api_id{i}', None)
+            setattr(self, f'api_hash{i}', None)
+            setattr(self, f'phone_number{i}', None)
 
     def load_credentials(self, mode: str = "both") -> dict:
         """
@@ -64,9 +64,13 @@ class CredentialLoader:
 
         # Load additional phone number configurations (2-9)
         for i in range(2, 10):
-            setattr(self, f'api_id{i}', os.getenv(f'API_ID{i}') or "")
-            setattr(self, f'api_hash{i}', os.getenv(f'API_HASH{i}') or "")
-            setattr(self, f'phone_number{i}', os.getenv(f'PHONE_NUMBER{i}') or "")
+            api_id_val = os.getenv(f'API_ID{i}')
+            api_hash_val = os.getenv(f'API_HASH{i}')
+            phone_val = os.getenv(f'PHONE_NUMBER{i}')
+            
+            setattr(self, f'api_id{i}', api_id_val if api_id_val else None)
+            setattr(self, f'api_hash{i}', api_hash_val if api_hash_val else None)
+            setattr(self, f'phone_number{i}', phone_val if phone_val else None)
 
         # Determine which variables are required based on mode
         required_vars = []
