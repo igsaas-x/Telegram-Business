@@ -67,12 +67,7 @@ class TelegramBotService:
                 else:
                     private_chats = None
                 if private_chats:
-                    message = f"""
-🔗 This group is already bound to private chat(s).
-
-For reports and management, please check the bound private chat(s).
-
-Private chat IDs: {', '.join(map(str, private_chats))}
+                    message = f"""សូមប្រើPrivate Groupដើម្បីបូក
                     """
                     await event.respond(message)
                     return
