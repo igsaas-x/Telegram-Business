@@ -14,13 +14,14 @@ class ChatService:
         self.group_package_service = GroupPackageService()
 
     @staticmethod
-    async def register_chat_id(chat_id, group_name, user: User | None):
+    async def register_chat_id(chat_id, group_name, user: User | None, registered_by: str | None = None):
         with get_db_session() as session:
             try:
                 new_chat = Chat(
                     chat_id=chat_id,
                     group_name=group_name,
                     user_id=user.id if user else None,
+                    registered_by=registered_by,
                 )
                 session.add(new_chat)
                 session.commit()

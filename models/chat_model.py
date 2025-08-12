@@ -22,5 +22,6 @@ class Chat(BaseModel):
     group_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=True, default=True)
     enable_shift: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
+    registered_by: Mapped[str] = mapped_column(String(20), nullable=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     user: Mapped["User"] = relationship("User", back_populates="chats")
