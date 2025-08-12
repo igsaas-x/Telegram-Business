@@ -9,7 +9,7 @@ WorkingDirectory=/root/telegram-listener
 ExecStart=/root/telegram-listener/myenv/bin/python3 /root/telegram-listener/main_telethon_only.py
 Restart=always
 #RestartSec=5
-EnvironmentFile=/root/telegram-listener/.env
+EnvironmentFile=/root/telegram-listener/.env.telethon
 
 [Install]
 WantedBy=multi-user.target

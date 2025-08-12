@@ -37,8 +37,8 @@ jobs:
           # Ensure pip is up to date
           python3 -m pip install --upgrade pip
           
-          # Create .env file with secrets from GitHub
-          cat > .env << EOF
+          # Create .env.bots file with secrets from GitHub
+          cat > .env.bots << EOF
           DB_NAME=${{ secrets.DB_NAME }}
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}

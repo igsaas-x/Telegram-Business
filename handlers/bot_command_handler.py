@@ -168,7 +168,7 @@ class EventHandler:
         group_name = getattr(event.chat, "title", f"Private Chat {chat_id}")
         chat_service = ChatService()
         success, message = await chat_service.register_chat_id(
-            chat_id, group_name, user
+            chat_id, group_name, user, None
         )
 
         # Add a menu button to the response message for successful registration

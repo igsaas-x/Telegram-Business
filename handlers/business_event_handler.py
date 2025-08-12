@@ -124,7 +124,7 @@ class BusinessEventHandler:
             force_log("Failed to register business chat")
 
         success, message = await self.chat_service.register_chat_id(
-            chat_id, f"[BUSINESS] {chat_title}", user
+            chat_id, f"[BUSINESS] {chat_title}", user, None
         )
 
         if success:

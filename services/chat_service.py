@@ -14,13 +14,14 @@ class ChatService:
         self.group_package_service = GroupPackageService()
 
     @staticmethod
-    async def register_chat_id(chat_id, group_name, user: User | None):
+    async def register_chat_id(chat_id, group_name, user: User | None, registered_by: str | None = None):
         with get_db_session() as session:
             try:
                 new_chat = Chat(
                     chat_id=chat_id,
                     group_name=group_name,
                     user_id=user.id if user else None,
+                    registered_by=registered_by,
                 )
                 session.add(new_chat)
                 session.commit()
@@ -178,6 +179,42 @@ class ChatService:
                 return [int(c[0]) for c in chats]
             except Exception as e:
                 force_log(f"Error fetching non-free chat IDs: {e}")
+                return []
+            finally:
+                session.close()
+
+    @staticmethod
+    async def get_active_chat_ids_by_registered_by(registered_by: str | None):
+        """Get active chat IDs excluding FREE packages, filtered by registered_by field.
+        
+        Args:
+            registered_by: Phone number to filter by, or None to get chats with NULL registered_by
+        """
+        from models.group_package_model import GroupPackage
+        from common.enums import ServicePackage
+        
+        with get_db_session() as session:
+            try:
+                query = (
+                    session.query(Chat.chat_id)
+                    .join(GroupPackage, Chat.id == GroupPackage.chat_group_id)
+                    .filter(Chat.is_active == True)
+                    .filter(GroupPackage.package != ServicePackage.FREE)
+                )
+                
+                if registered_by is None:
+                    # Get chats with NULL or empty registered_by (for main client)
+                    query = query.filter(
+                        (Chat.registered_by.is_(None)) | (Chat.registered_by == '')
+                    )
+                else:
+                    # Get chats with specific registered_by phone number
+                    query = query.filter(Chat.registered_by == registered_by)
+                
+                chats = query.all()
+                return [int(c[0]) for c in chats]
+            except Exception as e:
+                force_log(f"Error fetching chat IDs by registered_by='{registered_by}': {e}")
                 return []
             finally:
                 session.close()

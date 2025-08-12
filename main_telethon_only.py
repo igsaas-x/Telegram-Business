@@ -72,6 +72,8 @@ async def main(loader: CredentialLoader) -> None:
             api_hash = getattr(loader, f'api_hash{i}', None)
             phone_number = getattr(loader, f'phone_number{i}', None)
             
+            logger.info(f"Checking config {i}: api_id={api_id}, api_hash={api_hash}, phone={phone_number}")
+            
             if api_id and api_hash and phone_number:
                 phone_configs.append({
                     'phone': phone_number,
@@ -79,6 +81,8 @@ async def main(loader: CredentialLoader) -> None:
                     'api_hash': api_hash
                 })
                 logger.info(f"Found configuration for phone number {i}: {phone_number}")
+            else:
+                logger.info(f"Skipping config {i}: missing values")
 
         if not phone_configs:
             raise ValueError("No phone number configurations found")
@@ -88,10 +92,10 @@ async def main(loader: CredentialLoader) -> None:
         
         for i, config in enumerate(phone_configs):
             if i == 0:
-                # Use the existing service for the first phone number
+                # Use the existing service for the first phone number (primary)
                 task = asyncio.create_task(
                     telethon_client_service.start(
-                        config['phone'], config['api_id'], config['api_hash']
+                        config['phone'], config['api_id'], config['api_hash'], is_primary=True
                     )
                 )
                 service_tasks.append(task)
@@ -101,7 +105,7 @@ async def main(loader: CredentialLoader) -> None:
                 additional_service = TelethonClientService()
                 task = asyncio.create_task(
                     additional_service.start(
-                        config['phone'], config['api_id'], config['api_hash']
+                        config['phone'], config['api_id'], config['api_hash'], is_primary=False
                     )
                 )
                 service_tasks.append(task)
