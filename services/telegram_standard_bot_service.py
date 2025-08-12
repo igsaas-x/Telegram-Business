@@ -61,7 +61,11 @@ class TelegramBotService:
                     return
                 
                 # Check if this group is bound to a private chat
-                private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(event.chat_id)
+                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
+                if chat:
+                    private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
+                else:
+                    private_chats = None
                 if private_chats:
                     message = f"""
 🔗 This group is already bound to private chat(s).

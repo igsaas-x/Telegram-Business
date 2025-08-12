@@ -137,7 +137,11 @@ class AutosumBusinessBot:
         
         # Check if this group is bound to a private chat
         chat_id = int(update.effective_chat.id)
-        private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat_id)
+        chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+        if chat:
+            private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
+        else:
+            private_chats = None
         if private_chats:
             message = f"""
 🔗 This group is already bound to private chat(s).

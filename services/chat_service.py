@@ -100,7 +100,6 @@ class ChatService:
             try:
                 chat = (
                     session.query(Chat)
-                    # .options(joinedload(Chat.user))
                     .filter_by(chat_id=chat_id)
                     .first()
                 )
