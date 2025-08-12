@@ -11,7 +11,7 @@ from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
-from services import ChatService, IncomeService
+from services import ChatService, IncomeService, UserService
 
 
 class TelethonClientService:
@@ -20,6 +20,7 @@ class TelethonClientService:
         self.service = IncomeService()
         self.scheduler: MessageVerificationScheduler | None = None
         self.chat_service = ChatService()
+        self.user_service = UserService()
 
     async def get_username_by_phone(self, phone_number: str) -> str | None:
         """
@@ -229,6 +230,70 @@ class TelethonClientService:
                 import traceback
 
                 force_log(f"Traceback: {traceback.format_exc()}")
+
+        # Start command handler for private chats
+        @self.client.on(events.NewMessage(pattern="/start"))  # type: ignore
+        async def start_handler(event):
+            try:
+                force_log(f"Start command from chat {event.chat_id}")
+                
+                # Only process private chats (not groups)
+                if not event.is_private:
+                    force_log("Start command received in group chat, ignoring")
+                    return
+                
+                # Get sender information
+                sender = await event.get_sender()
+                registered_user = None
+                
+                # Check if sender exists and is not anonymous
+                if sender and hasattr(sender, "id") and sender.id is not None:
+                    registered_user = await self.user_service.create_user(sender)
+                    force_log(f"Start command from user {sender.id} in private chat {event.chat_id}")
+                
+                # Check if chat is already registered
+                existing_chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
+                if existing_chat:
+                    # Update the existing chat with the current user_id if different
+                    if registered_user and existing_chat.user_id != registered_user.id:
+                        force_log(f"Updated existing private chat {event.chat_id} with new user {registered_user.id}")
+                        await self.chat_service.update_chat_user_id(event.chat_id, registered_user.id)
+                        await event.respond(f"✅ Private chat {event.chat_id} is already registered. Updated with current user.")
+                    else:
+                        force_log(f"Private chat {event.chat_id} already registered with same user")
+                        await event.respond(f"✅ Private chat {event.chat_id} is already registered.")
+                    return
+                
+                # Register new private chat
+                force_log(f"Proceeding with new private chat registration for chat {event.chat_id}")
+                
+                # Get chat title (for private chats, use first name or default)
+                chat_title = "Private Chat"
+                if sender and hasattr(sender, "first_name") and sender.first_name:
+                    chat_title = f"Private Chat - {sender.first_name}"
+                
+                success, message = await self.chat_service.register_chat_id(
+                    event.chat_id, chat_title, registered_user
+                )
+                
+                if success:
+                    response_message = f"""✅ Welcome! Your private chat has been registered successfully.
+
+🆔 Chat ID: {event.chat_id}
+👤 Registered by: {sender.first_name if sender and hasattr(sender, 'first_name') else 'Unknown'}
+
+You can now receive transaction notifications from bank bots in this private chat.
+
+💡 To manage settings and view reports, you can also register this chat in a group with the bot and use /menu commands there."""
+                    await event.respond(response_message)
+                    force_log(f"Successfully registered private chat {event.chat_id}")
+                else:
+                    await event.respond(f"❌ Registration failed: {message}")
+                    force_log(f"Failed to register private chat {event.chat_id}: {message}")
+                    
+            except Exception as e:
+                force_log(f"Error in start_handler: {e}")
+                await event.respond("❌ An error occurred during registration. Please try again.")
 
         # Start both the client and scheduler concurrently
         await asyncio.gather(
