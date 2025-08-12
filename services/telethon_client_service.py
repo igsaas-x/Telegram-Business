@@ -6,12 +6,13 @@ import pytz
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
 
+from common.enums import ServicePackage
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
 from helper import extract_amount_and_currency, extract_trx_id
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
-from services import ChatService, IncomeService, UserService
+from services import ChatService, IncomeService, UserService, GroupPackageService
 
 
 class TelethonClientService:
@@ -21,6 +22,7 @@ class TelethonClientService:
         self.scheduler: MessageVerificationScheduler | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
+        self.group_package_service = GroupPackageService()
 
     async def get_username_by_phone(self, phone_number: str) -> str | None:
         """
@@ -277,10 +279,20 @@ class TelethonClientService:
                 )
                 
                 if success:
+                    # Assign STANDARD package for private chat registrations
+                    try:
+                        await self.group_package_service.create_group_package(
+                            event.chat_id, ServicePackage.STANDARD
+                        )
+                        force_log(f"Assigned STANDARD package to private chat {event.chat_id}")
+                    except Exception as package_error:
+                        force_log(f"Error assigning STANDARD package to private chat {event.chat_id}: {package_error}")
+                        
                     response_message = f"""✅ Welcome! Your private chat has been registered successfully.
 
 🆔 Chat ID: {event.chat_id}
 👤 Registered by: {sender.first_name if sender and hasattr(sender, 'first_name') else 'Unknown'}
+📦 Package: STANDARD
 
 You can now receive transaction notifications from bank bots in this private chat.
 
