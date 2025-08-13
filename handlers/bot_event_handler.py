@@ -203,8 +203,8 @@ class CommandHandler:
                 return
 
             # Check package limits
-            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 20:
-                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 20 ប្រតិបត្តិការ។ \nសម្រាប់មើលទិន្នន័យពេញលេញ \nសូមប្រើប្រាស់កញ្ចប់ Pay version.សូមទាក់ទងទៅAdmin \n\n https://t.me/HK_688"
+            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 10:
+                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 10 ប្រតិបត្តិការ។ \nសម្រាប់មើលទិន្នន័យពេញលេញ \nសូមប្រើប្រាស់កញ្ចប់ Pay version.សូមទាក់ទងទៅAdmin \n\n https://t.me/HK_688"
                 await event.client.send_message(chat_id, contact_message)
                 return
 
