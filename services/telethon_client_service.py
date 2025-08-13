@@ -9,7 +9,7 @@ from telethon.errors import PersistentTimestampInvalidError
 from common.enums import ServicePackage
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
-from helper import extract_amount_and_currency, extract_trx_id
+from helper import extract_amount_and_currency, extract_trx_id, extract_s7pos_amount_and_currency
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
 from services import ChatService, IncomeService, UserService, GroupPackageService
@@ -131,7 +131,8 @@ class TelethonClientService:
                     "CPBankBot",
                     "SathapanaBank_bot",
                     "chipmongbankpaymentbot",
-                    "prasac_merchant_payment_bot"
+                    "prasac_merchant_payment_bot",
+                    "s7pos_bot"
                 }
                 if username not in allowed_bots:
                     force_log(f"Message from bot '{username}' not in allowed list, ignoring.")
@@ -145,7 +146,13 @@ class TelethonClientService:
                 force_log(
                     f"Processing message from chat {event.chat_id}: {event.message.text}"
                 )
-                currency, amount = extract_amount_and_currency(event.message.text)
+                
+                # Use specific parser based on sender bot
+                if username == "s7pos_bot":
+                    currency, amount = extract_s7pos_amount_and_currency(event.message.text)
+                else:
+                    currency, amount = extract_amount_and_currency(event.message.text)
+                    
                 message_id: int = event.message.id
                 trx_id: str | None = extract_trx_id(event.message.text)
 

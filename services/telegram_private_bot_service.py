@@ -45,7 +45,7 @@ class TelegramPrivateBot:
         
         if not username or username not in allowed_users:
             await update.message.reply_text(
-                "🚫 Access denied. Please contact the administrator for access."
+                "🚫 Access denied. Please contact the administrator for access. https://t.me/HK_688"
             )
             return ConversationHandler.END
         
