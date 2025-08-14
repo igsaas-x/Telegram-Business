@@ -1,6 +1,3 @@
-import io
-
-import qrcode
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -14,17 +11,22 @@ from telegram.ext import (
 )
 
 from helper.logger_utils import force_log
+from helper.pdf_generator import PDFGenerator
+from helper.qr_generator import QRGenerator
 
 # Conversation state codes for Utils bot
 START_MENU_CODE = 3000
 WIFI_NAME_CODE = 3001
 WIFI_PASSWORD_CODE = 3002
+PDF_OPTION_CODE = 3003
 
 
 class TelegramUtilsBot:
     def __init__(self, bot_token: str):
         self.bot_token = bot_token
         self.app: Application | None = None
+        self.qr_generator = QRGenerator()
+        self.pdf_generator = PDFGenerator()
         
         force_log("TelegramUtilsBot initialized with token", "TelegramUtilsBot")
 
@@ -93,41 +95,47 @@ class TelegramUtilsBot:
             return WIFI_PASSWORD_CODE
         
         try:
-            # Generate Utils code
-            wifi_config = f"WIFI:T:WPA;S:{wifi_name};P:{wifi_password};;"
-            
-            # Create QR code
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
+            # Send "generating" message first
+            generating_msg = await update.message.reply_text(
+                "🔧 Generating WiFi QR code...\n"
+                "⏳ Please wait..."
             )
-            qr.add_data(wifi_config)
-            qr.make(fit=True)
             
-            # Create QR code image
-            img = qr.make_image(fill_color="black", back_color="white")
+            # Generate WiFi QR code with text using utility class
+            final_img = self.qr_generator.generate_wifi_qr_with_text(wifi_name, wifi_password)
             
-            # Convert to bytes
-            bio = io.BytesIO()
-            img.save(bio, format='PNG')
-            bio.seek(0)
+            # Convert to bytes for sending
+            bio = self.qr_generator.image_to_bytes(final_img)
+            
+            # Store the QR image data for potential PDF generation
+            context.user_data["qr_image"] = final_img
+            context.user_data["wifi_name"] = wifi_name
+            context.user_data["wifi_password"] = wifi_password
+            
+            # Create keyboard with PDF option
+            keyboard = [
+                [InlineKeyboardButton("📄 Generate as PDF", callback_data="generate_pdf")],
+                [InlineKeyboardButton("✅ Done", callback_data="done")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Delete the generating message
+            await generating_msg.delete()
             
             # Send the QR code image
             await update.message.reply_photo(
                 photo=bio,
-                caption=f"📶 Utils Code Generated!\n\n"
+                caption=f"📶 WiFi QR Code Generated!\n\n"
                        f"🏷️ Network: {wifi_name}\n"
                        f"🔐 Password: {'*' * len(wifi_password)}\n\n"
                        f"📱 Scan this QR code with your device to connect to the WiFi network!\n\n"
-                       f"Use /start to generate another QR code."
+                       f"Choose an option below:",
+                reply_markup=reply_markup
             )
             
             force_log(f"Utils code generated for network: {wifi_name}", "TelegramUtilsBot")
             
-            # Clear user data
-            context.user_data.clear()
+            return PDF_OPTION_CODE
             
         except Exception as e:
             force_log(f"Error generating Utils code: {e}", "TelegramUtilsBot")
@@ -136,6 +144,58 @@ class TelegramUtilsBot:
             )
         
         return ConversationHandler.END
+
+    async def handle_pdf_option(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle PDF generation option"""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "generate_pdf":
+            await self.generate_pdf(query, context)
+        elif query.data == "done":
+            await query.edit_message_caption(
+                caption=f"{query.message.caption}\n\n✅ Completed! Use /start to generate another QR code."
+            )
+            context.user_data.clear()
+            return ConversationHandler.END
+        
+        return PDF_OPTION_CODE
+
+    async def generate_pdf(self, query, context: ContextTypes.DEFAULT_TYPE):
+        """Generate and send PDF version of the QR code using utility class"""
+        try:
+            qr_image = context.user_data.get("qr_image")
+            wifi_name = context.user_data.get("wifi_name", "")
+            
+            if not qr_image:
+                await query.edit_message_caption(
+                    caption=f"{query.message.caption}\n\n❌ Error: QR code data not found."
+                )
+                return
+            
+            # Generate PDF using utility class
+            pdf_buffer = self.pdf_generator.create_wifi_qr_pdf(qr_image, wifi_name)
+            filename = self.pdf_generator.get_pdf_filename(wifi_name)
+            
+            # Send PDF document
+            await query.message.reply_document(
+                document=pdf_buffer,
+                filename=filename,
+                caption=f"📄 PDF version ready for printing! 🖨️"
+            )
+            
+            await query.edit_message_caption(
+                caption=f"{query.message.caption}\n\n✅ PDF generated and sent! Use /start to generate another QR code."
+            )
+            
+            force_log(f"PDF generated for WiFi network: {wifi_name}", "TelegramUtilsBot")
+            context.user_data.clear()
+            
+        except Exception as e:
+            force_log(f"Error generating PDF: {e}", "TelegramUtilsBot")
+            await query.edit_message_caption(
+                caption=f"{query.message.caption}\n\n❌ Error generating PDF. Please try again."
+            )
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Cancel command"""
@@ -154,6 +214,7 @@ class TelegramUtilsBot:
                 START_MENU_CODE: [CallbackQueryHandler(self.handle_start_menu)],
                 WIFI_NAME_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_name)],
                 WIFI_PASSWORD_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_password)],
+                PDF_OPTION_CODE: [CallbackQueryHandler(self.handle_pdf_option)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,
