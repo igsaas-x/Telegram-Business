@@ -15,6 +15,7 @@ from services.telegram_admin_bot_service import TelegramAdminBot
 from services.telegram_business_bot_service import AutosumBusinessBot
 from services.telegram_private_bot_service import TelegramPrivateBot
 from services.telegram_standard_bot_service import TelegramBotService
+from services.telegram_utils_bot_service import TelegramUtilsBot
 
 load_environment()
 
@@ -71,6 +72,7 @@ async def main(loader: CredentialLoader) -> None:
         admin_bot = TelegramAdminBot(loader.admin_bot_token)
         business_bot = AutosumBusinessBot(loader.autosum_business_bot_token)
         private_bot = TelegramPrivateBot(loader.private_chat_bot_token)
+        utils_bot = TelegramUtilsBot(loader.utils_bot_token)
         auto_close_scheduler = AutoCloseScheduler(bot_service=business_bot)
         trial_expiry_scheduler = TrialExpiryScheduler()
         package_expiry_scheduler = PackageExpiryScheduler(
@@ -108,6 +110,13 @@ async def main(loader: CredentialLoader) -> None:
             service_tasks.append(asyncio.create_task(private_bot.start_polling()))
         else:
             logger.warning("Private bot token not provided, skipping private bot")
+
+        # Add Utils bot only if token is provided
+        if loader.utils_bot_token:
+            logger.info("Starting Utils bot...")
+            service_tasks.append(asyncio.create_task(utils_bot.start_polling()))
+        else:
+            logger.warning("Utils bot token not provided, skipping Utils bot")
 
         tasks.update(service_tasks)
         logger.info(f"All {len(service_tasks)} bot services started successfully")

@@ -31,6 +31,7 @@ class CredentialLoader:
         self.admin_bot_token: str = ""
         self.autosum_business_bot_token: str = ""
         self.private_chat_bot_token: str = ""
+        self.utils_bot_token: str = ""
         
         # Support for multiple phone numbers (2-9)
         for i in range(2, 10):
@@ -61,6 +62,7 @@ class CredentialLoader:
         self.admin_bot_token = os.getenv("ADMIN_BOT_TOKEN") or ""
         self.autosum_business_bot_token = os.getenv("AUTOSUM_BUSINESS_BOT_TOKEN") or ""
         self.private_chat_bot_token = os.getenv("PRIVATE_CHAT_BOT") or ""
+        self.utils_bot_token = os.getenv("UTILS_BOT_TOKEN") or ""
 
         # Load additional phone number configurations (2-9)
         for i in range(2, 10):
