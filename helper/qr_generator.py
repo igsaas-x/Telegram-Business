@@ -1,6 +1,8 @@
 import io
+
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
+
 from helper.logger_utils import force_log
 
 
@@ -72,8 +74,8 @@ class QRGenerator:
             qr_width, qr_height = qr_img.size
             force_log(f"QR image size: {qr_width}x{qr_height}", self.logger_name)
             
-            # Create new image with space for text (reduced spacing)
-            text_area_height = 160  # Increased for larger text with higher resolution
+            # Create new image with space for text (increased for proper spacing)
+            text_area_height = 200  # Increased from 160 to 200 to accommodate all text
             total_height = qr_height + text_area_height
             final_img = Image.new('RGB', (qr_width, total_height), 'white')
             
@@ -113,14 +115,17 @@ class QRGenerator:
             
             # Draw each line with custom spacing
             for i, line in enumerate(lines):
-                if i < 2:  # WiFi Name and Password - normal spacing
-                    y_pos = start_y + (i * line_height)
+                if i == 0:  # WiFi Name
+                    y_pos = start_y
+                    current_font = font
+                elif i == 1:  # Password - add extra space after WiFi Name
+                    y_pos = start_y + line_height + 20  # Extra 20px space between WiFi Name and Password
                     current_font = font
                 elif i == 2:  # Separator - add extra space
-                    y_pos = start_y + (i * line_height) + 15  # Extra 15px space before separator
+                    y_pos = start_y + (2 * line_height) + 35  # Account for extra space above
                     current_font = font_small
                 else:  # Footer - smaller font and size
-                    y_pos = start_y + (i * line_height) + 15  # Maintain the extra space
+                    y_pos = start_y + (3 * line_height) + 35  # Maintain spacing
                     current_font = self._load_font(8)  # Even smaller font for footer
                 
                 # Center the text
