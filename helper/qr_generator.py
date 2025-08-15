@@ -142,7 +142,7 @@ class QRGenerator:
         """Load font with much larger size"""
         try:
             # Use moderate font sizes
-            actual_size = size * 1.5  # Reduced from 15x to 1.5x
+            actual_size = size * 3  # Increased from 1.5x to 3x (2 times larger)
             
             # Try different font paths for various systems
             font_paths = [
