@@ -132,6 +132,7 @@ class TelethonClientService:
                     "SathapanaBank_bot",
                     "chipmongbankpaymentbot",
                     "prasac_merchant_payment_bot",
+                    "AMKPlc_bot",
                     "s7pos_bot"
                 }
                 if username not in allowed_bots:
