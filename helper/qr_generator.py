@@ -74,8 +74,8 @@ class QRGenerator:
             qr_width, qr_height = qr_img.size
             force_log(f"QR image size: {qr_width}x{qr_height}", self.logger_name)
             
-            # Create new image with space for text (much larger for bigger fonts)
-            text_area_height = 400  # Increased from 200 to 400 for much larger text
+            # Create new image with space for text (reduced to 370px)
+            text_area_height = 370  # Reduced from 390 to 370
             total_height = qr_height + text_area_height
             final_img = Image.new('RGB', (qr_width, total_height), 'white')
             
@@ -131,6 +131,7 @@ class QRGenerator:
                 # Center the text
                 x_pos = self._get_centered_x_position(draw, line, current_font, qr_width)
                 
+                # Draw text with anti-aliasing for better quality
                 draw.text((x_pos, y_pos), line, fill="black", font=current_font)
                 force_log(f"Drew line {i+1}: '{line}' at ({x_pos}, {y_pos})", self.logger_name)
                 
