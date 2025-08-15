@@ -141,8 +141,8 @@ class QRGenerator:
     def _load_font(self, size: int) -> ImageFont.FreeTypeFont:
         """Load font with much larger size"""
         try:
-            # Use very large font sizes
-            actual_size = size * 15  # Significantly increased size
+            # Use moderate font sizes
+            actual_size = size * 1.5  # Reduced from 15x to 1.5x
             
             # Try different font paths for various systems
             font_paths = [
