@@ -77,7 +77,7 @@ class TelegramUtilsBot:
         context.user_data["wifi_name"] = wifi_name
         
         await update.message.reply_text(
-            f"📶 WiFi Name: {wifi_name}\n\n"
+            f"📶 Wifi Name: {wifi_name}\n\n"
             "🔐 Now please enter the WiFi password:"
         )
         
