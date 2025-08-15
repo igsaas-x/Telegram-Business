@@ -111,7 +111,7 @@ class QRGenerator:
             
             # Text positioning with more space for larger fonts
             start_y = qr_height + 20  # More space between QR and text
-            line_height = 80  # Much larger line height for bigger fonts
+            line_height = 56  # Reduced from 80 to 56 (30% reduction)
             
             # Draw each line with custom spacing
             for i, line in enumerate(lines):
@@ -142,7 +142,7 @@ class QRGenerator:
         """Load font with much larger size"""
         try:
             # Use moderate font sizes
-            actual_size = size * 3  # Increased from 1.5x to 3x (2 times larger)
+            actual_size = size * 2.5  # Reduced from 3x to 2.5x
             
             # Try different font paths for various systems
             font_paths = [
