@@ -142,7 +142,7 @@ class QRGenerator:
         """Load font with fallback options - doubled size"""
         try:
             # Increase font size for higher resolution
-            actual_size = size * 4  # Increased from 2x to 4x for higher resolution
+            actual_size = size * 12  # Increased from 4x to 12x for much larger text
             
             # Try different font paths
             font_paths = [
