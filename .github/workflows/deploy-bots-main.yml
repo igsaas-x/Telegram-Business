@@ -52,6 +52,7 @@ jobs:
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
           AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
           PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
+          UTILS_BOT_TOKEN=${{ secrets.UTILS_BOT_TOKEN }}
           EOF
           
           pip install -r requirements.txt

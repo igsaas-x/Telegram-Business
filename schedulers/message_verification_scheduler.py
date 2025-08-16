@@ -147,17 +147,29 @@ class MessageVerificationScheduler:
 
                         username = getattr(sender, "username", "")
 
-                        lowercase_username = username.lower()
-                        if "salmon" in lowercase_username or "report" in lowercase_username or "kambaul" in lowercase_username:
-                            force_log(
-                                f"Message from user with 'salmon/report/kambaul' in username ({username}), ignoring")
+                        # Only process messages from allowed payment bots
+                        allowed_bots = {
+                            "ACLEDABankBot",
+                            "PayWayByABA_bot",
+                            "PLBITBot",
+                            "CanadiaMerchant_bot",
+                            "HLBCAM_Bot",
+                            "vattanac_bank_merchant_prod_bot",
+                            "CPBankBot",
+                            "SathapanaBank_bot",
+                            "chipmongbankpaymentbot",
+                            "prasac_merchant_payment_bot",
+                            "s7pos_bot"
+                        }
+                        
+                        if username not in allowed_bots:
+                            force_log(f"Message from bot '{username}' not in allowed list, ignoring in scheduler")
                             continue
-
-                        if username != "AutosumBusinessBot" and username != "AutoSum_bot":
-                            messages.append(message)
-                            force_log(
-                                f"Found bot message in timeframe: {message.id} from {message_time}"
-                            )
+                            
+                        messages.append(message)
+                        force_log(
+                            f"Found bot message in timeframe: {message.id} from {message_time}"
+                        )
         except FloodWaitError as e:
             force_log(f"FloodWaitError for chat {chat_id}: waiting {e.seconds} seconds")
             await asyncio.sleep(e.seconds + 1)

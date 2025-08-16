@@ -9,7 +9,7 @@ from telethon.errors import PersistentTimestampInvalidError
 from common.enums import ServicePackage
 # Check if message was sent after chat registration (applies to all messages)
 from helper import DateUtils
-from helper import extract_amount_and_currency, extract_trx_id
+from helper import extract_amount_and_currency, extract_trx_id, extract_s7pos_amount_and_currency
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
 from services import ChatService, IncomeService, UserService, GroupPackageService
@@ -52,7 +52,7 @@ class TelethonClientService:
                 else:
                     force_log(f"User found for phone {phone_number} but no username set")
                     return None
-            except Exception as e:
+            except Exception:
                 # Try without the plus sign if the first attempt failed
                 try:
                     user = await self.client.get_entity(clean_phone)
@@ -75,9 +75,6 @@ class TelethonClientService:
         
         # Store mobile number for use in register handler
         self.mobile_number = mobile
-        
-        # For scheduler purposes, primary client gets None to handle NULL registered_by chats
-        self.scheduler_mobile = None if is_primary else mobile
 
         # Handle persistent timestamp errors by removing corrupted session
         try:
@@ -106,8 +103,11 @@ class TelethonClientService:
         # Add a startup log to confirm client is ready
         force_log("Telethon client event handlers registered successfully")
 
+        # For scheduler purposes, primary client gets None to handle NULL registered_by chats
+        scheduler_mobile = None if is_primary else mobile
+
         # Initialize and start the message verification scheduler
-        self.scheduler = MessageVerificationScheduler(self.client, self.scheduler_mobile)  # type: ignore
+        self.scheduler = MessageVerificationScheduler(self.client, scheduler_mobile)  # type: ignore
         force_log("Starting message verification scheduler...")
 
         @self.client.on(events.NewMessage)  # type: ignore
@@ -117,7 +117,7 @@ class TelethonClientService:
 
             try:
                 sender = await event.get_sender()
-                is_bot = getattr(sender, "bot", False)
+                # is_bot = getattr(sender, "bot", False)
                 username = getattr(sender, "username", "") or ""
 
                 # Only process messages from the specified bots
@@ -131,7 +131,9 @@ class TelethonClientService:
                     "CPBankBot",
                     "SathapanaBank_bot",
                     "chipmongbankpaymentbot",
-                    "prasac_merchant_payment_bot"
+                    "prasac_merchant_payment_bot",
+                    "AMKPlc_bot",
+                    "s7pos_bot"
                 }
                 if username not in allowed_bots:
                     force_log(f"Message from bot '{username}' not in allowed list, ignoring.")
@@ -145,7 +147,13 @@ class TelethonClientService:
                 force_log(
                     f"Processing message from chat {event.chat_id}: {event.message.text}"
                 )
-                currency, amount = extract_amount_and_currency(event.message.text)
+                
+                # Use specific parser based on sender bot
+                if username == "s7pos_bot":
+                    currency, amount = extract_s7pos_amount_and_currency(event.message.text)
+                else:
+                    currency, amount = extract_amount_and_currency(event.message.text)
+                    
                 message_id: int = event.message.id
                 trx_id: str | None = extract_trx_id(event.message.text)
 
@@ -241,7 +249,7 @@ class TelethonClientService:
                 force_log(f"Traceback: {traceback.format_exc()}")
 
         # Start command handler for private chats
-        @self.client.on(events.NewMessage(pattern="/register"))  # type: ignore
+        @self.client.on(events.NewMessage(pattern="/register_me"))  # type: ignore
         async def start_handler(event):
             try:
                 force_log(f"Start command from chat {event.chat_id}")
@@ -276,10 +284,8 @@ class TelethonClientService:
                 # Register new private chat
                 force_log(f"Proceeding with new private chat registration for chat {event.chat_id}")
                 
-                # Get chat title (for private chats, use first name or default)
-                chat_title = "Private Chat"
-                if sender and hasattr(sender, "first_name") and sender.first_name:
-                    chat_title = f"Private Chat - {sender.first_name}"
+                # Get chat title (for groups, use group name or default)
+                chat_title = getattr(event.chat, "title", f"{event.chat_id}")
                 
                 success, message = await self.chat_service.register_chat_id(
                     event.chat_id, chat_title, registered_user, self.mobile_number

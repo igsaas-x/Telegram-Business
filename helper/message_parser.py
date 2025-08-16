@@ -111,6 +111,41 @@ def extract_khmer_dollar_amount(text: str) -> float | None:
     
     return None
 
+def extract_s7pos_final_amount(text: str) -> float | None:
+    """
+    Extract final amount from s7pos_bot message format.
+    
+    Looks for pattern: សរុបចុងក្រោយ: [amount] $
+    
+    Example input:
+    - "សរុបចុងក្រោយ: 63.00 $"
+    Returns: 63.0
+    """
+    pattern = r'សរុបចុងក្រោយ:\s*([\d,]+(?:\.\d+)?)\s*\$'
+    match = re.search(pattern, text)
+    
+    if match:
+        amount_str = match.group(1).replace(',', '')
+        try:
+            amount = float(amount_str) if '.' in amount_str else float(amount_str)
+            return amount
+        except ValueError:
+            return None
+    
+    return None
+
+def extract_s7pos_amount_and_currency(text: str):
+    """
+    Extract amount and currency specifically for s7pos_bot messages.
+    
+    Returns tuple (currency, amount) or (None, None) if not found.
+    """
+    amount = extract_s7pos_final_amount(text)
+    if amount is not None:
+        return '$', amount
+    
+    return None, None
+
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"
     match = re.search(r'Trx\. ID:\s*([0-9]+)', message_text)

@@ -39,6 +39,16 @@ class TelegramPrivateBot:
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
+        # Check if user is authorized
+        allowed_users = ["HK_688", "houhokheng", "autosum_kh"]
+        username = update.effective_user.username if update.effective_user else None
+        
+        if not username or username not in allowed_users:
+            await update.message.reply_text(
+                "🚫 Access denied. Please contact the administrator for access. https://t.me/HK_688"
+            )
+            return ConversationHandler.END
+        
         keyboard = [
             [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
             [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],

@@ -91,15 +91,23 @@ class CommandHandler:
                     # Validate that the dates exist (e.g., Feb 30 doesn't exist)
                     try:
                         start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-                        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+                        # For end_date, add 1 day to make the range inclusive of end_day
+                        # e.g., 5-6 should query from 2025-01-05 00:00:00 to 2025-01-07 00:00:00 (exclusive)
+                        # to include all transactions on both day 5 and day 6
+                        end_date_original = datetime.strptime(end_date_str, "%Y-%m-%d")
+                        end_date = end_date_original + timedelta(days=1)
                     except ValueError:
                         await event.respond(
                             f"កាលបរិច្ឆេទមិនត្រឹមត្រូវសម្រាប់ខែនេះ។ សូមពិនិត្យថ្ងៃ {start_day} ដល់ {end_day}")
                         return
 
                     await conversation_service.mark_as_replied(
-                        chat_id=event.chat_id, message_id=question.message_id
+                        chat_id=event.chat_id, thread_id=question.thread_id, message_id=question.message_id
                     )
+
+                    # Debug logging for date range
+                    force_log(f"Date range query: {start_date} to {end_date} (exclusive)", "CommandHandler")
+                    force_log(f"User input range: day {start_day} to {end_day}", "CommandHandler")
 
                     income_service = IncomeService()
                     incomes = await income_service.get_income_by_date_and_chat_id(
@@ -120,7 +128,7 @@ class CommandHandler:
                         report_date=start_date,
                         requesting_user=event.sender,
                         start_date=start_date,
-                        end_date=end_date,
+                        end_date=end_date_original,
                         is_weekly=True
                     )
                     force_log(
@@ -144,7 +152,7 @@ class CommandHandler:
                     selected_date = datetime.strptime(date_str, "%Y-%m-%d")
 
                     await conversation_service.mark_as_replied(
-                        chat_id=event.chat_id, message_id=question.message_id
+                        chat_id=event.chat_id, thread_id=question.thread_id, message_id=question.message_id
                     )
 
                     income_service = IncomeService()
@@ -203,8 +211,8 @@ class CommandHandler:
                 return
 
             # Check package limits
-            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 20:
-                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 20 ប្រតិបត្តិការ។ \nសម្រាប់មើលទិន្នន័យពេញលេញ \nសូមប្រើប្រាស់កញ្ចប់ Pay version.សូមទាក់ទងទៅAdmin \n\n https://t.me/HK_688"
+            if group_package and group_package.package == ServicePackage.FREE and len(incomes) > 10:
+                contact_message = "អ្នកមានទិន្នន័យច្រើនជាង 10 ប្រតិបត្តិការ។ \nសម្រាប់មើលទិន្នន័យពេញលេញ \nសូមប្រើប្រាស់កញ្ចប់ Pay version.សូមទាក់ទងទៅAdmin \n\n https://t.me/HK_688"
                 await event.client.send_message(chat_id, contact_message)
                 return
 
@@ -305,11 +313,17 @@ class CommandHandler:
         context_data = json.dumps({"current_month": current_month})
         await conversation_service.save_question(
             chat_id=chat_id,
+            thread_id=result.id,  # Use message ID as thread ID for telethon bot
             message_id=result.id,
             question_type="date_input",
             context_data=context_data,
         )
-        await event.delete()
+        
+        try:
+            await event.delete()
+        except Exception as e:
+            force_log(f"Could not delete message in handle_other_dates: {e}")
+            # Don't re-raise, just log the error
 
     async def handle_date_summary(self, event, data):
         chat_id = event.chat_id
