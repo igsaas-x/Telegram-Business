@@ -48,7 +48,7 @@ class TelegramUtilsBot:
         )
         return START_MENU_CODE
 
-    async def handle_start_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_wifi_qr_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle start menu button selections"""
         query = update.callback_query
         await query.answer()
@@ -292,7 +292,7 @@ class TelegramUtilsBot:
             entry_points=[CommandHandler("start", self.start_command)],
             states={
                 START_MENU_CODE: [
-                    CallbackQueryHandler(self.handle_start_menu),
+                    CallbackQueryHandler(self.handle_wifi_qr_menu),
                     CommandHandler("start", self.start_command)
                 ],
                 WIFI_NAME_CODE: [
