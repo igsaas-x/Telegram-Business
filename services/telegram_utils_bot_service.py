@@ -53,8 +53,8 @@ class TelegramUtilsBot:
         
         if query.data == "generate_wifi_qr":
             await query.edit_message_text(
-                "📶 Let's generate a Utils code!\n\n"
-                "Please enter the WiFi network name (SSID):"
+                "📶 Let's generate wifi QR code!\n\n"
+                "Please enter the wifi network name (SSID):"
             )
             return WIFI_NAME_CODE
         elif query.data == "close_conversation":
@@ -64,16 +64,16 @@ class TelegramUtilsBot:
         return ConversationHandler.END
 
     async def handle_wifi_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle WiFi name input"""
+        """Handle Wifi name input"""
         wifi_name = update.message.text.strip()
         
         if not wifi_name:
             await update.message.reply_text(
-                "❌ WiFi name cannot be empty. Please enter a valid WiFi network name:"
+                "❌ Wifi name cannot be empty. Please enter a valid WiFi network name:"
             )
             return WIFI_NAME_CODE
         
-        # Store the WiFi name in context
+        # Store the Wifi name in context
         context.user_data["wifi_name"] = wifi_name
         
         await update.message.reply_text(
@@ -84,24 +84,24 @@ class TelegramUtilsBot:
         return WIFI_PASSWORD_CODE
 
     async def handle_wifi_password(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle WiFi password input and generate QR code"""
+        """Handle Wifi password input and generate QR code"""
         wifi_password = update.message.text.strip()
         wifi_name = context.user_data.get("wifi_name", "")
         
         if not wifi_password:
             await update.message.reply_text(
-                "❌ WiFi password cannot be empty. Please enter the WiFi password:"
+                "❌ Wifi password cannot be empty. Please enter the WiFi password:"
             )
             return WIFI_PASSWORD_CODE
         
         try:
             # Send "generating" message first
             generating_msg = await update.message.reply_text(
-                "🔧 Generating WiFi QR code...\n"
+                "🔧 Generating Wifi QR code...\n"
                 "⏳ Please wait..."
             )
             
-            # Generate WiFi QR code with text using utility class
+            # Generate Wifi QR code with text using utility class
             final_img = self.qr_generator.generate_wifi_qr_with_text(wifi_name, wifi_password)
             
             # Convert to bytes for sending
@@ -125,7 +125,7 @@ class TelegramUtilsBot:
             # Send the QR code image
             await update.message.reply_photo(
                 photo=bio,
-                caption=f"📶 WiFi QR Code Generated!\n\n"
+                caption=f"📶 Wifi QR Code Generated!\n\n"
                        f"🏷️ Network: {wifi_name}\n"
                        f"🔐 Password: {'*' * len(wifi_password)}\n\n"
                        f"📱 Scan this QR code with your device to connect to the WiFi network!\n\n"

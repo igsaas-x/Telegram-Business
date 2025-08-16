@@ -74,8 +74,8 @@ class QRGenerator:
             qr_width, qr_height = qr_img.size
             force_log(f"QR image size: {qr_width}x{qr_height}", self.logger_name)
             
-            # Create new image with space for text (reduced to 370px)
-            text_area_height = 370  # Reduced from 390 to 370
+            # Create new image with space for text (reduced to 350px)
+            text_area_height = 350  # Reduced from 390 to 350
             total_height = qr_height + text_area_height
             final_img = Image.new('RGB', (qr_width, total_height), 'white')
             
