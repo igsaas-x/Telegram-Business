@@ -61,6 +61,7 @@ class TelegramBotService:
     def _register_event_handlers(self):
         @self.bot.on(events.NewMessage(pattern="/menu"))
         async def menu_handler(event):
+            logger.info(f"Menu called - Chat ID: {event.chat_id}")
             try:
                 # Check if this is a private chat
                 if event.is_private:
