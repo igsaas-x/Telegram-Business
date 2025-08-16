@@ -68,7 +68,7 @@ async def main(loader: CredentialLoader) -> None:
     """
     try:
         logger.info("Starting Bots Only Mode...")
-        telegram_bot_service = TelegramBotService()
+        standard_bot_service = TelegramBotService()
         admin_bot = TelegramAdminBot(loader.admin_bot_token)
         business_bot = AutosumBusinessBot(loader.autosum_business_bot_token)
         private_bot = TelegramPrivateBot(loader.private_chat_bot_token)
@@ -76,7 +76,7 @@ async def main(loader: CredentialLoader) -> None:
         auto_close_scheduler = AutoCloseScheduler(bot_service=business_bot)
         trial_expiry_scheduler = TrialExpiryScheduler()
         package_expiry_scheduler = PackageExpiryScheduler(
-            standard_bot_service=telegram_bot_service,
+            standard_bot_service=standard_bot_service,
             business_bot_service=business_bot,
             admin_bot_service=admin_bot
         )
@@ -90,7 +90,7 @@ async def main(loader: CredentialLoader) -> None:
 
         # Start bot services only (no telethon client)
         service_tasks = [
-            asyncio.create_task(telegram_bot_service.start(loader.bot_token)),
+            asyncio.create_task(standard_bot_service.start(loader.bot_token)),
             asyncio.create_task(admin_bot.start_polling()),
             asyncio.create_task(auto_close_scheduler.start_scheduler()),
             asyncio.create_task(trial_expiry_scheduler.start_scheduler()),

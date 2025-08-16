@@ -1,13 +1,15 @@
 import asyncio
+import logging
 import os
 
 from telethon import TelegramClient, events
 
 from handlers import EventHandler
-from helper.logger_utils import force_log
 from models import User
 from services import UserService, ChatService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+
+logger = logging.getLogger(__name__)
 
 
 class TelegramBotService:
@@ -28,11 +30,11 @@ class TelegramBotService:
         try:
             if self.bot:
                 await self.bot.send_message(chat_id, message)
-                force_log(f"Message sent to chat {chat_id}: {message[:50]}...")
+                logger.info(f"Message sent to chat {chat_id}: {message[:50]}...")
             else:
-                force_log("Bot is not initialized, cannot send message")
+                logger.info("Bot is not initialized, cannot send message")
         except Exception as e:
-            force_log(f"Failed to send message to chat {chat_id}: {str(e)}")
+            logger.info(f"Failed to send message to chat {chat_id}: {str(e)}")
 
     async def start(self, bot_token: str):
         self.bot = TelegramClient(
@@ -42,13 +44,13 @@ class TelegramBotService:
         self._register_event_handlers()
 
         try:
-            force_log("Bot is running...")
+            logger.info("Bot is running...")
             await self.bot.run_until_disconnected()  # type: ignore
         except asyncio.CancelledError:
             await self.bot.disconnect()  # type: ignore
-            force_log("Bot stopped by user")
+            logger.info("Bot stopped by user")
         except Exception as e:
-            force_log(f"Bot crashed with error: {e}")
+            logger.info(f"Bot crashed with error: {e}")
             raise
 
     def _register_event_handlers(self):
@@ -59,7 +61,7 @@ class TelegramBotService:
                 if event.is_private:
                     await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
                     return
-                
+
                 # Check if this group is bound to a private chat
                 chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
                 if chat:
@@ -71,23 +73,23 @@ class TelegramBotService:
                     """
                     await event.respond(message)
                     return
-                
+
                 await self.event_handler.menu(event)
             except Exception as e:
-                force_log(f"Error in menu_handler: {e}")
+                logger.info(f"Error in menu_handler: {e}")
                 await event.respond("An error occurred. Please try again.")
 
         # Register command handler
         @self.bot.on(events.NewMessage(pattern="/register"))
         async def register_handler(event):
             try:
-                force_log(f"Registration attempt from chat {event.chat_id}")
-                
+                logger.info(f"Registration attempt from chat {event.chat_id}")
+
                 # Check if this is a private chat
                 if event.is_private:
                     await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
                     return
-                
+
                 # Always insert user if not exists, regardless of chat_id existence
                 sender = await event.get_sender()
 
@@ -95,7 +97,7 @@ class TelegramBotService:
                 # Check if sender is anonymous
                 if sender and hasattr(sender, "id") or sender.id is None:
                     registered_user = await self.user_service.create_user(sender)
-                    force_log(
+                    logger.info(
                         f"Registration request from user {sender.id} in chat {event.chat_id}"
                     )
 
@@ -106,7 +108,7 @@ class TelegramBotService:
                 if existing_chat:
                     # Update the existing chat with the current user_id
                     if registered_user and existing_chat.user_id != registered_user.id:
-                        force_log(
+                        logger.info(
                             f"Updated existing chat {event.chat_id} with new user {registered_user.id}"
                         )
                         await self.chat_service.update_chat_user_id(
@@ -116,7 +118,7 @@ class TelegramBotService:
                             f"Chat ID {event.chat_id} is already registered. Updated with current user."
                         )
                     else:
-                        force_log(
+                        logger.info(
                             f"Chat {event.chat_id} already registered with same user"
                         )
                         await event.respond(
@@ -124,11 +126,11 @@ class TelegramBotService:
                         )
                     return
 
-                force_log(f"Proceeding with new registration for chat {event.chat_id}")
+                logger.info(f"Proceeding with new registration for chat {event.chat_id}")
                 await self.event_handler.register(event, registered_user)
             except Exception as e:
                 print(f"Error on registration {e}")
-                force_log(f"Error in register_handler: {e}")
+                logger.info(f"Error in register_handler: {e}")
                 await event.respond(
                     "An error occurred during registration. Please try again."
                 )
@@ -140,7 +142,7 @@ class TelegramBotService:
                 message = "សូមទាក់ទងយើងខ្ញុំតាមរយៈ Telegram៖ https://t.me/HK_688"
                 await event.respond(message)
             except Exception as e:
-                force_log(f"Error in contact_us_handler: {e}")
+                logger.info(f"Error in contact_us_handler: {e}")
                 await event.respond("An error occurred. Please try again.")
 
         # Callback query handler
@@ -150,7 +152,7 @@ class TelegramBotService:
                 await self.event_handler.callback(event)
             except Exception as e:
                 print(f"Error in callback_handler: {e}")
-                force_log(f"Error in callback_handler: {e}")
+                logger.info(f"Error in callback_handler: {e}")
                 await event.respond("An error occurred. Please try again.")
 
         # Chat migration handler - only handle migrate_to_chat_id to avoid duplicates
@@ -159,13 +161,13 @@ class TelegramBotService:
             try:
                 # Only handle migrate_to_chat_id (from old group) to avoid duplicate processing
                 if (
-                    hasattr(event.message, "migrate_to_chat_id")
-                    and event.message.migrate_to_chat_id
+                        hasattr(event.message, "migrate_to_chat_id")
+                        and event.message.migrate_to_chat_id
                 ):
                     old_chat_id = event.chat_id
                     new_chat_id = event.message.migrate_to_chat_id
 
-                    force_log(
+                    logger.info(
                         f"Chat migration detected: {old_chat_id} -> {new_chat_id}"
                     )
 
@@ -175,11 +177,11 @@ class TelegramBotService:
                     )
 
                     if success:
-                        force_log(
+                        logger.info(
                             f"Successfully migrated chat data from {old_chat_id} to {new_chat_id}"
                         )
                     else:
-                        force_log(
+                        logger.info(
                             f"Failed to migrate chat data from {old_chat_id} to {new_chat_id}"
                         )
 
@@ -188,5 +190,5 @@ class TelegramBotService:
                 # If not a migration event, process normally
                 await self.event_handler.message(event)
             except Exception as e:
-                force_log(f"Error in migration_handler: {e}")
+                logger.info(f"Error in migration_handler: {e}")
                 # Don't respond here as it might cause message loops for regular messages
