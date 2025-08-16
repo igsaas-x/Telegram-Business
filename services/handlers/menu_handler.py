@@ -413,16 +413,40 @@ class MenuHandler:
 
     @staticmethod
     async def _handle_other_dates(query):
-        """Handle other dates - placeholder for now"""
+        """Handle other dates - show current month dates"""
         try:
-            # For now, just show a placeholder message
-            keyboard = [
-                [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")]
-            ]
+            from helper import DateUtils
+            now = DateUtils.now()
+            current_month = now.month
+            current_year = now.year
+            
+            # Generate date buttons for current month
+            keyboard = []
+            
+            # Add title row
+            month_name = now.strftime("%B %Y")
+            
+            # Add dates in rows of 7 (like calendar)
+            from calendar import monthrange
+            _, last_day = monthrange(current_year, current_month)
+            
+            # Group dates in rows of 5 for better mobile display
+            row = []
+            for day in range(1, last_day + 1):
+                date_str = f"{current_year}-{current_month:02d}-{day:02d}"
+                row.append(InlineKeyboardButton(f"{day}", callback_data=f"summary_of_{date_str}"))
+                
+                if len(row) == 5 or day == last_day:
+                    keyboard.append(row)
+                    row = []
+            
+            # Add navigation row
+            keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="daily_summary")])
+            
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             await query.edit_message_text(
-                "Other dates functionality not implemented yet.",
+                f"ជ្រើសរើសថ្ងៃសម្រាប់ {month_name}:",
                 reply_markup=reply_markup,
             )
             return True

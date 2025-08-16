@@ -305,11 +305,17 @@ class CommandHandler:
         context_data = json.dumps({"current_month": current_month})
         await conversation_service.save_question(
             chat_id=chat_id,
+            thread_id=result.id,  # Use message ID as thread ID for telethon bot
             message_id=result.id,
             question_type="date_input",
             context_data=context_data,
         )
-        await event.delete()
+        
+        try:
+            await event.delete()
+        except Exception as e:
+            force_log(f"Could not delete message in handle_other_dates: {e}")
+            # Don't re-raise, just log the error
 
     async def handle_date_summary(self, event, data):
         chat_id = event.chat_id
