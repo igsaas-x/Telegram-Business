@@ -91,7 +91,11 @@ class CommandHandler:
                     # Validate that the dates exist (e.g., Feb 30 doesn't exist)
                     try:
                         start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-                        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+                        # For end_date, add 1 day to make the range inclusive of end_day
+                        # e.g., 5-6 should query from 2025-01-05 00:00:00 to 2025-01-07 00:00:00 (exclusive)
+                        # to include all transactions on both day 5 and day 6
+                        end_date_original = datetime.strptime(end_date_str, "%Y-%m-%d")
+                        end_date = end_date_original + timedelta(days=1)
                     except ValueError:
                         await event.respond(
                             f"កាលបរិច្ឆេទមិនត្រឹមត្រូវសម្រាប់ខែនេះ។ សូមពិនិត្យថ្ងៃ {start_day} ដល់ {end_day}")
@@ -100,6 +104,10 @@ class CommandHandler:
                     await conversation_service.mark_as_replied(
                         chat_id=event.chat_id, thread_id=question.thread_id, message_id=question.message_id
                     )
+
+                    # Debug logging for date range
+                    force_log(f"Date range query: {start_date} to {end_date} (exclusive)", "CommandHandler")
+                    force_log(f"User input range: day {start_day} to {end_day}", "CommandHandler")
 
                     income_service = IncomeService()
                     incomes = await income_service.get_income_by_date_and_chat_id(
@@ -120,7 +128,7 @@ class CommandHandler:
                         report_date=start_date,
                         requesting_user=event.sender,
                         start_date=start_date,
-                        end_date=end_date,
+                        end_date=end_date_original,
                         is_weekly=True
                     )
                     force_log(
