@@ -56,12 +56,16 @@ class TelegramUtilsBot:
         
         if query.data == "generate_wifi_qr":
             chat_id = update.effective_chat.id if update.effective_chat else 0
-            message_id = query.message.message_id if query.message else 0
+            thread_id = query.message.message_id if query.message else 0
+            
+            # Store thread_id in context for this conversation
+            context.user_data["thread_id"] = thread_id
             
             # Save the question to track the state
             await self.conversation_service.save_question(
                 chat_id=chat_id,
-                message_id=message_id,
+                thread_id=thread_id,
+                message_id=thread_id,  # For the first question, message_id = thread_id
                 question_type=QuestionType.WIFI_NAME_INPUT
             )
             
@@ -87,12 +91,21 @@ class TelegramUtilsBot:
             )
             return WIFI_NAME_CODE
         
-        # Mark the current WIFI_NAME_INPUT question as replied
-        pending_question = await self.conversation_service.get_pending_question(
+        # Find the pending WIFI_NAME_INPUT question to get the thread_id
+        pending_question = await self.conversation_service.get_pending_question_by_type(
             chat_id, QuestionType.WIFI_NAME_INPUT
         )
-        if pending_question:
-            await self.conversation_service.mark_as_replied(chat_id, pending_question.message_id)
+        
+        if not pending_question:
+            await update.message.reply_text(
+                "❌ No pending WiFi name question found. Please use /start to begin."
+            )
+            return ConversationHandler.END
+        
+        thread_id = pending_question.thread_id
+        
+        # Mark the current WIFI_NAME_INPUT question as replied
+        await self.conversation_service.mark_as_replied(chat_id, thread_id, pending_question.message_id)
         
         # Store the Wifi name in context
         context.user_data["wifi_name"] = wifi_name
@@ -105,6 +118,7 @@ class TelegramUtilsBot:
         
         await self.conversation_service.save_question(
             chat_id=chat_id,
+            thread_id=thread_id,
             message_id=reply_message.message_id,
             question_type=QuestionType.WIFI_PASSWORD_INPUT,
             context_data=wifi_name
@@ -118,10 +132,18 @@ class TelegramUtilsBot:
         chat_id = update.effective_chat.id if update.effective_chat else 0
         
         # Get wifi name from pending question context
-        pending_question = await self.conversation_service.get_pending_question(
+        pending_question = await self.conversation_service.get_pending_question_by_type(
             chat_id, QuestionType.WIFI_PASSWORD_INPUT
         )
-        wifi_name = pending_question.context_data if pending_question else context.user_data.get("wifi_name", "")
+        
+        if not pending_question:
+            await update.message.reply_text(
+                "❌ No pending WiFi password question found. Please use /start to begin."
+            )
+            return ConversationHandler.END
+        
+        wifi_name = pending_question.context_data or "Unknown"
+        thread_id = pending_question.thread_id
         
         if not wifi_password:
             await update.message.reply_text(
@@ -130,8 +152,7 @@ class TelegramUtilsBot:
             return WIFI_PASSWORD_CODE
         
         # Mark the current WIFI_PASSWORD_INPUT question as replied
-        if pending_question:
-            await self.conversation_service.mark_as_replied(chat_id, pending_question.message_id)
+        await self.conversation_service.mark_as_replied(chat_id, thread_id, pending_question.message_id)
         
         try:
             # Send "generating" message first

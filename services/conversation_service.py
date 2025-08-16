@@ -92,3 +92,21 @@ class ConversationService:
                 )
                 .first()
             )
+
+    async def get_pending_question_by_type(
+        self, chat_id: int, question_type: QuestionType
+    ) -> Optional[BotQuestion]:
+        """
+        Get any pending question by type (for finding thread_id)
+        """
+        with get_db_session() as session:
+            return (
+                session.query(BotQuestion)
+                .filter(
+                    BotQuestion.chat_id == chat_id,
+                    BotQuestion.question_type == question_type.value,
+                    BotQuestion.is_replied == False  # type: ignore
+                )
+                .order_by(BotQuestion.created_at.desc())
+                .first()
+            )
