@@ -9,9 +9,18 @@ from models import User
 from services import UserService, ChatService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 
+
+class ForceFileHandler1(logging.FileHandler):
+    """Custom handler that ensures logs are written to file immediately"""
+
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[ForceFileHandler1("telegram_bots.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
