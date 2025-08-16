@@ -69,8 +69,9 @@ class TelegramUtilsBot:
             )
             
             await query.edit_message_text(
-                "📶 Let's generate wifi QR code!\n"
-                "Please enter the wifi network name by 'Reply' to this message:"
+                "📶 Let's generate wifi QR code!\n\n"
+                "Wifi Name:\n\n"
+                "Please 'Reply' to this message:"
             )
             return WIFI_NAME_CODE
         elif query.data == "close_conversation":
@@ -109,10 +110,11 @@ class TelegramUtilsBot:
         # Store the Wifi name in context
         context.user_data["wifi_name"] = wifi_name
         
-        # Save new question for password input with wifi name as context
+        # Save new question for password input with Wifi name as context
         reply_message = await update.message.reply_text(
-            f"📶 Wifi Name: {wifi_name}\n"
-            "🔐 Now please enter the Wifi password by 'Reply' to this message:"
+            f"📶 Wifi Name: {wifi_name}\n\n"
+            "Wifi Password:\n\n"
+            "🔐 Now please 'Reply' to this message:"
         )
         
         await self.conversation_service.save_question(
