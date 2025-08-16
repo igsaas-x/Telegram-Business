@@ -91,12 +91,21 @@ class TelegramUtilsBot:
             )
             return WIFI_NAME_CODE
         
-        # Find the pending WIFI_NAME_INPUT question to get the thread_id
-        pending_question = await self.conversation_service.get_pending_question_by_type(
-            chat_id, QuestionType.WIFI_NAME_INPUT
+        # Get the original message ID from reply_to_message
+        if not update.message.reply_to_message:
+            await update.message.reply_text(
+                "❌ Please reply to the wifi name question. Use /start to begin again."
+            )
+            return ConversationHandler.END
+        
+        original_message_id = update.message.reply_to_message.message_id
+        
+        # Find the pending WIFI_NAME_INPUT question by message_id
+        pending_question = await self.conversation_service.get_question_by_message_id(
+            chat_id, original_message_id, original_message_id
         )
         
-        if not pending_question:
+        if not pending_question or pending_question.question_type != QuestionType.WIFI_NAME_INPUT.value:
             await update.message.reply_text(
                 "❌ No pending Wifi name question found. Please use /start to begin."
             )
@@ -132,12 +141,21 @@ class TelegramUtilsBot:
         wifi_password = update.message.text.strip()
         chat_id = update.effective_chat.id if update.effective_chat else 0
         
-        # Get wifi name from pending question context
-        pending_question = await self.conversation_service.get_pending_question_by_type(
-            chat_id, QuestionType.WIFI_PASSWORD_INPUT
+        # Get the original message ID from reply_to_message
+        if not update.message.reply_to_message:
+            await update.message.reply_text(
+                "❌ Please reply to the wifi password question. Use /start to begin again."
+            )
+            return ConversationHandler.END
+        
+        original_message_id = update.message.reply_to_message.message_id
+        
+        # Get wifi name from pending question context by message_id
+        pending_question = await self.conversation_service.get_question_by_message_id(
+            chat_id, original_message_id, original_message_id
         )
         
-        if not pending_question:
+        if not pending_question or pending_question.question_type != QuestionType.WIFI_PASSWORD_INPUT.value:
             await update.message.reply_text(
                 "❌ No pending Wifi password question found. Please use /start to begin."
             )
