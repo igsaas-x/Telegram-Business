@@ -7,20 +7,11 @@ from alembic import command
 from alembic.config import Config
 
 from config import load_environment
-from helper.credential_loader import CredentialLoader
-from schedulers import AutoCloseScheduler
-from schedulers.package_expiry_scheduler import PackageExpiryScheduler
-from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
-from services.telegram_admin_bot_service import TelegramAdminBot
-from services.telegram_business_bot_service import AutosumBusinessBot
-from services.telegram_private_bot_service import TelegramPrivateBot
-from services.telegram_standard_bot_service import TelegramBotService
-from services.telegram_utils_bot_service import TelegramUtilsBot
 
 load_environment()
 
 
-# Configure logging first, before any services are imported
+# Configure logging FIRST, before importing any services that create loggers
 # Custom handler that ensures logs are written to file immediately
 class ForceFileHandler(logging.FileHandler):
     """Custom handler that ensures logs are written to file immediately"""
@@ -37,6 +28,17 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# NOW import services after logging is configured
+from helper.credential_loader import CredentialLoader
+from schedulers import AutoCloseScheduler
+from schedulers.package_expiry_scheduler import PackageExpiryScheduler
+from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
+from services.telegram_admin_bot_service import TelegramAdminBot
+from services.telegram_business_bot_service import AutosumBusinessBot
+from services.telegram_private_bot_service import TelegramPrivateBot
+from services.telegram_standard_bot_service import TelegramBotService
+from services.telegram_utils_bot_service import TelegramUtilsBot
 
 tasks: Set[asyncio.Task] = set()
 
