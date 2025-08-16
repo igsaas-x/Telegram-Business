@@ -10,9 +10,11 @@ from telegram.ext import (
     filters,
 )
 
+from common.enums import QuestionType
 from helper.logger_utils import force_log
 from helper.pdf_generator import PDFGenerator
 from helper.qr_generator import QRGenerator
+from services.conversation_service import ConversationService
 
 # Conversation state codes for Utils bot
 START_MENU_CODE = 3000
@@ -27,6 +29,7 @@ class TelegramUtilsBot:
         self.app: Application | None = None
         self.qr_generator = QRGenerator()
         self.pdf_generator = PDFGenerator()
+        self.conversation_service = ConversationService()
         
         force_log("TelegramUtilsBot initialized with token", "TelegramUtilsBot")
 
@@ -52,12 +55,25 @@ class TelegramUtilsBot:
         await query.answer()
         
         if query.data == "generate_wifi_qr":
+            chat_id = update.effective_chat.id if update.effective_chat else 0
+            message_id = query.message.message_id if query.message else 0
+            
+            # Save the question to track the state
+            await self.conversation_service.save_question(
+                chat_id=chat_id,
+                message_id=message_id,
+                question_type=QuestionType.WIFI_NAME_INPUT
+            )
+            
             await query.edit_message_text(
                 "📶 Let's generate wifi QR code!\n\n"
                 "Please enter the wifi network name (SSID):"
             )
             return WIFI_NAME_CODE
         elif query.data == "close_conversation":
+            chat_id = update.effective_chat.id if update.effective_chat else 0
+            await self._clear_pending_questions(chat_id)
+            
             await query.edit_message_text("Goodbye! Use /start anytime to generate Utils codes.")
             return ConversationHandler.END
         
@@ -66,6 +82,7 @@ class TelegramUtilsBot:
     async def handle_wifi_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle Wifi name input"""
         wifi_name = update.message.text.strip()
+        chat_id = update.effective_chat.id if update.effective_chat else 0
         
         if not wifi_name:
             await update.message.reply_text(
@@ -73,12 +90,27 @@ class TelegramUtilsBot:
             )
             return WIFI_NAME_CODE
         
+        # Mark the current WIFI_NAME_INPUT question as replied
+        pending_question = await self.conversation_service.get_pending_question(
+            chat_id, QuestionType.WIFI_NAME_INPUT
+        )
+        if pending_question:
+            await self.conversation_service.mark_as_replied(chat_id, pending_question.message_id)
+        
         # Store the Wifi name in context
         context.user_data["wifi_name"] = wifi_name
         
-        await update.message.reply_text(
+        # Save new question for password input with wifi name as context
+        reply_message = await update.message.reply_text(
             f"📶 Wifi Name: {wifi_name}\n\n"
             "🔐 Now please enter the WiFi password:"
+        )
+        
+        await self.conversation_service.save_question(
+            chat_id=chat_id,
+            message_id=reply_message.message_id,
+            question_type=QuestionType.WIFI_PASSWORD_INPUT,
+            context_data=wifi_name
         )
         
         return WIFI_PASSWORD_CODE
@@ -86,13 +118,23 @@ class TelegramUtilsBot:
     async def handle_wifi_password(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle Wifi password input and generate QR code"""
         wifi_password = update.message.text.strip()
-        wifi_name = context.user_data.get("wifi_name", "")
+        chat_id = update.effective_chat.id if update.effective_chat else 0
+        
+        # Get wifi name from pending question context
+        pending_question = await self.conversation_service.get_pending_question(
+            chat_id, QuestionType.WIFI_PASSWORD_INPUT
+        )
+        wifi_name = pending_question.context_data if pending_question else context.user_data.get("wifi_name", "")
         
         if not wifi_password:
             await update.message.reply_text(
                 "❌ Wifi password cannot be empty. Please enter the WiFi password:"
             )
             return WIFI_PASSWORD_CODE
+        
+        # Mark the current WIFI_PASSWORD_INPUT question as replied
+        if pending_question:
+            await self.conversation_service.mark_as_replied(chat_id, pending_question.message_id)
         
         try:
             # Send "generating" message first
@@ -153,6 +195,9 @@ class TelegramUtilsBot:
         if query.data == "generate_pdf":
             await self.generate_pdf(query, context)
         elif query.data == "done":
+            chat_id = update.effective_chat.id if update.effective_chat else 0
+            await self._clear_pending_questions(chat_id)
+            
             await query.edit_message_caption(
                 caption=f"{query.message.caption}\n\n✅ Completed! Use /start to generate another QR code."
             )
@@ -188,6 +233,10 @@ class TelegramUtilsBot:
                 caption=f"{query.message.caption}\n\n✅ PDF generated and sent! Use /start to generate another QR code."
             )
             
+            # Clear pending questions since process is complete
+            chat_id = query.message.chat.id if query.message else 0
+            await self._clear_pending_questions(chat_id)
+            
             force_log(f"PDF generated for WiFi network: {wifi_name}", "TelegramUtilsBot")
             context.user_data.clear()
             
@@ -199,9 +248,29 @@ class TelegramUtilsBot:
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Cancel command"""
+        chat_id = update.effective_chat.id if update.effective_chat else 0
+        
+        # Mark all pending questions as replied (cancelled)
+        await self._clear_pending_questions(chat_id)
+        
         await update.message.reply_text("Operation cancelled. Use /start to begin again.")
         context.user_data.clear()
         return ConversationHandler.END
+
+    async def _clear_pending_questions(self, chat_id: int):
+        """Clear all pending questions for a chat"""
+        # Get all pending questions and mark them as replied
+        pending_wifi_name = await self.conversation_service.get_pending_question(
+            chat_id, QuestionType.WIFI_NAME_INPUT
+        )
+        if pending_wifi_name:
+            await self.conversation_service.mark_as_replied(chat_id, pending_wifi_name.message_id)
+        
+        pending_wifi_password = await self.conversation_service.get_pending_question(
+            chat_id, QuestionType.WIFI_PASSWORD_INPUT
+        )
+        if pending_wifi_password:
+            await self.conversation_service.mark_as_replied(chat_id, pending_wifi_password.message_id)
 
     def setup(self):
         """Set up the bot handlers"""
