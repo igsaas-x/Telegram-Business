@@ -128,3 +128,19 @@ class ConversationService:
                 )
                 .first()
             )
+
+    async def get_question_by_chat_and_message_id(
+        self, chat_id: int, message_id: int
+    ) -> Optional[BotQuestion]:
+        """
+        Get question by chat ID and message ID only (for telethon bot)
+        """
+        with get_db_session() as session:
+            return (
+                session.query(BotQuestion)
+                .filter(
+                    BotQuestion.chat_id == chat_id,
+                    BotQuestion.message_id == message_id
+                )
+                .first()
+            )

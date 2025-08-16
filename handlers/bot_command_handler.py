@@ -221,7 +221,7 @@ class EventHandler:
 
         force_log(f"Reply detected to message ID: {replied_message.id}", "EventHandler")
         chat_id = event.chat_id
-        question = await self.conversation_service.get_question_by_message_id(
+        question = await self.conversation_service.get_question_by_chat_and_message_id(
             chat_id=chat_id, message_id=replied_message.id
         )
 
