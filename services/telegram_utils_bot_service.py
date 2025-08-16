@@ -34,7 +34,7 @@ class TelegramUtilsBot:
         force_log("TelegramUtilsBot initialized with token", "TelegramUtilsBot")
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /start command"""
+        """Handle /start command - always show menu"""
         keyboard = [
             [InlineKeyboardButton("📶 Generate WIFI QR Code", callback_data="generate_wifi_qr")],
             [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
@@ -71,9 +71,6 @@ class TelegramUtilsBot:
             )
             return WIFI_NAME_CODE
         elif query.data == "close_conversation":
-            chat_id = update.effective_chat.id if update.effective_chat else 0
-            await self._clear_pending_questions(chat_id)
-            
             await query.edit_message_text("Goodbye! Use /start anytime to generate Utils codes.")
             return ConversationHandler.END
         
@@ -195,9 +192,6 @@ class TelegramUtilsBot:
         if query.data == "generate_pdf":
             await self.generate_pdf(query, context)
         elif query.data == "done":
-            chat_id = update.effective_chat.id if update.effective_chat else 0
-            await self._clear_pending_questions(chat_id)
-            
             await query.edit_message_caption(
                 caption=f"{query.message.caption}\n\n✅ Completed! Use /start to generate another QR code."
             )
@@ -233,10 +227,6 @@ class TelegramUtilsBot:
                 caption=f"{query.message.caption}\n\n✅ PDF generated and sent! Use /start to generate another QR code."
             )
             
-            # Clear pending questions since process is complete
-            chat_id = query.message.chat.id if query.message else 0
-            await self._clear_pending_questions(chat_id)
-            
             force_log(f"PDF generated for WiFi network: {wifi_name}", "TelegramUtilsBot")
             context.user_data.clear()
             
@@ -248,29 +238,10 @@ class TelegramUtilsBot:
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Cancel command"""
-        chat_id = update.effective_chat.id if update.effective_chat else 0
-        
-        # Mark all pending questions as replied (cancelled)
-        await self._clear_pending_questions(chat_id)
-        
         await update.message.reply_text("Operation cancelled. Use /start to begin again.")
         context.user_data.clear()
         return ConversationHandler.END
 
-    async def _clear_pending_questions(self, chat_id: int):
-        """Clear all pending questions for a chat"""
-        # Get all pending questions and mark them as replied
-        pending_wifi_name = await self.conversation_service.get_pending_question(
-            chat_id, QuestionType.WIFI_NAME_INPUT
-        )
-        if pending_wifi_name:
-            await self.conversation_service.mark_as_replied(chat_id, pending_wifi_name.message_id)
-        
-        pending_wifi_password = await self.conversation_service.get_pending_question(
-            chat_id, QuestionType.WIFI_PASSWORD_INPUT
-        )
-        if pending_wifi_password:
-            await self.conversation_service.mark_as_replied(chat_id, pending_wifi_password.message_id)
 
     def setup(self):
         """Set up the bot handlers"""
@@ -280,10 +251,22 @@ class TelegramUtilsBot:
         main_handler = ConversationHandler(
             entry_points=[CommandHandler("start", self.start_command)],
             states={
-                START_MENU_CODE: [CallbackQueryHandler(self.handle_start_menu)],
-                WIFI_NAME_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_name)],
-                WIFI_PASSWORD_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_password)],
-                PDF_OPTION_CODE: [CallbackQueryHandler(self.handle_pdf_option)],
+                START_MENU_CODE: [
+                    CallbackQueryHandler(self.handle_start_menu),
+                    CommandHandler("start", self.start_command)
+                ],
+                WIFI_NAME_CODE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_name),
+                    CommandHandler("start", self.start_command)
+                ],
+                WIFI_PASSWORD_CODE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_wifi_password),
+                    CommandHandler("start", self.start_command)
+                ],
+                PDF_OPTION_CODE: [
+                    CallbackQueryHandler(self.handle_pdf_option),
+                    CommandHandler("start", self.start_command)
+                ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_chat=True,

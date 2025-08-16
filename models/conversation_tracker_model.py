@@ -9,6 +9,7 @@ class BotQuestion(BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    thread_id: Mapped[int] = mapped_column(Integer, nullable=False)
     message_id: Mapped[int] = mapped_column(Integer, nullable=False)
     question_type: Mapped[str] = mapped_column(String(32), nullable=False)
     is_replied: Mapped[bool] = mapped_column(Boolean, default=False)

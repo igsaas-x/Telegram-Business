@@ -9,6 +9,7 @@ class ConversationService:
     async def save_question(
         self,
         chat_id: int,
+        thread_id: int,
         message_id: int,
         question_type: Union[QuestionType, str],
         context_data: Optional[str] = None,
@@ -24,6 +25,7 @@ class ConversationService:
             )
             new_question = BotQuestion(
                 chat_id=chat_id,
+                thread_id=thread_id,
                 message_id=message_id,
                 question_type=question_type_value,
                 context_data=context_data,
@@ -33,7 +35,7 @@ class ConversationService:
             return new_question
 
     async def mark_as_replied(
-        self, chat_id: int, message_id: int
+        self, chat_id: int, thread_id: int, message_id: int
     ) -> type[BotQuestion] | None:
         """
         Mark question as replied
@@ -43,6 +45,7 @@ class ConversationService:
                 session.query(BotQuestion)
                 .filter(
                     BotQuestion.chat_id == chat_id,
+                    BotQuestion.thread_id == thread_id,
                     BotQuestion.message_id == message_id,
                     BotQuestion.is_replied == False,  # type: ignore
                 )
@@ -56,14 +59,16 @@ class ConversationService:
             return None
 
     async def get_pending_question(
-        self, chat_id: int, question_type: Optional[QuestionType] = None
+        self, chat_id: int, thread_id: int, question_type: Optional[QuestionType] = None
     ) -> Optional[BotQuestion]:
         """
         Get pending question
         """
         with get_db_session() as session:
             query = session.query(BotQuestion).filter(
-                BotQuestion.chat_id == chat_id, BotQuestion.is_replied == False  # type: ignore
+                BotQuestion.chat_id == chat_id, 
+                BotQuestion.thread_id == thread_id,
+                BotQuestion.is_replied == False  # type: ignore
             )
 
         if question_type:
@@ -72,7 +77,7 @@ class ConversationService:
         return query.order_by(BotQuestion.created_at.desc()).first()
 
     async def get_question_by_message_id(
-        self, chat_id: int, message_id: int
+        self, chat_id: int, thread_id: int, message_id: int
     ) -> Optional[BotQuestion]:
         """
         Get question by message ID
@@ -81,7 +86,9 @@ class ConversationService:
             return (
                 session.query(BotQuestion)
                 .filter(
-                    BotQuestion.chat_id == chat_id, BotQuestion.message_id == message_id
+                    BotQuestion.chat_id == chat_id, 
+                    BotQuestion.thread_id == thread_id,
+                    BotQuestion.message_id == message_id
                 )
                 .first()
             )
