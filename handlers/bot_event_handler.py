@@ -98,7 +98,7 @@ class CommandHandler:
                         return
 
                     await conversation_service.mark_as_replied(
-                        chat_id=event.chat_id, message_id=question.message_id
+                        chat_id=event.chat_id, thread_id=question.thread_id, message_id=question.message_id
                     )
 
                     income_service = IncomeService()
@@ -144,7 +144,7 @@ class CommandHandler:
                     selected_date = datetime.strptime(date_str, "%Y-%m-%d")
 
                     await conversation_service.mark_as_replied(
-                        chat_id=event.chat_id, message_id=question.message_id
+                        chat_id=event.chat_id, thread_id=question.thread_id, message_id=question.message_id
                     )
 
                     income_service = IncomeService()
