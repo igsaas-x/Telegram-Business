@@ -9,6 +9,11 @@ from models import User
 from services import UserService, ChatService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 logger = logging.getLogger(__name__)
 
 
