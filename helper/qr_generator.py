@@ -26,7 +26,7 @@ class QRGenerator:
         try:
             # Create Wifi configuration string
             wifi_config = f"WIFI:T:WPA;S:{wifi_name};P:{wifi_password};;"
-            force_log(f"Creating WiFi QR for: {wifi_name}", self.logger_name)
+            force_log(f"Creating Wifi QR for: {wifi_name}", self.logger_name)
             
             # Generate QR code
             qr_img = self._create_qr_code(wifi_config)
@@ -34,11 +34,11 @@ class QRGenerator:
             # Add text below QR code
             final_img = self._add_text_overlay(qr_img, wifi_name, wifi_password)
             
-            force_log(f"Successfully generated WiFi QR with text for: {wifi_name}", self.logger_name)
+            force_log(f"Successfully generated Wifi QR with text for: {wifi_name}", self.logger_name)
             return final_img
             
         except Exception as e:
-            force_log(f"Error generating WiFi QR with text: {e}", self.logger_name)
+            force_log(f"Error generating Wifi QR with text: {e}", self.logger_name)
             raise e
     
     def _create_qr_code(self, data: str) -> Image.Image:
@@ -115,11 +115,11 @@ class QRGenerator:
             
             # Draw each line with custom spacing
             for i, line in enumerate(lines):
-                if i == 0:  # WiFi Name
+                if i == 0:  # Wifi Name
                     y_pos = start_y
                     current_font = font
-                elif i == 1:  # Password - add extra space after WiFi Name
-                    y_pos = start_y + line_height + 20  # Extra 20px space between WiFi Name and Password
+                elif i == 1:  # Password - add extra space after Wifi Name
+                    y_pos = start_y + line_height + 20  # Extra 20px space between Wifi Name and Password
                     current_font = font
                 elif i == 2:  # Separator - add extra space
                     y_pos = start_y + (2 * line_height) + 35  # Account for extra space above

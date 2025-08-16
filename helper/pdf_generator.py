@@ -71,29 +71,29 @@ class PDFGenerator:
     
     def create_wifi_qr_pdf(self, qr_image: Image.Image, wifi_name: str) -> io.BytesIO:
         """
-        Create a PDF specifically for WiFi QR codes
+        Create a PDF specifically for Wifi QR codes
         
         Args:
-            qr_image: PIL Image containing the WiFi QR code
-            wifi_name: WiFi network name for filename
+            qr_image: PIL Image containing the Wifi QR code
+            wifi_name: Wifi network name for filename
             
         Returns:
             BytesIO buffer containing the PDF data
         """
         try:
-            force_log(f"Creating WiFi QR PDF for network: {wifi_name}", self.logger_name)
-            return self.create_qr_pdf(qr_image, f"WiFi-QR-{wifi_name}")
+            force_log(f"Creating Wifi QR PDF for network: {wifi_name}", self.logger_name)
+            return self.create_qr_pdf(qr_image, f"Wifi-QR-{wifi_name}")
             
         except Exception as e:
-            force_log(f"Error creating WiFi QR PDF: {e}", self.logger_name)
+            force_log(f"Error creating Wifi QR PDF: {e}", self.logger_name)
             raise e
     
     def get_pdf_filename(self, wifi_name: str) -> str:
         """
-        Generate a clean filename for the WiFi QR PDF
+        Generate a clean filename for the Wifi QR PDF
         
         Args:
-            wifi_name: WiFi network name
+            wifi_name: Wifi network name
             
         Returns:
             Clean filename string
@@ -102,4 +102,4 @@ class PDFGenerator:
         clean_name = wifi_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
         # Remove any other problematic characters
         clean_name = ''.join(c for c in clean_name if c.isalnum() or c in '-_.')
-        return f"WiFi-QR-{clean_name}.pdf"
+        return f"Wifi-QR-{clean_name}.pdf"

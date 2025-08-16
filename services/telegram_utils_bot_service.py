@@ -42,8 +42,7 @@ class TelegramUtilsBot:
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            "🔧 Welcome to Utils Code Generator!\n\n"
-            "This bot helps you generate QR codes for WiFi networks.\n"
+            "🔧 Welcome to QR Code Generator!\n\n"
             "Choose an option:",
             reply_markup=reply_markup
         )
@@ -70,8 +69,8 @@ class TelegramUtilsBot:
             )
             
             await query.edit_message_text(
-                "📶 Let's generate wifi QR code!\n\n"
-                "Please enter the wifi network name (SSID):"
+                "📶 Let's generate wifi QR code!\n"
+                "Please enter the wifi network name by 'Reply' to this message:"
             )
             return WIFI_NAME_CODE
         elif query.data == "close_conversation":
@@ -87,7 +86,7 @@ class TelegramUtilsBot:
         
         if not wifi_name:
             await update.message.reply_text(
-                "❌ Wifi name cannot be empty. Please enter a valid WiFi network name:"
+                "❌ Wifi name cannot be empty. Please enter a valid Wifi network name:"
             )
             return WIFI_NAME_CODE
         
@@ -98,7 +97,7 @@ class TelegramUtilsBot:
         
         if not pending_question:
             await update.message.reply_text(
-                "❌ No pending WiFi name question found. Please use /start to begin."
+                "❌ No pending Wifi name question found. Please use /start to begin."
             )
             return ConversationHandler.END
         
@@ -112,8 +111,8 @@ class TelegramUtilsBot:
         
         # Save new question for password input with wifi name as context
         reply_message = await update.message.reply_text(
-            f"📶 Wifi Name: {wifi_name}\n\n"
-            "🔐 Now please enter the WiFi password:"
+            f"📶 Wifi Name: {wifi_name}\n"
+            "🔐 Now please enter the Wifi password by 'Reply' to this message:"
         )
         
         await self.conversation_service.save_question(
@@ -138,7 +137,7 @@ class TelegramUtilsBot:
         
         if not pending_question:
             await update.message.reply_text(
-                "❌ No pending WiFi password question found. Please use /start to begin."
+                "❌ No pending Wifi password question found. Please use /start to begin."
             )
             return ConversationHandler.END
         
@@ -147,7 +146,7 @@ class TelegramUtilsBot:
         
         if not wifi_password:
             await update.message.reply_text(
-                "❌ Wifi password cannot be empty. Please enter the WiFi password:"
+                "❌ Wifi password cannot be empty. Please enter the Wifi password:"
             )
             return WIFI_PASSWORD_CODE
         
@@ -188,7 +187,7 @@ class TelegramUtilsBot:
                 caption=f"📶 Wifi QR Code Generated!\n\n"
                        f"🏷️ Network: {wifi_name}\n"
                        f"🔐 Password: {'*' * len(wifi_password)}\n\n"
-                       f"📱 Scan this QR code with your device to connect to the WiFi network!\n\n"
+                       f"📱 Scan this QR code with your device to connect to the Wifi network!\n\n"
                        f"Choose an option below:",
                 reply_markup=reply_markup
             )
@@ -248,7 +247,7 @@ class TelegramUtilsBot:
                 caption=f"{query.message.caption}\n\n✅ PDF generated and sent! Use /start to generate another QR code."
             )
             
-            force_log(f"PDF generated for WiFi network: {wifi_name}", "TelegramUtilsBot")
+            force_log(f"PDF generated for Wifi network: {wifi_name}", "TelegramUtilsBot")
             context.user_data.clear()
             
         except Exception as e:
