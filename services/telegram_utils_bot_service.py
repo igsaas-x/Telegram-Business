@@ -33,7 +33,7 @@ class TelegramUtilsBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
         keyboard = [
-            [InlineKeyboardButton("📶 Generate Utils Code", callback_data="generate_wifi_qr")],
+            [InlineKeyboardButton("📶 Generate WIFI QR Code", callback_data="generate_wifi_qr")],
             [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)

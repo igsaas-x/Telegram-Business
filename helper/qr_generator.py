@@ -14,17 +14,17 @@ class QRGenerator:
     
     def generate_wifi_qr_with_text(self, wifi_name: str, wifi_password: str) -> Image.Image:
         """
-        Generate a WiFi QR code with formatted text below it
+        Generate a Wifi QR code with formatted text below it
         
         Args:
-            wifi_name: WiFi network name (SSID)
-            wifi_password: WiFi password
+            wifi_name: Wifi network name (SSID)
+            wifi_password: Wifi password
             
         Returns:
             PIL Image with QR code and text
         """
         try:
-            # Create WiFi configuration string
+            # Create Wifi configuration string
             wifi_config = f"WIFI:T:WPA;S:{wifi_name};P:{wifi_password};;"
             force_log(f"Creating WiFi QR for: {wifi_name}", self.logger_name)
             
