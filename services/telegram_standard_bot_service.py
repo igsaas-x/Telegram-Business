@@ -59,9 +59,14 @@ class TelegramBotService:
             raise
 
     def _register_event_handlers(self):
+        logger.info("Registering event handlers for TelegramBotService")
+        
         @self.bot.on(events.NewMessage(pattern="/menu"))
         async def menu_handler(event):
-            logger.info(f"Menu called - Chat ID: {event.chat_id}")
+            # Try different logging approaches
+            print(f"PRINT: Menu handler triggered - Chat ID: {event.chat_id}")
+            logging.getLogger(__name__).info(f"DIRECT: Menu handler triggered - Chat ID: {event.chat_id}")
+            logger.info(f"🍔 Menu handler triggered - Chat ID: {event.chat_id}")
             try:
                 # Check if this is a private chat
                 if event.is_private:
@@ -165,6 +170,9 @@ class TelegramBotService:
         @self.bot.on(events.NewMessage())
         async def migration_handler(event):
             try:
+                # Debug: Log all messages here
+                logger.info(f"📨 TelegramBotService received message: '{event.message.text}' from chat {event.chat_id}")
+                
                 # Only handle migrate_to_chat_id (from old group) to avoid duplicate processing
                 if (
                         hasattr(event.message, "migrate_to_chat_id")
@@ -198,3 +206,5 @@ class TelegramBotService:
             except Exception as e:
                 logger.info(f"Error in migration_handler: {e}")
                 # Don't respond here as it might cause message loops for regular messages
+        
+        logger.info("✅ All event handlers registered successfully for TelegramBotService")
