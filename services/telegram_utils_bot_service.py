@@ -100,9 +100,9 @@ class TelegramUtilsBot:
         
         original_message_id = update.message.reply_to_message.message_id
         
-        # Find the pending WIFI_NAME_INPUT question by message_id
-        pending_question = await self.conversation_service.get_question_by_message_id(
-            chat_id, original_message_id, original_message_id
+        # Find the question that corresponds to the message the user is replying to
+        pending_question = await self.conversation_service.get_pending_question_by_message_id_and_type(
+            chat_id, original_message_id, QuestionType.WIFI_NAME_INPUT
         )
         
         if not pending_question or pending_question.question_type != QuestionType.WIFI_NAME_INPUT.value:
@@ -150,9 +150,9 @@ class TelegramUtilsBot:
         
         original_message_id = update.message.reply_to_message.message_id
         
-        # Get wifi name from pending question context by message_id
-        pending_question = await self.conversation_service.get_question_by_message_id(
-            chat_id, original_message_id, original_message_id
+        # Find the question that corresponds to the message the user is replying to
+        pending_question = await self.conversation_service.get_pending_question_by_message_id_and_type(
+            chat_id, original_message_id, QuestionType.WIFI_PASSWORD_INPUT
         )
         
         if not pending_question or pending_question.question_type != QuestionType.WIFI_PASSWORD_INPUT.value:
