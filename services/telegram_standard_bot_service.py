@@ -20,6 +20,8 @@ class TelegramBotService:
         self.event_handler = EventHandler()
         self.user_service = UserService()
         self.chat_service = ChatService()
+        
+        logger.info("TelegramBotService initialized")
 
     async def send_message_to_chat(self, chat_id: int, message: str):
         """
@@ -39,6 +41,7 @@ class TelegramBotService:
             logger.info(f"Failed to send message to chat {chat_id}: {str(e)}")
 
     async def start(self, bot_token: str):
+        logger.info("TelegramBotService starting...")
         self.bot = TelegramClient(
             "bot", int(os.getenv("API_ID1")), os.getenv("API_HASH1")  # type: ignore
         )  # type: ignore
@@ -46,7 +49,7 @@ class TelegramBotService:
         self._register_event_handlers()
 
         try:
-            logger.info("Bot is running...")
+            logger.info("TelegramBotService is running...")
             await self.bot.run_until_disconnected()  # type: ignore
         except asyncio.CancelledError:
             await self.bot.disconnect()  # type: ignore
