@@ -61,7 +61,7 @@ class MessageVerificationScheduler:
 
             # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)
-            thirty_minutes_ago = now - datetime.timedelta(minutes=360)
+            thirty_minutes_ago = now - datetime.timedelta(minutes=600)
             force_log(f"Checking messages from {thirty_minutes_ago} to {now}")
 
             verification_count = 0
