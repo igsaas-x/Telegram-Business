@@ -136,7 +136,7 @@ class ShiftService:
                     Shift.end_time.is_not(None),  # Only closed shifts have end_time
                     Shift.is_closed == True
                 )
-                .order_by(Shift.number)
+                .order_by(Shift.id)
                 .all()
             )
 

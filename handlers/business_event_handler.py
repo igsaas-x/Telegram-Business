@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import List
 
 from common.enums import ServicePackage, FeatureFlags
-from helper import DateUtils, shift_report_format, current_shift_report_format
+from helper import DateUtils, shift_report_format, current_shift_report_format, shift_report
 from helper.logger_utils import force_log
 from models import User
 from services.chat_service import ChatService
@@ -377,9 +378,6 @@ class BusinessEventHandler:
         )
 
         try:
-            from datetime import datetime
-            from helper import shift_report
-
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
             parsed_date = selected_date.date()
             force_log(f"Parsed date: {parsed_date}")
