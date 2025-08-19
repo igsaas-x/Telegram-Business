@@ -198,14 +198,14 @@ class AutosumBusinessBot:
                 self.parent = parent
                 self.chat = query.message.chat
 
-            async def edit(self, message, buttons=None):
+            async def edit(self, message, buttons=None, parse_mode=None):
                 keyboard = (
                     self.parent._convert_buttons_to_keyboard(buttons)
                     if buttons
                     else None
                 )
                 try:
-                    await self.query.edit_message_text(message, reply_markup=keyboard)
+                    await self.query.edit_message_text(message, reply_markup=keyboard, parse_mode=parse_mode)
                 except Exception as e:
                     if "Message is not modified" in str(e):
                         force_log(f"Message content is identical, skipping edit for chat {self.chat_id}")
