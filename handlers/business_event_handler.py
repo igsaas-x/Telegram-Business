@@ -397,7 +397,7 @@ class BusinessEventHandler:
                         reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
 
                 # Combine all reports
-                message = f"**របាយការណ៍ប្រចាំថ្ងៃ: {date_str}**\n\n"
+                message = f"📅 **របាយការណ៍ប្រចាំថ្ងៃ: {date_str}**\n\n"
                 if len(reports) == 1:
                     message += reports[0]
                 else:
