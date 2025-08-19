@@ -68,7 +68,7 @@ class BusinessEventHandler:
         # await self.check_auto_close_shift(chat_id)
 
         current_shift = await self.shift_service.get_current_shift(chat_id)
-        
+
         # Check if weekly/monthly reports feature is enabled
         has_weekly_monthly_reports = await self.group_package_service.has_feature(
             chat_id, FeatureFlags.WEEKLY_MONTHLY_REPORTS.value
@@ -80,24 +80,24 @@ class BusinessEventHandler:
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
             ]
-            
+
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
                 buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
                 buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
-            
+
             buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
             ]
-            
+
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
                 buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
                 buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
-            
+
             buttons.append([("❌ បិទ", "close_menu")])
 
         message = f"""
@@ -307,12 +307,6 @@ class BusinessEventHandler:
                     shift.id, chat_id
                 )
 
-                # Calculate duration
-                duration = shift.end_time - shift.start_time
-                total_seconds = abs(duration.total_seconds())
-                hours = int(total_seconds // 3600)
-                minutes = int((total_seconds % 3600) // 60)
-
                 # Use new shift report format for closed shift
                 message = shift_report_format(
                     shift.number,
@@ -320,6 +314,7 @@ class BusinessEventHandler:
                     shift.start_time,
                     shift.end_time,
                     shift_summary,
+                    True,
                     auto_closed=False  # We don't know if it was auto-closed from this context
                 )
 
@@ -400,12 +395,13 @@ class BusinessEventHandler:
                     except Exception as e:
                         force_log(f"Error generating report for shift {shift.id}: {e}", "ERROR")
                         reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
-                
+
                 # Combine all reports
+                message = f"របាយការណ៍ប្រចាំថ្ងៃ: {date_str}\n\n"
                 if len(reports) == 1:
-                    message = reports[0]
+                    message += reports[0]
                 else:
-                    message = "".join(reports)
+                    message += "".join(reports)
 
             buttons = None
 
@@ -501,9 +497,10 @@ class BusinessEventHandler:
 
         try:
             current_shift = await self.shift_service.get_current_shift(chat_id)
-            
+
             if current_shift:
-                force_log(f"CLOSE_CURRENT_SHIFT: Found current shift - id={current_shift.id}, number={current_shift.number}, is_closed={current_shift.is_closed}")
+                force_log(
+                    f"CLOSE_CURRENT_SHIFT: Found current shift - id={current_shift.id}, number={current_shift.number}, is_closed={current_shift.is_closed}")
 
             if not current_shift:
                 # No active shift, just create a new one
@@ -542,9 +539,10 @@ class BusinessEventHandler:
                         closed_shift.start_time,
                         closed_shift.end_time,
                         shift_summary,
+                        True,
                         auto_closed=False  # Manual close
                     )
-                    
+
                     message = f"✅ វេនត្រូវបានបិទដោយជោគជ័យ!\n\n{shift_report}"
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
@@ -692,40 +690,40 @@ Telegram: https://t.me/HK_688
         try:
             from datetime import datetime
             from calendar import monthrange
-            
+
             now = DateUtils.now()
             current_month = now.month
             current_year = now.year
-            
+
             # Get the number of days in current month
             _, days_in_month = monthrange(current_year, current_month)
-            
+
             message = f"📆 របាយការណ៍ប្រចាំសប្តាហ៍ - {now.strftime('%B %Y')}\n\nជ្រើសរើសសប្តាហ៍:"
-            
+
             buttons = []
-            
+
             # Week 1: 1-7
             week1_end = min(7, days_in_month)
             buttons.append([(f"សប្តាហ៍ 1 (1-{week1_end})", f"week_{current_year}-{current_month:02d}-1")])
-            
+
             # Week 2: 8-14
             if days_in_month >= 8:
                 week2_end = min(14, days_in_month)
                 buttons.append([(f"សប្តាហ៍ 2 (8-{week2_end})", f"week_{current_year}-{current_month:02d}-2")])
-            
+
             # Week 3: 15-21
             if days_in_month >= 15:
                 week3_end = min(21, days_in_month)
                 buttons.append([(f"សប្តាហ៍ 3 (15-{week3_end})", f"week_{current_year}-{current_month:02d}-3")])
-            
+
             # Week 4: 22-end of month
             if days_in_month >= 22:
                 buttons.append([(f"សប្តាហ៍ 4 (22-{days_in_month})", f"week_{current_year}-{current_month:02d}-4")])
-            
+
             buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
-            
+
             await event.edit(message, buttons=buttons)
-            
+
         except Exception as e:
             force_log(f"Error showing weekly reports: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
@@ -736,34 +734,34 @@ Telegram: https://t.me/HK_688
         """Show monthly report options"""
         try:
             from datetime import datetime
-            
+
             now = DateUtils.now()
             current_year = now.year
-            
+
             message = f"📊 របាយការណ៍ប្រចាំខែ - {current_year}\n\nជ្រើសរើសខែ:"
-            
+
             buttons = []
-            
+
             # Show months in two columns like the main bot
             for month in range(1, 13, 2):
                 month_date_1 = datetime(current_year, month, 1)
                 label_1 = month_date_1.strftime("%B %Y")
                 callback_value_1 = month_date_1.strftime("%Y-%m")
-                
+
                 row = [(label_1, f"month_{callback_value_1}")]
-                
+
                 if month + 1 <= 12:
                     month_date_2 = datetime(current_year, month + 1, 1)
                     label_2 = month_date_2.strftime("%B %Y")
                     callback_value_2 = month_date_2.strftime("%Y-%m")
                     row.append((label_2, f"month_{callback_value_2}"))
-                
+
                 buttons.append(row)
-            
+
             buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
-            
+
             await event.edit(message, buttons=buttons)
-            
+
         except Exception as e:
             force_log(f"Error showing monthly reports: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
@@ -774,20 +772,20 @@ Telegram: https://t.me/HK_688
         """Show report for a specific week"""
         chat_id = int(event.chat_id)
         week_data = data.replace("week_", "")
-        
+
         try:
             from datetime import datetime
             from calendar import monthrange
-            
+
             # Parse week data: YYYY-MM-W (e.g., "2024-02-1")
             parts = week_data.split("-")
             year = int(parts[0])
             month = int(parts[1])
             week_number = int(parts[2])
-            
+
             # Calculate week date range
             _, days_in_month = monthrange(year, month)
-            
+
             if week_number == 1:
                 start_day = 1
                 end_day = min(7, days_in_month)
@@ -802,17 +800,17 @@ Telegram: https://t.me/HK_688
                 end_day = days_in_month
             else:
                 raise ValueError("Invalid week number")
-            
+
             start_date = datetime(year, month, start_day)
             end_date = datetime(year, month, end_day, 23, 59, 59)
-            
+
             # Get income data for the week
             incomes = await self.income_service.get_income_by_date_and_chat_id(
                 chat_id=chat_id,
                 start_date=start_date,
                 end_date=end_date,
             )
-            
+
             if not incomes:
                 message = f"""
 📆 របាយការណ៍សប្តាហ៍ {week_number} ({start_day}-{end_day} {start_date.strftime('%B %Y')})
@@ -823,10 +821,10 @@ Telegram: https://t.me/HK_688
                 # Use weekly report format similar to telegram bot service
                 from helper import weekly_transaction_report
                 message = weekly_transaction_report(incomes, start_date, end_date)
-            
+
             await event.delete()
             await event.respond(message, parse_mode='HTML')
-            
+
         except Exception as e:
             force_log(f"Error showing weekly report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
@@ -837,25 +835,25 @@ Telegram: https://t.me/HK_688
         """Show report for a specific month"""
         chat_id = int(event.chat_id)
         month_data = data.replace("month_", "")
-        
+
         try:
             from datetime import datetime
             from calendar import monthrange
-            
+
             # Parse month data: YYYY-MM (e.g., "2024-02")
             start_date = datetime.strptime(month_data, "%Y-%m")
-            
+
             # Get last day of month
             _, last_day = monthrange(start_date.year, start_date.month)
             end_date = start_date.replace(day=last_day, hour=23, minute=59, second=59)
-            
+
             # Get income data for the month
             incomes = await self.income_service.get_income_by_date_and_chat_id(
                 chat_id=chat_id,
                 start_date=start_date,
                 end_date=end_date,
             )
-            
+
             if not incomes:
                 period_text = start_date.strftime("%B %Y")
                 message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
@@ -863,10 +861,10 @@ Telegram: https://t.me/HK_688
                 # Use monthly report format similar to telegram bot service
                 from helper import monthly_transaction_report
                 message = monthly_transaction_report(incomes, start_date, end_date)
-            
+
             await event.delete()
             await event.respond(message, parse_mode='HTML')
-            
+
         except Exception as e:
             force_log(f"Error showing monthly report: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
