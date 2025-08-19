@@ -551,7 +551,7 @@ class BusinessEventHandler:
             force_log(f"Error closing shift: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
-        await event.edit(message, buttons=None)
+        await event.edit(message, buttons=None, parse_mode="Markdown")
 
     async def close_menu(self, event):
         """Close the menu (delete message)"""
