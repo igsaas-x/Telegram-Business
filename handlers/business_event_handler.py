@@ -397,7 +397,7 @@ class BusinessEventHandler:
                         reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
 
                 # Combine all reports
-                message = f"របាយការណ៍ប្រចាំថ្ងៃ: {date_str}\n\n"
+                message = f"**របាយការណ៍ប្រចាំថ្ងៃ: {date_str}**\n\n"
                 if len(reports) == 1:
                     message += reports[0]
                 else:
@@ -410,7 +410,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode="Markdown")
 
     async def show_specific_shift_report(self, event, data):
         """Show report for a specific shift"""
