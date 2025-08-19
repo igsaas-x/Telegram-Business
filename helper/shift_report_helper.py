@@ -21,7 +21,7 @@ async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -
     if shift.end_time:  # Closed shift
         return shift_report_format(
             shift_number, shift_date, shift.start_time,
-            shift.end_time, shift_summary, True ,auto_closed=False
+            shift.end_time, shift_summary, True, auto_closed=False
         )
     else:  # Active shift
         now = DateUtils.now()

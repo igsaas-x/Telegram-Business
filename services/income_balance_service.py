@@ -13,6 +13,8 @@ from .shift_service import ShiftService
 class IncomeService:
     def __init__(self):
         self.shift_service = ShiftService()
+        # Threshold warning service will be set from telethon client
+        self.threshold_warning_service = None
 
     async def ensure_active_shift(self, chat_id: int) -> int:
         force_log(f"_ensure_active_shift called for chat_id: {chat_id}")
@@ -146,6 +148,20 @@ class IncomeService:
                     force_log(
                         f"Successfully saved IncomeBalance record with id={new_income.id}"
                     )
+                    
+                    # Check thresholds after saving income (non-blocking)
+                    if shift_id and shift_id != 0 and self.threshold_warning_service:
+                        try:
+                            await self.threshold_warning_service.check_and_send_warnings(
+                                chat_id=chat_id,
+                                shift_id=shift_id,
+                                new_income_amount=amount,
+                                new_income_currency=currency_code
+                            )
+                        except Exception as threshold_error:
+                            # Don't fail the income saving if threshold check fails
+                            force_log(f"Error in threshold check (non-blocking): {threshold_error}", "ERROR")
+                    
                     return new_income
 
                 except Exception as e:

@@ -111,6 +111,28 @@ class ChatService:
             finally:
                 session.close()
 
+    @staticmethod
+    async def get_chat_thresholds(chat_id: int) -> dict | None:
+        """Get USD and KHR thresholds for a chat"""
+        with get_db_session() as session:
+            try:
+                chat = (
+                    session.query(Chat.usd_threshold, Chat.khr_threshold)
+                    .filter_by(chat_id=chat_id)
+                    .first()
+                )
+                if chat:
+                    return {
+                        "usd_threshold": float(chat.usd_threshold) if chat.usd_threshold is not None else None,
+                        "khr_threshold": float(chat.khr_threshold) if chat.khr_threshold is not None else None
+                    }
+                return None
+            except Exception as e:
+                force_log(f"Error fetching chat thresholds: {e}")
+                return None
+            finally:
+                session.close()
+
 
     @staticmethod
     async def search_chats_by_chat_id_or_name(search_term: str, limit: int = 5) -> list[Chat]:
