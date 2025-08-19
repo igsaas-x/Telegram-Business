@@ -325,7 +325,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode="Markdown")
 
     async def show_other_days_report(self, event):
         """Show other days with shifts (last 3 days with data)"""
@@ -543,7 +543,7 @@ class BusinessEventHandler:
                         auto_closed=False  # Manual close
                     )
 
-                    message = f"✅ វេនត្រូវបានបិទដោយជោគជ័យ!\n\n{shift_report}"
+                    message = f"របាយការណ៍ថ្ងៃ៖{closed_shift.end_time.strftime('%Y-%m-%d')}\n\n{shift_report}"
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
