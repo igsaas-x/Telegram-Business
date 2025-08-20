@@ -44,8 +44,8 @@ class ThresholdWarningService:
                 
                 if new_income_amount < khr_threshold:
                     warning_msg = (
-                        f"⚠️**Warning**: ប្រាក់ចូល KHR {new_income_amount:,.0f}"
-                        f" ទាបជាងកម្រិតកំណត់ KHR {khr_threshold:,.0f}"
+                        f"<pre>- - - សូមត្រូតពិនិត្យមើលបន្ថែម - - -\n\n"
+                        f"ប្រាក់ចូល ៛ {new_income_amount:,.0f} តិចជាងធម្មតា</pre>"
                     )
                     warnings_to_send.append(warning_msg)
             
@@ -55,8 +55,8 @@ class ThresholdWarningService:
                 
                 if new_income_amount < usd_threshold:
                     warning_msg = (
-                        f"⚠️**Warning**: ប្រាក់ចូល USD {new_income_amount:.2f}"
-                        f"ទាបជាងកម្រិតកំណត់ USD {usd_threshold:.2f}"
+                        f"<pre>- - - សូមត្រូតពិនិត្យមើលបន្ថែម - - -\n\n"
+                        f"ប្រាក់ចូល $ {new_income_amount:.2f} តិចជាងធម្មតា</pre>"
                     )
                     warnings_to_send.append(warning_msg)
             
@@ -73,7 +73,7 @@ class ThresholdWarningService:
             await self.telethon_client.send_message(
                 entity=chat_id,
                 message=warning_msg,
-                parse_mode='md'
+                parse_mode='html'
             )
             force_log(f"ThresholdWarningService: Sent warning to chat {chat_id}: {warning_msg}")
         except Exception as send_error:
