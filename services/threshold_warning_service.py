@@ -44,8 +44,8 @@ class ThresholdWarningService:
                 
                 if new_income_amount < khr_threshold:
                     warning_msg = (
-                        f"⚠️ **ការព្រមាន**: ប្រាក់ចូល KHR "
-                        f"({new_income_amount:,.0f}) ទាបជាងកម្រិតកំណត់ ({khr_threshold:,.0f})"
+                        f"⚠️**Warning**: ប្រាក់ចូល KHR {new_income_amount:,.0f}"
+                        f" ទាបជាងកម្រិតកំណត់ KHR {khr_threshold:,.0f}"
                     )
                     warnings_to_send.append(warning_msg)
             
@@ -55,8 +55,8 @@ class ThresholdWarningService:
                 
                 if new_income_amount < usd_threshold:
                     warning_msg = (
-                        f"⚠️ **ការព្រមាន**: ប្រាក់ចូល USD "
-                        f"({new_income_amount:.2f}) ទាបជាងកម្រិតកំណត់ ({usd_threshold:.2f})"
+                        f"⚠️**Warning**: ប្រាក់ចូល USD {new_income_amount:.2f}"
+                        f"ទាបជាងកម្រិតកំណត់ USD {usd_threshold:.2f}"
                     )
                     warnings_to_send.append(warning_msg)
             
