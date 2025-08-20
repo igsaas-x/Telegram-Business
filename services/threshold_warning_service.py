@@ -1,5 +1,3 @@
-from typing import Optional
-
 from helper.logger_utils import force_log
 from services.chat_service import ChatService
 from services.shift_service import ShiftService
@@ -18,20 +16,19 @@ class ThresholdWarningService:
     async def check_and_send_warnings(
         self, 
         chat_id: int, 
-        shift_id: Optional[int],
         new_income_amount: float,
         new_income_currency: str
     ):
         """
-        Check if shift totals are below thresholds and send warning messages.
+        Check if individual transaction amount is below thresholds and send warning messages.
         Called after income is saved to database.
         """
         try:
-            # Only check if we have a shift_id and telethon_client
-            if not shift_id or not self.telethon_client:
+            # Only check if we have telethon_client
+            if not self.telethon_client:
                 return
             
-            force_log(f"ThresholdWarningService: Checking thresholds for chat {chat_id}, shift {shift_id}")
+            force_log(f"ThresholdWarningService: Checking transaction threshold for chat {chat_id}, amount: {new_income_amount} {new_income_currency}")
             
             # Get thresholds for this chat
             thresholds = await ChatService.get_chat_thresholds(chat_id)
@@ -39,33 +36,27 @@ class ThresholdWarningService:
                 force_log(f"ThresholdWarningService: No thresholds set for chat {chat_id}")
                 return
             
-            # Get current shift summary
-            shift_summary = await self.shift_service.get_shift_income_summary(shift_id, chat_id)
-            currencies = shift_summary.get("currencies", {})
-            
             warnings_to_send = []
             
             # Check KHR threshold
-            if (thresholds.get("khr_threshold") is not None and "KHR" in currencies):
-                khr_amount = currencies["KHR"]["amount"]
+            if thresholds.get("khr_threshold") is not None and new_income_currency == "KHR":
                 khr_threshold = thresholds["khr_threshold"]
                 
-                if khr_amount < khr_threshold:
+                if new_income_amount < khr_threshold:
                     warning_msg = (
-                        f"⚠️ **ការព្រមាន**: ចំនួនប្រាក់ KHR ប្រចាំវេន "
-                        f"({khr_amount:,.0f}) ទាបជាងកម្រិតកំណត់ ({khr_threshold:,.0f})"
+                        f"⚠️ **ការព្រមាន**: ប្រាក់ចូល KHR "
+                        f"({new_income_amount:,.0f}) ទាបជាងកម្រិតកំណត់ ({khr_threshold:,.0f})"
                     )
                     warnings_to_send.append(warning_msg)
             
             # Check USD threshold  
-            if (thresholds.get("usd_threshold") is not None and "USD" in currencies):
-                usd_amount = currencies["USD"]["amount"]
+            if thresholds.get("usd_threshold") is not None and new_income_currency == "USD":
                 usd_threshold = thresholds["usd_threshold"]
                 
-                if usd_amount < usd_threshold:
+                if new_income_amount < usd_threshold:
                     warning_msg = (
-                        f"⚠️ **ការព្រមាន**: ចំនួនប្រាក់ USD ប្រចាំវេន "
-                        f"({usd_amount:.2f}) ទាបជាងកម្រិតកំណត់ ({usd_threshold:.2f})"
+                        f"⚠️ **ការព្រមាន**: ប្រាក់ចូល USD "
+                        f"({new_income_amount:.2f}) ទាបជាងកម្រិតកំណត់ ({usd_threshold:.2f})"
                     )
                     warnings_to_send.append(warning_msg)
             

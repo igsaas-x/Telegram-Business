@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
@@ -149,18 +150,14 @@ class IncomeService:
                         f"Successfully saved IncomeBalance record with id={new_income.id}"
                     )
                     
-                    # Check thresholds after saving income (non-blocking)
-                    if shift_id and shift_id != 0 and self.threshold_warning_service:
-                        try:
-                            await self.threshold_warning_service.check_and_send_warnings(
-                                chat_id=chat_id,
-                                shift_id=shift_id,
-                                new_income_amount=amount,
-                                new_income_currency=currency_code
-                            )
-                        except Exception as threshold_error:
-                            # Don't fail the income saving if threshold check fails
-                            force_log(f"Error in threshold check (non-blocking): {threshold_error}", "ERROR")
+                    # Check thresholds after saving income (fire and forget)
+                    if self.threshold_warning_service:
+                        asyncio.create_task(self._check_thresholds_async(
+                            chat_id=chat_id,
+                            shift_id=shift_id,
+                            new_income_amount=amount,
+                            new_income_currency=currency_code
+                        ))
                     
                     return new_income
 
@@ -171,6 +168,18 @@ class IncomeService:
         except Exception as e:
             force_log(f"ERROR in insert_income: {e}")
             raise e
+
+    async def _check_thresholds_async(self, chat_id: int, shift_id: int, new_income_amount: float, new_income_currency: str):
+        """Non-blocking threshold check helper method"""
+        try:
+            await self.threshold_warning_service.check_and_send_warnings(
+                chat_id=chat_id,
+                new_income_amount=new_income_amount,
+                new_income_currency=new_income_currency
+            )
+        except Exception as threshold_error:
+            # Don't fail the income saving if threshold check fails
+            force_log(f"Error in threshold check (non-blocking): {threshold_error}", "ERROR")
 
     async def get_income(self, income_id: int) -> IncomeBalance | None:
         with get_db_session() as db:
