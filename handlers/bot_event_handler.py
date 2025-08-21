@@ -245,37 +245,36 @@ class CommandHandler:
 
     async def handle_weekly_summary(self, event):
         now = DateUtils.now()
+        current_month = now.month
+        current_year = now.year
+        
+        from calendar import monthrange
+        _, days_in_month = monthrange(current_year, current_month)
 
-        # Get this week's Monday (start of current week)
-        this_week_monday = now - timedelta(days=now.weekday())
-
-        # Get last week's Monday (start of previous week)
-        last_week_monday = this_week_monday - timedelta(days=7)
+        message = f"📆 របាយការណ៍ប្រចាំសប្តាហ៍ - {now.strftime('%B %Y')}\n\nជ្រើសរើសសប្តាហ៍:"
 
         buttons = []
 
-        # Add this week button
-        this_week_sunday = this_week_monday + timedelta(days=6)
-        if this_week_monday.month != this_week_sunday.month:
-            this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d %b')} - {this_week_sunday.strftime('%d %b %Y')})"
-        else:
-            this_week_label = f"សប្តាហ៍នេះ ({this_week_monday.strftime('%d')} - {this_week_sunday.strftime('%d %b %Y')})"
+        # Week 1: 1-7
+        week1_end = min(7, days_in_month)
+        buttons.append([Button.inline(f"សប្តាហ៍ 1 (1-{week1_end})", f"summary_week_{current_year}-{current_month:02d}-1")])
 
-        this_week_callback = this_week_monday.strftime("%Y-%m-%d")
-        buttons.append([Button.inline(this_week_label, f"summary_week_{this_week_callback}")])
+        # Week 2: 8-14
+        if days_in_month >= 8:
+            week2_end = min(14, days_in_month)
+            buttons.append([Button.inline(f"សប្តាហ៍ 2 (8-{week2_end})", f"summary_week_{current_year}-{current_month:02d}-2")])
 
-        # Add last week button
-        last_week_sunday = last_week_monday + timedelta(days=6)
-        if last_week_monday.month != last_week_sunday.month:
-            last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d %b')} - {last_week_sunday.strftime('%d %b %Y')})"
-        else:
-            last_week_label = f"សប្តាហ៍មុន ({last_week_monday.strftime('%d')} - {last_week_sunday.strftime('%d %b %Y')})"
+        # Week 3: 15-21
+        if days_in_month >= 15:
+            week3_end = min(21, days_in_month)
+            buttons.append([Button.inline(f"សប្តាហ៍ 3 (15-{week3_end})", f"summary_week_{current_year}-{current_month:02d}-3")])
 
-        last_week_callback = last_week_monday.strftime("%Y-%m-%d")
-        buttons.append([Button.inline(last_week_label, f"summary_week_{last_week_callback}")])
+        # Week 4: 22-end of month
+        if days_in_month >= 22:
+            buttons.append([Button.inline(f"សប្តាហ៍ 4 (22-{days_in_month})", f"summary_week_{current_year}-{current_month:02d}-4")])
 
         buttons.append([Button.inline("ត្រឡប់ក្រោយ", "menu")])
-        await event.edit("ជ្រើសរើសសប្តាហ៍:", buttons=buttons)
+        await event.edit(message, buttons=buttons)
 
     async def handle_monthly_summary(self, event):
         now = DateUtils.now()
@@ -365,11 +364,37 @@ class CommandHandler:
 
         try:
             if data.startswith("summary_week_"):
-                start_date = datetime.strptime(
-                    data.replace("summary_week_", ""), "%Y-%m-%d"
-                )
-                end_date = start_date + timedelta(days=7)
-                period_text = f"{start_date.strftime('%d')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"
+                week_data = data.replace("summary_week_", "")
+                
+                # Parse week data: YYYY-MM-W (e.g., "2024-02-1")
+                parts = week_data.split("-")
+                year = int(parts[0])
+                month = int(parts[1])
+                week_number = int(parts[2])
+                
+                from calendar import monthrange
+                
+                # Calculate week date range
+                _, days_in_month = monthrange(year, month)
+                
+                if week_number == 1:
+                    start_day = 1
+                    end_day = min(7, days_in_month)
+                elif week_number == 2:
+                    start_day = 8
+                    end_day = min(14, days_in_month)
+                elif week_number == 3:
+                    start_day = 15
+                    end_day = min(21, days_in_month)
+                elif week_number == 4:
+                    start_day = 22
+                    end_day = days_in_month
+                else:
+                    raise ValueError("Invalid week number")
+                
+                start_date = datetime(year, month, start_day)
+                end_date = datetime(year, month, end_day, 23, 59, 59)
+                period_text = f"សប្តាហ៍ {week_number} ({start_day}-{end_day} {start_date.strftime('%B %Y')})"
             elif data.startswith("summary_month_"):
                 start_date = datetime.strptime(
                     data.replace("summary_month_", ""), "%Y-%m"
