@@ -160,7 +160,7 @@ class MessageVerificationScheduler:
                             "chipmongbankpaymentbot",
                             "prasac_merchant_payment_bot",
                             "AMKPlc_bot",
-                            "prince_pay_bot"
+                            "prince_pay_bot",
                             "s7pos_bot"
                         }
                         
