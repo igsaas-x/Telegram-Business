@@ -300,29 +300,41 @@ class CommandHandler:
         await event.edit("ជ្រើសរើសខែ:", buttons=buttons)
 
     async def handle_other_dates(self, event):
-        chat_id = event.chat_id
-
-        result = await event.client.send_message(
-            chat_id,
-            "ឆែករបាយការណ៍ថ្ងៃទី:\n\nសូមវាយថ្ងៃ (05) ឬ (01-05) ជាការឆ្លើយតបសារនេះដោយចុច 'Reply'\n\nឧទាហរណ៍:\n• មួយថ្ងៃ: 5\n• ច្រើនថ្ងៃ: 1-5 ឬ 01-05",
-        )
-
-        conversation_service = ConversationService()
-        current_month = DateUtils.now().strftime("%Y-%m")
-        context_data = json.dumps({"current_month": current_month})
-        await conversation_service.save_question(
-            chat_id=chat_id,
-            thread_id=result.id,  # Use message ID as thread ID for telethon bot
-            message_id=result.id,
-            question_type="date_input",
-            context_data=context_data,
-        )
-        
+        """Handle other dates - show current month dates as buttons"""
         try:
-            await event.delete()
+            now = DateUtils.now()
+            current_month = now.month
+            current_year = now.year
+            
+            # Generate date buttons for current month
+            buttons = []
+            
+            # Add dates in rows
+            from calendar import monthrange
+            _, last_day = monthrange(current_year, current_month)
+            
+            # Group dates in rows of 5 for better mobile display
+            row = []
+            for day in range(1, last_day + 1):
+                date_str = f"{current_year}-{current_month:02d}-{day:02d}"
+                row.append(Button.inline(f"{day}", f"summary_of_{date_str}"))
+                
+                if len(row) == 5 or day == last_day:
+                    buttons.append(row)
+                    row = []
+            
+            # Add navigation row
+            buttons.append([Button.inline("ត្រឡប់ក្រោយ", "daily_summary")])
+            
+            month_name = now.strftime("%B %Y")
+            await event.edit(
+                f"ជ្រើសរើសថ្ងៃសម្រាប់ {month_name}:",
+                buttons=buttons
+            )
+            
         except Exception as e:
-            force_log(f"Could not delete message in handle_other_dates: {e}")
-            # Don't re-raise, just log the error
+            force_log(f"Error in handle_other_dates: {e}", "BotEventHandler")
+            await event.edit(f"Error: {str(e)}")
 
     async def handle_date_summary(self, event, data):
         chat_id = event.chat_id
