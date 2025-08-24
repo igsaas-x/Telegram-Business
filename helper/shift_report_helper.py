@@ -64,7 +64,6 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     else:
         report += "🔄 <b>ស្ថានភាព:</b> កំពុងបន្ត\n"
     report += "<b>សរុបប្រតិបត្តការណ៍:</b>\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
 
     # Process currencies from shift summary
     currencies = shift_summary.get("currencies", {})
@@ -93,8 +92,7 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     # Wrap only the tabular data in <pre> tags for proper alignment
     tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
     tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
-    tabular_data += "- - - - - - - - - - - - - - - - - - - - - "
-    
+
     report += f"<pre>{tabular_data}</pre>\n"
     report += f"⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី\n\n"
 
