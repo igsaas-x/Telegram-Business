@@ -25,19 +25,11 @@ class MenuHandler:
             today = DateUtils.now()
             keyboard = []
 
-            # Check if shift is enabled for this chat
-            shift_enabled = await self.chat_service.is_shift_enabled(int(chat_id))
-            if shift_enabled:
-                keyboard.append(
-                    [
-                        InlineKeyboardButton(
-                            "ប្រចាំវេនថ្ងៃនេះ", callback_data="report_per_shift"
-                        )
-                    ]
-                )
-                # Only show current date for shift-enabled chats
-                label = today.strftime("ថ្ងៃនេះ")
-                callback_value = today.strftime("%Y-%m-%d")
+            # Show 3 days for non-shift chats
+            for i in range(2, -1, -1):
+                day = today - timedelta(days=i)
+                label = day.strftime("%b %d")
+                callback_value = day.strftime("%Y-%m-%d")
                 keyboard.append(
                     [
                         InlineKeyboardButton(
@@ -45,19 +37,6 @@ class MenuHandler:
                         )
                     ]
                 )
-            else:
-                # Show 3 days for non-shift chats
-                for i in range(2, -1, -1):
-                    day = today - timedelta(days=i)
-                    label = day.strftime("%b %d")
-                    callback_value = day.strftime("%Y-%m-%d")
-                    keyboard.append(
-                        [
-                            InlineKeyboardButton(
-                                label, callback_data=f"summary_of_{callback_value}"
-                            )
-                        ]
-                    )
 
             keyboard.append(
                 [InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_dates")]
@@ -660,7 +639,10 @@ class MenuHandler:
                 package_type = group_package.package if group_package else None
                 
                 keyboard = []
-                
+
+                if package_type and package_type.value == 'BUSINESS':
+                    keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
+
                 # Always available options
                 keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
                 
@@ -668,10 +650,7 @@ class MenuHandler:
                 if package_type and package_type.value in ['STANDARD', 'BUSINESS']:
                     keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
                     keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
-                
-                if package_type and package_type.value == 'BUSINESS':
-                    keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
-                
+
                 keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
                 reply_markup = InlineKeyboardMarkup(keyboard)
 

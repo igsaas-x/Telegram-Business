@@ -284,7 +284,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons)
+        await event.edit(message, buttons=buttons, parse_mode="HTML")
 
     async def show_previous_shift_report(self, event):
         """Show previous shift report (last closed shift)"""

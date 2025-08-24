@@ -86,7 +86,7 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     max_amount_length = max(len(khr_formatted), len(usd_formatted))
 
     # Calculate exact spacing needed to align pipes
-    khr_spaces_needed = max_amount_length - len(khr_formatted) + 2  # 4 base spaces
+    khr_spaces_needed = max_amount_length - len(khr_formatted) + 4  # 4 base spaces
     usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
 
     # Wrap only the tabular data in <pre> tags for proper alignment
@@ -116,7 +116,6 @@ def current_shift_report_format(shift_number: int, shift_date: datetime, start_t
 
     # Build the report for ongoing shift
     report = f"#{shift_number}.វេនថ្ងៃទី: {formatted_date} | {start_time_str} - កំពុងបន្ត\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
     report += "សរុប:\n"
 
     # Process currencies from shift summary
@@ -143,9 +142,11 @@ def current_shift_report_format(shift_number: int, shift_date: datetime, start_t
     khr_spaces_needed = max_amount_length - len(khr_formatted) + 8  # 8 base spaces
     usd_spaces_needed = max_amount_length - len(usd_formatted) + 8  # 8 base spaces
 
-    report += f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
-    report += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
+    # Wrap only the tabular data in <pre> tags for proper alignment
+    tabular_data = f"(៛): {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+    tabular_data += f"($): {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
+    
+    report += f"<pre>{tabular_data}</pre>\n"
 
     # Add duration info for ongoing shift
     if duration_hours > 0 or duration_minutes > 0:
