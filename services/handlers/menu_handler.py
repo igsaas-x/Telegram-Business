@@ -298,7 +298,7 @@ class MenuHandler:
         """Handle other shift dates selection like business bot"""
         try:
             shift_service = ShiftService()
-            recent_dates = await shift_service.get_recent_end_dates_with_shifts(chat_id, 3)
+            recent_dates = await shift_service.get_recent_start_dates_with_shifts(chat_id, 3)
             
             if not recent_dates:
                 keyboard = [
@@ -343,8 +343,8 @@ class MenuHandler:
             shift_date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             shift_date = shift_date_obj.date()
             
-            # Get shifts for the specific date (by end date for admin bot)
-            shifts = await shift_service.get_shifts_by_end_date(chat_id, shift_date)
+            # Get shifts for the specific date (by start date for admin bot)
+            shifts = await shift_service.get_shifts_by_start_date(chat_id, shift_date)
             
             if not shifts:
                 await query.edit_message_text(
@@ -389,7 +389,7 @@ class MenuHandler:
             current_year = now.year
             
             # Get all dates in current month that have shifts
-            all_dates_with_shifts = await shift_service.get_all_end_dates_with_shifts_in_month(
+            all_dates_with_shifts = await shift_service.get_all_start_dates_with_shifts_in_month(
                 chat_id, current_year, current_month
             )
             

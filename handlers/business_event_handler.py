@@ -335,7 +335,7 @@ class BusinessEventHandler:
         chat_id = int(event.chat_id)
 
         try:
-            recent_dates = await self.shift_service.get_recent_end_dates_with_shifts(
+            recent_dates = await self.shift_service.get_recent_start_dates_with_shifts(
                 chat_id, 3
             )
             force_log(f"Found recent dates: {recent_dates}")
@@ -379,7 +379,7 @@ class BusinessEventHandler:
             selected_date = datetime.strptime(date_str, "%Y-%m-%d")
             parsed_date = selected_date.date()
             force_log(f"Parsed date: {parsed_date}")
-            shifts = await self.shift_service.get_shifts_by_end_date(chat_id, parsed_date)
+            shifts = await self.shift_service.get_shifts_by_start_date(chat_id, parsed_date)
             force_log(f"Found {len(shifts)} shifts for date {parsed_date}")
 
             if not shifts:
