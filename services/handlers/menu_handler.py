@@ -196,7 +196,7 @@ class MenuHandler:
         try:
             keyboard = [
                 [InlineKeyboardButton("ប្រចាំវេនថ្ងៃនេះ", callback_data="report_per_shift")],
-                [InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="other_shift_dates")],
+                [InlineKeyboardButton("វេនថ្ងៃផ្សេងទៀត", callback_data="other_shift_dates")],
                 [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -389,7 +389,7 @@ class MenuHandler:
             else:
                 final_report = "".join(reports)
             
-            await query.edit_message_text(final_report, parse_mode='HTML')
+            await query.edit_message_text(final_report, parse_mode='Markdown')
             return True
             
         except Exception as e:

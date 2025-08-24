@@ -163,6 +163,7 @@ class AutosumBusinessBot:
             # Create a limited menu with just the close shift button
             keyboard = [
                 [InlineKeyboardButton("🛑 បិទបញ្ជី", callback_data="close_shift")],
+                [InlineKeyboardButton("ត្រលប់ក្រោយ", callback_data="close_menu")],
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
