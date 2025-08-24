@@ -515,7 +515,7 @@ class BusinessEventHandler:
                     
                     if not is_allowed:
                         message = """
-🚫 **ពុំមានការអនុញ្ញាត**
+🚫ពុំមានការអនុញ្ញាត
 
 អ្នកមិនមានសិទ្ធិក្នុងការបិទវេនទេ។
 """
@@ -524,7 +524,7 @@ class BusinessEventHandler:
                 else:
                     # If user has no username, deny access when permissions are required
                     message = """
-🚫 **ពុំមានការអនុញ្ញាត**
+🚫ពុំមានការអនុញ្ញាត
 
 អ្នកត្រូវតែមាន username នៅក្នុង Telegram ដើម្បីបិទវេន។
 
