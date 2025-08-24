@@ -315,8 +315,8 @@ class TelegramAdminBot:
         await query.answer()
         
         try:
-            # Extract chat ID from callback data
-            chat_id = int(query.data.replace("chat_", ""))
+            # Extract chat ID from callback data (format: select_chat_{chat_id})
+            chat_id = int(query.data.replace("select_chat_", ""))
             context.user_data["selected_chat_id"] = chat_id
             
             # Get current allowed users
@@ -545,6 +545,7 @@ class TelegramAdminBot:
                     MessageHandler(filters.TEXT & filters.REPLY, self.chat_search_handler.shared_process_input),
                     CallbackQueryHandler(self.shift_permission_selection_handler),
                 ],
+                CHAT_SELECTION_CODE: [CallbackQueryHandler(self.chat_search_handler.handle_chat_selection)],
                 SHIFT_PERMISSION_CHAT_SELECTION_CODE: [CallbackQueryHandler(self.shift_permission_chat_selection)],
                 SHIFT_PERMISSION_USERNAME_CODE: [
                     MessageHandler(filters.TEXT & filters.REPLY, self.process_shift_permission_username),

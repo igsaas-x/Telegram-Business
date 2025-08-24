@@ -148,6 +148,12 @@ class ChatSearchHandler:
                         package_handler = PackageHandler()
                         return await package_handler.display_package_details(update, context)
                     
+                    # For shift permission command, return to shift permission handler
+                    elif command_type == "shift_permission":
+                        # Don't edit message here, let the shift permission handler handle it
+                        # Just return the appropriate state code to route to shift permission chat selection
+                        return 1024  # SHIFT_PERMISSION_CHAT_SELECTION_CODE
+                        
                     # For other commands, execute directly
                     elif command_type == "enable_shift":
                         await query.edit_message_text(f"Executing enable shift for chat: {chat.group_name}")
