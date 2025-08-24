@@ -501,33 +501,42 @@ class BusinessEventHandler:
         force_log(f"CLOSE_CURRENT_SHIFT: Called for chat_id: {chat_id} at {current_time}")
 
         try:
-            # Check permissions first
-            sender = await event.get_sender()
-            if sender and hasattr(sender, 'username') and sender.username:
-                username = sender.username.lower()
-                is_allowed = await self.shift_permission_service.is_user_allowed(chat_id, username)
-                
-                if not is_allowed:
-                    message = """
+            # Check if shift permissions feature is enabled first
+            has_shift_permissions = await self.group_package_service.has_feature(
+                chat_id, FeatureFlags.SHIFT_PERMISSIONS.value
+            )
+            
+            if has_shift_permissions:
+                # Feature is enabled - check permissions
+                sender = await event.get_sender()
+                if sender and hasattr(sender, 'username') and sender.username:
+                    username = sender.username.lower()
+                    is_allowed = await self.shift_permission_service.is_user_allowed(chat_id, username)
+                    
+                    if not is_allowed:
+                        message = """
 🚫 **ពុំមានការអនុញ្ញាត**
 
 អ្នកមិនមានសិទ្ធិក្នុងការបិទវេនទេ។ សូមស្នើសុំភាពមន្រ្តីអភិបាលដើម្បីបន្ថែមលេខកូដរបស់អ្នក។
 
 💡 ភាពមន្រ្តីអភិបាលអាចប្រើ `/shift_permission` ដើម្បីគ្រប់គ្រងសិទ្ធិ។
 """
-                    await event.edit(message, buttons=None, parse_mode="HTML")
-                    return
-            else:
-                # If user has no username, deny access
-                message = """
+                        await event.edit(message, buttons=None, parse_mode="HTML")
+                        return
+                else:
+                    # If user has no username, deny access when permissions are required
+                    message = """
 🚫 **ពុំមានការអនុញ្ញាត**
 
-អ្នកត្រូវតែមានឈ្មោះអ្នកប្រើប្រាស់ (username) នៅក្នុង Telegram ដើម្បីបិទវេន។
+អ្នកត្រូវតែមាន username នៅក្នុង Telegram ដើម្បីបិទវេន។
 
 💡 សូមកំណត់ឈ្មោះអ្នកប្រើប្រាស់នៅក្នុងការកំណត់ Telegram របស់អ្នក។
 """
-                await event.edit(message, buttons=None, parse_mode="HTML")
-                return
+                    await event.edit(message, buttons=None, parse_mode="HTML")
+                    return
+            
+            # Feature is disabled - allow anyone to close shift (backward compatibility)
+            # No need to check username or permissions
             current_shift = await self.shift_service.get_current_shift(chat_id)
 
             if current_shift:

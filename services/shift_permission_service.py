@@ -1,15 +1,17 @@
 from typing import List
 
+from common.enums import FeatureFlags
 from config import get_db_session
 from helper import force_log
 from models import ShiftPermission
+from services.group_package_service import GroupPackageService
 
 
 class ShiftPermissionService:
     """Service for managing shift close permissions"""
     
     def __init__(self):
-        pass
+        self.group_package_service = GroupPackageService()
     
     async def add_allowed_user(self, chat_id: int, username: str) -> bool:
         """Add a user to the allowed list for closing shifts"""
@@ -40,6 +42,20 @@ class ShiftPermissionService:
                 db.add(permission)
                 db.commit()
                 
+                # Check if this is the first user - if so, enable the feature flag
+                count = (
+                    db.query(ShiftPermission)
+                    .filter(ShiftPermission.chat_id == chat_id)
+                    .count()
+                )
+                
+                if count == 1:
+                    # This is the first user, enable the feature flag
+                    await self.group_package_service.set_feature_flag(
+                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, True
+                    )
+                    force_log(f"Enabled SHIFT_PERMISSIONS feature for chat {chat_id} (first user added)")
+                
                 force_log(f"Added close shift permission for user @{username} in chat {chat_id}")
                 return True
                 
@@ -69,6 +85,20 @@ class ShiftPermissionService:
                 
                 db.delete(permission)
                 db.commit()
+                
+                # Check if there are no more users - if so, disable the feature flag
+                count = (
+                    db.query(ShiftPermission)
+                    .filter(ShiftPermission.chat_id == chat_id)
+                    .count()
+                )
+                
+                if count == 0:
+                    # No more users, disable the feature flag
+                    await self.group_package_service.set_feature_flag(
+                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
+                    )
+                    force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (no users remaining)")
                 
                 force_log(f"Removed close shift permission for user @{username} in chat {chat_id}")
                 return True
@@ -132,6 +162,13 @@ class ShiftPermissionService:
                     ShiftPermission.chat_id == chat_id
                 ).delete()
                 db.commit()
+                
+                # Disable the feature flag since all users are removed
+                if count > 0:
+                    await self.group_package_service.set_feature_flag(
+                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
+                    )
+                    force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (all users cleared)")
                 
                 force_log(f"Cleared {count} shift permissions for chat {chat_id}")
                 return count
