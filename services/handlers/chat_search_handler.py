@@ -148,11 +148,39 @@ class ChatSearchHandler:
                         package_handler = PackageHandler()
                         return await package_handler.display_package_details(update, context)
                     
-                    # For shift permission command, return to shift permission handler
+                    # For shift permission command, handle directly here
                     elif command_type == "shift_permission":
-                        # Don't edit message here, let the shift permission handler handle it
-                        # Just return the appropriate state code to route to shift permission chat selection
-                        return 1024  # SHIFT_PERMISSION_CHAT_SELECTION_CODE
+                        # Import shift permission service
+                        from services.shift_permission_service import ShiftPermissionService
+                        shift_permission_service = ShiftPermissionService()
+                        
+                        # Get current allowed users
+                        allowed_users = await shift_permission_service.get_allowed_users(int(chat_id))
+                        
+                        if allowed_users:
+                            users_text = "\n".join([f"• {user}" for user in allowed_users])
+                            current_users = f"\n\nCurrent allowed users:\n{users_text}"
+                        else:
+                            current_users = "\n\nCurrent allowed users: None"
+                        
+                        # Store chat_id for later use
+                        context.user_data["selected_chat_id"] = int(chat_id)
+                        
+                        keyboard = [
+                            [InlineKeyboardButton("Add User", callback_data="add_user")],
+                            [InlineKeyboardButton("Remove User", callback_data="remove_user")],
+                            [InlineKeyboardButton("List Users", callback_data="list_users")],
+                            [InlineKeyboardButton("Clear All", callback_data="clear_all")],
+                            [InlineKeyboardButton("Cancel", callback_data="cancel")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await query.edit_message_text(
+                            f"Shift Permission Management\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
+                            reply_markup=reply_markup
+                        )
+                        
+                        return 1025  # SHIFT_PERMISSION_USERNAME_CODE
                         
                     # For other commands, execute directly
                     elif command_type == "enable_shift":
