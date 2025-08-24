@@ -8,6 +8,7 @@ from models import User
 from services.chat_service import ChatService
 from services.group_package_service import GroupPackageService
 from services.income_balance_service import IncomeService
+from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 from services.shift_configuration_service import ShiftConfigurationService
 from services.shift_service import ShiftService
 from services.user_service import UserService
@@ -19,13 +20,14 @@ class BusinessEventHandler:
     Specialized event handler for autosum_business bot with different business logic
     """
 
-    def __init__(self):
+    def __init__(self, bot_service=None):
         self.command_handler = CommandHandler()
         self.chat_service = ChatService()
         self.income_service = IncomeService()
         self.shift_service = ShiftService()
         self.shift_config_service = ShiftConfigurationService()
         self.group_package_service = GroupPackageService()
+        self.bot_service = bot_service
 
     async def menu(self, event):
         """Business-specific menu handler"""
@@ -544,6 +546,9 @@ class BusinessEventHandler:
                     )
 
                     message = f"របាយការណ៍ថ្ងៃ៖{closed_shift.end_time.strftime('%Y-%m-%d')}\n\n{shift_report}"
+                    
+                    # Send report to private groups if this group is bound to any
+                    await self._send_report_to_private_groups(chat_id, message)
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
@@ -552,6 +557,44 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
         await event.edit(message, buttons=None, parse_mode="Markdown")
+
+    async def _send_report_to_private_groups(self, public_chat_id: int, report_message: str):
+        """Send shift report to private groups bound to this public group"""
+        if not self.bot_service:
+            force_log("Bot service not available, cannot send reports to private groups", "WARNING")
+            return
+            
+        try:
+            # Get the chat from the public group
+            chat = await self.chat_service.get_chat_by_chat_id(public_chat_id)
+            if not chat:
+                force_log(f"Chat not found for chat_id: {public_chat_id}", "WARNING")
+                return
+                
+            # Get private chats bound to this group
+            private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
+            
+            if private_chats:
+                force_log(f"Sending shift report to {len(private_chats)} private groups bound to chat {public_chat_id}")
+                
+                for private_chat_id in private_chats:
+                    try:
+                        # Add a header to identify the source
+                        private_message = f"📋 **របាយការណ៍ពីក្រុមសាធារណៈ**\n\n{report_message}"
+                        success = await self.bot_service.send_message(private_chat_id, private_message)
+                        
+                        if success:
+                            force_log(f"Successfully sent shift report to private chat {private_chat_id}")
+                        else:
+                            force_log(f"Failed to send shift report to private chat {private_chat_id}", "ERROR")
+                            
+                    except Exception as e:
+                        force_log(f"Error sending shift report to private chat {private_chat_id}: {e}", "ERROR")
+            else:
+                force_log(f"No private groups bound to chat {public_chat_id}")
+                
+        except Exception as e:
+            force_log(f"Error in _send_report_to_private_groups for chat {public_chat_id}: {e}", "ERROR")
 
     async def close_menu(self, event):
         """Close the menu (delete message)"""

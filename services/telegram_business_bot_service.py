@@ -39,7 +39,7 @@ class AutosumBusinessBot:
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
-        self.event_handler = BusinessEventHandler()
+        self.event_handler = BusinessEventHandler(bot_service=self)
         self.group_package_service = GroupPackageService()
         force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")
 
@@ -143,10 +143,18 @@ class AutosumBusinessBot:
         else:
             private_chats = None
         if private_chats:
-            message = f"""សូមប្រើPrivate Groupដើម្បីបូក
-            """
-            await update.message.reply_text(message)
-            return ConversationHandler.END
+            # Allow only close shift functionality in public groups bound to private chats
+            # Create a limited menu with just the close shift button
+            keyboard = [
+                [InlineKeyboardButton("🛑 បិទបញ្ជី", callback_data="close_shift")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            message = f"""កំពុងតែប្រតិបត្តិតាមរយៈ Private Group
+            
+🛑 អ្នកអាចបិទបញ្ជីនៅទីនេះ"""
+            await update.message.reply_text(message, reply_markup=reply_markup)
+            return BUSINESS_MENU_CODE
 
         # Create a mock event object for the business event handler
         class MockEvent:
