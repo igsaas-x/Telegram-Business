@@ -418,7 +418,9 @@ class TelegramAdminBot:
                 return ConversationHandler.END
             
             if action == "add":
+                force_log(f"🔥 ADMIN_BOT: Calling add_allowed_user for chat_id={chat_id}, username={username}")
                 success = await self.shift_permission_service.add_allowed_user(chat_id, username)
+                force_log(f"🔥 ADMIN_BOT: add_allowed_user returned: {success}")
                 if success:
                     await update.message.reply_text(
                         f"✅ Successfully added @{username.lstrip('@')} to shift close permissions for chat {chat_id}"

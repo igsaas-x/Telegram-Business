@@ -23,9 +23,11 @@ class ShiftPermissionService:
     
     async def add_allowed_user(self, chat_id: int, username: str) -> bool:
         """Add a user to the allowed list for closing shifts"""
+        force_log(f"🔥 ADD_ALLOWED_USER: Starting for chat_id={chat_id}, username={username}")
         try:
             # Remove @ from username if present
             username = username.lstrip('@').lower()
+            force_log(f"🔥 ADD_ALLOWED_USER: Cleaned username={username}")
             
             with get_db_session() as db:
                 # Check if permission already exists
@@ -38,17 +40,21 @@ class ShiftPermissionService:
                     .first()
                 )
                 
+                force_log(f"🔥 ADD_ALLOWED_USER: Existing permission check - found: {existing is not None}")
+                
                 if existing:
                     force_log(f"User @{username} already has close shift permission for chat {chat_id}")
                     return False
                 
                 # Add new permission
+                force_log(f"🔥 ADD_ALLOWED_USER: Creating permission record")
                 permission = ShiftPermission(
                     chat_id=chat_id,
                     username=username
                 )
                 db.add(permission)
                 db.commit()
+                force_log(f"🔥 ADD_ALLOWED_USER: Permission record created and committed")
                 
                 # Check if this is the first user - if so, enable the feature flag
                 count = (
@@ -56,26 +62,34 @@ class ShiftPermissionService:
                     .filter(ShiftPermission.chat_id == chat_id)
                     .count()
                 )
+                force_log(f"🔥 ADD_ALLOWED_USER: Total user count for chat: {count}")
                 
                 if count == 1:
+                    force_log(f"🔥 ADD_ALLOWED_USER: This is the first user - enabling feature flag")
                     # This is the first user, enable the feature flag
                     if await self._ensure_group_package_exists(chat_id):
+                        force_log(f"🔥 ADD_ALLOWED_USER: Group package exists, setting feature flag")
                         try:
                             result = await self.group_package_service.set_feature_flag(
                                 chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, True
                             )
+                            force_log(f"🔥 ADD_ALLOWED_USER: set_feature_flag result: {result}")
                             if result:
-                                force_log(f"Enabled SHIFT_PERMISSIONS feature for chat {chat_id} (first user added)")
+                                force_log(f"✅ Enabled SHIFT_PERMISSIONS feature for chat {chat_id} (first user added)")
                             else:
-                                force_log(f"Failed to enable SHIFT_PERMISSIONS feature for chat {chat_id}", "ERROR")
+                                force_log(f"❌ Failed to enable SHIFT_PERMISSIONS feature for chat {chat_id}", "ERROR")
                         except Exception as e:
-                            force_log(f"Error enabling SHIFT_PERMISSIONS feature for chat {chat_id}: {e}", "ERROR")
+                            force_log(f"❌ Error enabling SHIFT_PERMISSIONS feature for chat {chat_id}: {e}", "ERROR")
+                    else:
+                        force_log(f"❌ No group package exists for chat {chat_id}", "ERROR")
                 
                 force_log(f"Added close shift permission for user @{username} in chat {chat_id}")
                 return True
                 
         except Exception as e:
-            force_log(f"Error adding shift permission for user @{username} in chat {chat_id}: {e}", "ERROR")
+            force_log(f"🔥❌ ADD_ALLOWED_USER: EXCEPTION - Error adding shift permission for user @{username} in chat {chat_id}: {e}", "ERROR")
+            import traceback
+            force_log(f"🔥❌ ADD_ALLOWED_USER: TRACEBACK - {traceback.format_exc()}", "ERROR")
             return False
     
     async def remove_allowed_user(self, chat_id: int, username: str) -> bool:
