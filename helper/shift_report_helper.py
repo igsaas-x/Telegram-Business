@@ -115,7 +115,8 @@ def current_shift_report_format(shift_number: int, shift_date: datetime, start_t
     start_time_str = start_time.strftime('%I:%M %p')
 
     # Build the report for ongoing shift
-    report = f"#{shift_number}.វេនថ្ងៃទី: {formatted_date} | {start_time_str} - កំពុងបន្ត\n"
+    report = (f"🔢 វេនទី{shift_number} ថ្ងៃទី: {formatted_date} | {start_time_str}\n"
+              f"🟢 ស្ថានភាព: កំពុងបន្ត\n")
     report += "សរុប:\n"
 
     # Process currencies from shift summary
