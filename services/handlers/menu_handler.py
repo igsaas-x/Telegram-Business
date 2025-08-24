@@ -317,6 +317,7 @@ class MenuHandler:
                     display_date = date.strftime("%d %b %Y")
                     keyboard.append([InlineKeyboardButton(display_date, callback_data=f"shift_date_{date_str}")])
                 
+                keyboard.append([InlineKeyboardButton("ថ្ងៃផ្សេងទៀត", callback_data="show_all_month_dates")])
                 keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="shift_summary")])
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -374,6 +375,65 @@ class MenuHandler:
         except Exception as e:
             force_log(f"Error in _handle_shift_date_report: {e}", "MenuHandler")
             await query.edit_message_text(f"Error generating shift report: {str(e)}")
+            return False
+
+    async def _handle_show_all_month_dates(self, chat_id: int, query):
+        """Show all dates with shifts in the current month"""
+        try:
+            from datetime import datetime
+            from calendar import monthrange
+            
+            shift_service = ShiftService()
+            now = DateUtils.now()
+            current_month = now.month
+            current_year = now.year
+            
+            # Get all dates in current month that have shifts
+            all_dates_with_shifts = await shift_service.get_all_end_dates_with_shifts_in_month(
+                chat_id, current_year, current_month
+            )
+            
+            if not all_dates_with_shifts:
+                keyboard = [
+                    [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="other_shift_dates")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"📅 ថ្ងៃទាំងអស់ - {now.strftime('%B %Y')}\n\n🔴 គ្មានទិន្នន័យសម្រាប់ខែនេះ។",
+                    reply_markup=reply_markup
+                )
+            else:
+                # Arrange dates in 5 columns
+                keyboard = []
+                row = []
+                for date in all_dates_with_shifts:
+                    date_str = date.strftime("%Y-%m-%d")
+                    display_date = date.strftime("%d %b")  # Shorter format for columns
+                    row.append(InlineKeyboardButton(display_date, callback_data=f"shift_date_{date_str}"))
+                    
+                    # Add row to keyboard when we have 5 buttons
+                    if len(row) == 5:
+                        keyboard.append(row)
+                        row = []
+                
+                # Add remaining buttons in the last row
+                if row:
+                    keyboard.append(row)
+                
+                keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="other_shift_dates")])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"📅 ថ្ងៃទាំងអស់ - {now.strftime('%B %Y')}\n\nជ្រើសរើសថ្ងៃដែលអ្នកចង់មើល:",
+                    reply_markup=reply_markup
+                )
+            
+            return True
+            
+        except Exception as e:
+            force_log(f"Error in _handle_show_all_month_dates: {e}", "MenuHandler")
+            await query.edit_message_text(f"Error showing all month dates: {str(e)}")
             return False
 
     @staticmethod
@@ -676,6 +736,9 @@ class MenuHandler:
                 return ConversationHandler.END  # End conversation after showing final report
             elif callback_data == "other_shift_dates":
                 result = await self._handle_other_shift_dates(chat_id, query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data == "show_all_month_dates":
+                result = await self._handle_show_all_month_dates(chat_id, query)
                 return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
             elif callback_data.startswith("shift_date_"):
                 date_str = callback_data.replace("shift_date_", "")

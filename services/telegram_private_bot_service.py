@@ -399,7 +399,10 @@ class TelegramPrivateBot:
         package_type = group_package.package if group_package else None
         
         keyboard = []
-        
+
+        if package_type and package_type.value == 'BUSINESS':
+            keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
+
         # Daily option - different callback based on package
         if package_type and package_type.value in ['TRIAL', 'STANDARD', 'BUSINESS']:
             keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
@@ -411,10 +414,7 @@ class TelegramPrivateBot:
         if package_type and package_type.value in ['STANDARD', 'BUSINESS']:
             keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
             keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
-        
-        if package_type and package_type.value == 'BUSINESS':
-            keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
-        
+
         keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         

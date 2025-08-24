@@ -225,6 +225,39 @@ class ShiftService:
 
             return [d[0] for d in dates]
 
+    async def get_all_end_dates_with_shifts_in_month(
+        self, chat_id: int, year: int, month: int
+    ) -> list[date]:
+        """Get all dates with shifts in a specific month"""
+        with get_db_session() as db:
+            from sqlalchemy import func, and_
+            from datetime import datetime
+            
+            # Create start and end of month
+            start_of_month = datetime(year, month, 1)
+            if month == 12:
+                end_of_month = datetime(year + 1, 1, 1)
+            else:
+                end_of_month = datetime(year, month + 1, 1)
+            
+            dates = (
+                db.query(func.date(Shift.end_time))
+                .filter(
+                    and_(
+                        Shift.chat_id == chat_id,
+                        Shift.end_time.is_not(None),  # Only closed shifts have end_time
+                        Shift.is_closed == True,
+                        Shift.end_time >= start_of_month,
+                        Shift.end_time < end_of_month
+                    )
+                )
+                .distinct()
+                .order_by(func.date(Shift.end_time).desc())
+                .all()
+            )
+
+            return [d[0] for d in dates]
+
     async def check_and_auto_close_shifts(self) -> list[dict]:
         """Check all open shifts and auto-close them based on configuration"""
         from models.shift_configuration_model import ShiftConfigurationService
