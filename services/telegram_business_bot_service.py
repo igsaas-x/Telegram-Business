@@ -14,9 +14,10 @@ from telegram.ext import (
 
 from common.enums import ServicePackage
 from handlers.business_event_handler import BusinessEventHandler
-from helper import force_log
+from helper import force_log, DateUtils
 from services import ChatService, UserService, GroupPackageService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+from services.shift_service import ShiftService
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class AutosumBusinessBot:
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
+        self.shift_service = ShiftService()
         self.event_handler = BusinessEventHandler(bot_service=self)
         self.group_package_service = GroupPackageService()
         force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")
@@ -144,15 +146,26 @@ class AutosumBusinessBot:
             private_chats = None
         if private_chats:
             # Allow only close shift functionality in public groups bound to private chats
+            # Get current shift information to display
+            try:
+                current_shift = await self.shift_service.get_current_shift(chat_id)
+                if current_shift:
+                    current_date = DateUtils.now().strftime('%d-%B-%Y')
+                    message = f"""វេនទី {current_shift.number}: ថ្ងៃទី {current_date}"""
+                else:
+                    current_date = DateUtils.now().strftime('%d-%B-%Y')
+                    message = f"""វេនទី -: ថ្ងៃទី {current_date}"""
+            except Exception as e:
+                force_log(f"Error getting shift info: {e}", "AutosumBusinessBot")
+                current_date = DateUtils.now().strftime('%d-%B-%Y')
+                message = f"""វេនទី -: ថ្ងៃទី {current_date}"""
+            
             # Create a limited menu with just the close shift button
             keyboard = [
                 [InlineKeyboardButton("🛑 បិទបញ្ជី", callback_data="close_shift")],
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            message = f"""កំពុងតែប្រតិបត្តិតាមរយៈ Private Group
-            
-🛑 អ្នកអាចបិទបញ្ជីនៅទីនេះ"""
             await update.message.reply_text(message, reply_markup=reply_markup)
             return BUSINESS_MENU_CODE
 

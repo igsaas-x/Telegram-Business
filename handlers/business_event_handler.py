@@ -561,10 +561,8 @@ class BusinessEventHandler:
                         # Show confirmation message in public group instead of full report
                         message = f"""✅ វេន #{closed_shift.number} ត្រូវបានបិទដោយជោគជ័យ!
 
-📋 របាយការណ៍បានផ្ញើទៅក្រុម Private រួចរាល់
 ⏰ បិទនៅ: {closed_shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
-
-🟢 វេនថ្មីបានចាប់ផ្តើមហើយ"""
+"""
                     else:
                         # No private groups bound - show full report in public group as usual
                         message = full_report
@@ -602,8 +600,9 @@ class BusinessEventHandler:
                 
                 for private_chat_id in private_chats:
                     try:
-                        # Add a header to identify the source
-                        private_message = f"📋 **របាយការណ៍ពីក្រុមសាធារណៈ**\n\n{report_message}"
+                        # Add a header to identify the source with actual group name
+                        group_name = chat.group_name or f"Chat {public_chat_id}"
+                        private_message = f"📋 **របាយការណ៍ពី {group_name}**\n\n{report_message}"
                         success = await private_bot.send_message(private_chat_id, private_message)
                         
                         if success:
