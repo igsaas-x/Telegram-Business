@@ -324,9 +324,9 @@ class TelegramAdminBot:
             
             if allowed_users:
                 users_text = "\n".join([f"• {user}" for user in allowed_users])
-                current_users = f"\n\n**Current allowed users:**\n{users_text}"
+                current_users = f"\n\nCurrent allowed users:\n{users_text}"
             else:
-                current_users = "\n\n**Current allowed users:** None"
+                current_users = "\n\nCurrent allowed users: None"
             
             keyboard = [
                 [InlineKeyboardButton("Add User", callback_data="add_user")],
@@ -338,9 +338,8 @@ class TelegramAdminBot:
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await query.edit_message_text(
-                f"**Shift Permission Management**\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
-                reply_markup=reply_markup,
-                parse_mode="Markdown"
+                f"Shift Permission Management\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
+                reply_markup=reply_markup
             )
             
             return SHIFT_PERMISSION_USERNAME_CODE
@@ -381,11 +380,11 @@ class TelegramAdminBot:
                 allowed_users = await self.shift_permission_service.get_allowed_users(chat_id)
                 if allowed_users:
                     users_text = "\n".join([f"• {user}" for user in allowed_users])
-                    message = f"**Allowed users for chat {chat_id}:**\n{users_text}"
+                    message = f"Allowed users for chat {chat_id}:\n{users_text}"
                 else:
-                    message = f"**No users allowed for chat {chat_id}**"
+                    message = f"No users allowed for chat {chat_id}"
                 
-                await query.edit_message_text(message, parse_mode="Markdown")
+                await query.edit_message_text(message)
                 return ConversationHandler.END
                 
             elif action == "clear_all":

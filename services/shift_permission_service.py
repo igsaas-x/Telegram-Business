@@ -13,6 +13,14 @@ class ShiftPermissionService:
     def __init__(self):
         self.group_package_service = GroupPackageService()
     
+    async def _ensure_group_package_exists(self, chat_id: int) -> bool:
+        """Ensure that a group package exists for the chat"""
+        package = await self.group_package_service.get_package_by_chat_id(chat_id)
+        if not package:
+            force_log(f"No group package found for chat {chat_id}", "WARNING")
+            return False
+        return True
+    
     async def add_allowed_user(self, chat_id: int, username: str) -> bool:
         """Add a user to the allowed list for closing shifts"""
         try:
@@ -51,10 +59,17 @@ class ShiftPermissionService:
                 
                 if count == 1:
                     # This is the first user, enable the feature flag
-                    await self.group_package_service.set_feature_flag(
-                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, True
-                    )
-                    force_log(f"Enabled SHIFT_PERMISSIONS feature for chat {chat_id} (first user added)")
+                    if await self._ensure_group_package_exists(chat_id):
+                        try:
+                            result = await self.group_package_service.set_feature_flag(
+                                chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, True
+                            )
+                            if result:
+                                force_log(f"Enabled SHIFT_PERMISSIONS feature for chat {chat_id} (first user added)")
+                            else:
+                                force_log(f"Failed to enable SHIFT_PERMISSIONS feature for chat {chat_id}", "ERROR")
+                        except Exception as e:
+                            force_log(f"Error enabling SHIFT_PERMISSIONS feature for chat {chat_id}: {e}", "ERROR")
                 
                 force_log(f"Added close shift permission for user @{username} in chat {chat_id}")
                 return True
@@ -95,10 +110,16 @@ class ShiftPermissionService:
                 
                 if count == 0:
                     # No more users, disable the feature flag
-                    await self.group_package_service.set_feature_flag(
-                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
-                    )
-                    force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (no users remaining)")
+                    try:
+                        result = await self.group_package_service.set_feature_flag(
+                            chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
+                        )
+                        if result:
+                            force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (no users remaining)")
+                        else:
+                            force_log(f"Failed to disable SHIFT_PERMISSIONS feature for chat {chat_id} - no group package found", "ERROR")
+                    except Exception as e:
+                        force_log(f"Error disabling SHIFT_PERMISSIONS feature for chat {chat_id}: {e}", "ERROR")
                 
                 force_log(f"Removed close shift permission for user @{username} in chat {chat_id}")
                 return True
@@ -165,10 +186,16 @@ class ShiftPermissionService:
                 
                 # Disable the feature flag since all users are removed
                 if count > 0:
-                    await self.group_package_service.set_feature_flag(
-                        chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
-                    )
-                    force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (all users cleared)")
+                    try:
+                        result = await self.group_package_service.set_feature_flag(
+                            chat_id, FeatureFlags.SHIFT_PERMISSIONS.value, False
+                        )
+                        if result:
+                            force_log(f"Disabled SHIFT_PERMISSIONS feature for chat {chat_id} (all users cleared)")
+                        else:
+                            force_log(f"Failed to disable SHIFT_PERMISSIONS feature for chat {chat_id} - no group package found", "ERROR")
+                    except Exception as e:
+                        force_log(f"Error disabling SHIFT_PERMISSIONS feature for chat {chat_id}: {e}", "ERROR")
                 
                 force_log(f"Cleared {count} shift permissions for chat {chat_id}")
                 return count
