@@ -5,6 +5,7 @@ from common.enums import ServicePackage, FeatureFlags
 from helper import DateUtils, shift_report_format, current_shift_report_format, shift_report
 from helper.logger_utils import force_log
 from models import User
+from services.bot_registry import BotRegistry
 from services.chat_service import ChatService
 from services.group_package_service import GroupPackageService
 from services.income_balance_service import IncomeService
@@ -545,10 +546,28 @@ class BusinessEventHandler:
                         auto_closed=False  # Manual close
                     )
 
-                    message = f"របាយការណ៍ថ្ងៃ៖{closed_shift.end_time.strftime('%Y-%m-%d')}\n\n{shift_report}"
+                    # Check if this group is bound to private groups
+                    chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                    private_chats = None
+                    if chat:
+                        private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
                     
-                    # Send report to private groups if this group is bound to any
-                    await self._send_report_to_private_groups(chat_id, message)
+                    full_report = f"របាយការណ៍ថ្ងៃ៖{closed_shift.end_time.strftime('%Y-%m-%d')}\n\n{shift_report}"
+                    
+                    if private_chats:
+                        # Group is bound to private groups - send report only to private groups
+                        await self._send_report_to_private_groups(chat_id, full_report)
+                        
+                        # Show confirmation message in public group instead of full report
+                        message = f"""✅ វេន #{closed_shift.number} ត្រូវបានបិទដោយជោគជ័យ!
+
+📋 របាយការណ៍បានផ្ញើទៅក្រុម Private រួចរាល់
+⏰ បិទនៅ: {closed_shift.end_time.strftime('%Y-%m-%d %I:%M %p')}
+
+🟢 វេនថ្មីបានចាប់ផ្តើមហើយ"""
+                    else:
+                        # No private groups bound - show full report in public group as usual
+                        message = full_report
                 else:
                     message = "❌ បរាជ័យក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
@@ -560,8 +579,12 @@ class BusinessEventHandler:
 
     async def _send_report_to_private_groups(self, public_chat_id: int, report_message: str):
         """Send shift report to private groups bound to this public group"""
-        if not self.bot_service:
-            force_log("Bot service not available, cannot send reports to private groups", "WARNING")
+        # Get private bot from registry instead of using business bot
+        bot_registry = BotRegistry()
+        private_bot = bot_registry.get_private_bot()
+        
+        if not private_bot:
+            force_log("Private bot not available, cannot send reports to private groups", "ERROR")
             return
             
         try:
@@ -581,7 +604,7 @@ class BusinessEventHandler:
                     try:
                         # Add a header to identify the source
                         private_message = f"📋 **របាយការណ៍ពីក្រុមសាធារណៈ**\n\n{report_message}"
-                        success = await self.bot_service.send_message(private_chat_id, private_message)
+                        success = await private_bot.send_message(private_chat_id, private_message)
                         
                         if success:
                             force_log(f"Successfully sent shift report to private chat {private_chat_id}")

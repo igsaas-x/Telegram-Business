@@ -579,6 +579,22 @@ class TelegramPrivateBot:
         await update.message.reply_text("Operation cancelled.")
         return ConversationHandler.END
 
+    async def send_message(self, chat_id: int, message: str) -> bool:
+        """Send a message to a specific chat"""
+        force_log(f"Private bot send_message called for chat_id: {chat_id}")
+        try:
+            if self.app and self.app.bot:
+                force_log(f"Attempting to send message to private chat {chat_id}")
+                await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+                force_log(f"Successfully sent message to private chat {chat_id}")
+                return True
+            else:
+                force_log("Private bot application not initialized", "ERROR")
+                return False
+        except Exception as e:
+            force_log(f"Error sending message to private chat {chat_id}: {e}", "ERROR")
+            return False
+
     def setup(self):
         """Set up the bot handlers"""
         self.app = ApplicationBuilder().token(self.bot_token).build()
