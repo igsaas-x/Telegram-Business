@@ -58,12 +58,12 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     end_time_str = end_time.strftime('%I:%M %p') if end_time else "កំពុងបន្ត"
 
     # Build the report
-    report = f"🔢 **វេនទី:** {shift_number} | ម៉ោង: {start_time_str} - {end_time_str}\n"
+    report = f"🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {start_time_str} - {end_time_str}\n"
     if is_closed:
-        report += f"✅ **ស្ថានភាព:** បានបិទ\n"
+        report += f"✅ <b>ស្ថានភាព:</b> បានបិទ\n"
     else:
-        report += "🔄 **ស្ថានភាព:** កំពុងបន្ត\n"
-    report += "**សរុបប្រតិបត្តការណ៍:**\n"
+        report += "🔄 <b>ស្ថានភាព:</b> កំពុងបន្ត\n"
+    report += "<b>សរុបប្រតិបត្តការណ៍:</b>\n"
     report += "- - - - - - - - - - - - - - - - - - - - - \n"
 
     # Process currencies from shift summary
@@ -90,10 +90,13 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     khr_spaces_needed = max_amount_length - len(khr_formatted) + 2  # 4 base spaces
     usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
 
-    report += f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
-    report += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
-    report += "- - - - - - - - - - - - - - - - - - - - - \n"
-    report += f"⏱️ **រយ:ពេល:** {hours}ម៉ោង:{minutes}នាទី\n\n"
+    # Wrap only the tabular data in <pre> tags for proper alignment
+    tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+    tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}\n"
+    tabular_data += "- - - - - - - - - - - - - - - - - - - - - "
+    
+    report += f"<pre>{tabular_data}</pre>\n"
+    report += f"⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី\n\n"
 
     # Add note about auto-close if applicable
     if auto_closed and end_time:

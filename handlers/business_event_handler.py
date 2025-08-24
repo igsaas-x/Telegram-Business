@@ -328,7 +328,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons, parse_mode="Markdown")
+        await event.edit(message, buttons=buttons, parse_mode="HTML")
 
     async def show_other_days_report(self, event):
         """Show other days with shifts (last 3 days with data)"""
@@ -400,7 +400,7 @@ class BusinessEventHandler:
                         reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
 
                 # Combine all reports
-                message = f"📅 **របាយការណ៍ប្រចាំថ្ងៃ: {date_str}**\n\n"
+                message = f"📅 <b>របាយការណ៍ប្រចាំថ្ងៃ: {date_str}</b>\n\n"
                 if len(reports) == 1:
                     message += reports[0]
                 else:
@@ -413,7 +413,7 @@ class BusinessEventHandler:
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
-        await event.edit(message, buttons=buttons, parse_mode="Markdown")
+        await event.edit(message, buttons=buttons, parse_mode="HTML")
 
     async def show_specific_shift_report(self, event, data):
         """Show report for a specific shift"""
@@ -573,7 +573,7 @@ class BusinessEventHandler:
             force_log(f"Error closing shift: {e}", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការបិទវេន។ សូមសាកល្បងម្តងទៀត។"
 
-        await event.edit(message, buttons=None, parse_mode="Markdown")
+        await event.edit(message, buttons=None, parse_mode="HTML")
 
     async def _send_report_to_private_groups(self, public_chat_id: int, report_message: str):
         """Send shift report to private groups bound to this public group"""
@@ -602,7 +602,7 @@ class BusinessEventHandler:
                     try:
                         # Add a header to identify the source with actual group name
                         group_name = chat.group_name or f"Chat {public_chat_id}"
-                        private_message = f"📋 **របាយការណ៍ពី {group_name}**\n\n{report_message}"
+                        private_message = f"📋 <b>របាយការណ៍ពី {group_name}</b>\n\n{report_message}"
                         success = await private_bot.send_message(private_chat_id, private_message)
                         
                         if success:

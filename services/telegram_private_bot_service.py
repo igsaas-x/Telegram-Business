@@ -585,7 +585,7 @@ class TelegramPrivateBot:
         try:
             if self.app and self.app.bot:
                 force_log(f"Attempting to send message to private chat {chat_id}")
-                await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+                await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
                 force_log(f"Successfully sent message to private chat {chat_id}")
                 return True
             else:
