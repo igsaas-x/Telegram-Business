@@ -357,40 +357,52 @@ class TelegramPrivateBot:
 
     async def menu_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /menu command"""
-        private_chat_id = update.effective_chat.id
-        bound_groups = self.binding_service.get_bound_groups(private_chat_id)
-        
-        if not bound_groups:
+        try:
+            private_chat_id = update.effective_chat.id
+            force_log(f"Menu command called by user {private_chat_id}", "TelegramPrivateBot")
+            
+            bound_groups = self.binding_service.get_bound_groups(private_chat_id)
+            force_log(f"Found {len(bound_groups)} bound groups for user {private_chat_id}", "TelegramPrivateBot")
+            
+            if not bound_groups:
+                await update.message.reply_text(
+                    "No groups are bound to this chat. Use /bind to link groups first."
+                )
+                return ConversationHandler.END
+            
+            # Store bound groups in context
+            context.user_data["bound_groups"] = bound_groups
+            
+            if len(bound_groups) == 1:
+                # Single group - show menu directly
+                group = bound_groups[0]
+                context.user_data["selected_group"] = group
+                return await self._show_report_menu(update, group)
+            else:
+                # Multiple groups - let user select
+                keyboard = []
+                for group in bound_groups:
+                    keyboard.append([InlineKeyboardButton(
+                        f"{group.group_name or 'Unnamed'} (ID: {group.chat_id})",
+                        callback_data=f"select_{group.id}"
+                    )])
+                
+                keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    "Select a group to view reports:",
+                    reply_markup=reply_markup
+                )
+                return MENU_SELECTION_CODE
+                
+        except Exception as e:
+            private_chat_id = getattr(update.effective_chat, 'id', 'unknown')
+            force_log(f"Error in menu_command for user {private_chat_id}: {e}", "TelegramPrivateBot")
             await update.message.reply_text(
-                "No groups are bound to this chat. Use /bind to link groups first."
+                "An error occurred while processing your request. Please try again later."
             )
             return ConversationHandler.END
-        
-        # Store bound groups in context
-        context.user_data["bound_groups"] = bound_groups
-        
-        if len(bound_groups) == 1:
-            # Single group - show menu directly
-            group = bound_groups[0]
-            context.user_data["selected_group"] = group
-            return await self._show_report_menu(update, group)
-        else:
-            # Multiple groups - let user select
-            keyboard = []
-            for group in bound_groups:
-                keyboard.append([InlineKeyboardButton(
-                    f"{group.group_name or 'Unnamed'} (ID: {group.chat_id})",
-                    callback_data=f"select_{group.id}"
-                )])
-            
-            keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                "Select a group to view reports:",
-                reply_markup=reply_markup
-            )
-            return MENU_SELECTION_CODE
 
     async def _show_report_menu(self, update: Update, group: Chat):
         """Show report menu for a specific group"""
