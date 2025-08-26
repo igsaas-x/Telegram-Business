@@ -390,7 +390,7 @@ class MenuHandler:
             
             # Add total sum section if multiple shifts
             if len(shifts) > 1:
-                final_report += "\n" + "——--- summary ———--" + "\n"
+                final_report += "\n\n" + "——----- summary ———----" + "\n"
                 final_report += f"📊 <b>សរុបវេនទាំងអស់ថ្ងៃ {shift_date.strftime('%d-%m-%Y')}:</b>\n"
                 
                 # Format totals with same alignment as individual shift reports
@@ -410,17 +410,21 @@ class MenuHandler:
                 
                 # Find first shift start time and last shift end time
                 first_shift = min(shifts, key=lambda s: s.start_time)
-                last_shift = max(shifts, key=lambda s: s.end_time if s.end_time else s.start_time)
                 
-                # Format start and end times
+                # Check if any shift is still ongoing (no end_time)
+                ongoing_shifts = [s for s in shifts if s.end_time is None]
+                
+                # Format start time
                 first_start = first_shift.start_time.strftime('%d-%m-%Y %I:%M %p')
                 
-                if last_shift.end_time:
-                    last_end = last_shift.end_time.strftime('%d-%m-%Y %I:%M %p')
-                else:
+                if ongoing_shifts:
+                    # If there are ongoing shifts, show "កំពុងបន្ត"
                     last_end = "កំពុងបន្ត"
+                else:
+                    # All shifts are closed, find the one that ended last
+                    last_shift = max(shifts, key=lambda s: s.end_time)
+                    last_end = last_shift.end_time.strftime('%d-%m-%Y %I:%M %p')
                 
-                final_report += f"🔢 <b>វេនសរុប:</b> {len(shifts)} វេន\n"
                 final_report += f"⏰ <b>ចាប់ផ្ដើម:</b> {first_start}\n"
                 final_report += f"⏱️ <b>បញ្ចប់:</b> {last_end}"
             
