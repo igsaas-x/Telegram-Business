@@ -28,7 +28,7 @@ class ChatService:
                 return True, f"Chat ID {chat_id} registered successfully."
             except Exception as e:
                 session.rollback()
-                force_log(f"Error registering chat ID: {e}")
+                force_log(f"Error registering chat ID: {e}", "ChatService", "ERROR")
                 return False, f"Error registering chat ID: {e}"
             finally:
                 session.close()
@@ -47,7 +47,7 @@ class ChatService:
                             await self.shift_service.create_shift(chat_id)
 
                     except Exception as shift_error:
-                        force_log(f"Error creating shift: {shift_error}")
+                        force_log(f"Error creating shift: {shift_error}", "ChatService", "ERROR")
                         raise shift_error
 
                 # Update the chat setting after shift creation succeeds
@@ -58,7 +58,7 @@ class ChatService:
                 return True
             except Exception as e:
                 session.rollback()
-                force_log(f"Error updating chat enable_shift: {e}")
+                force_log(f"Error updating chat enable_shift: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()
@@ -74,7 +74,7 @@ class ChatService:
                 return True
             except Exception as e:
                 session.rollback()
-                force_log(f"Error updating chat status: {e}")
+                force_log(f"Error updating chat status: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()
@@ -90,7 +90,7 @@ class ChatService:
                 return True
             except Exception as e:
                 session.rollback()
-                force_log(f"Error updating chat user_id: {e}")
+                force_log(f"Error updating chat user_id: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()
@@ -106,7 +106,7 @@ class ChatService:
                 )
                 return chat
             except Exception as e:
-                force_log(f"Error fetching chat by chat ID: {e}")
+                force_log(f"Error fetching chat by chat ID: {e}", "ChatService", "ERROR")
                 return None
             finally:
                 session.close()
@@ -128,7 +128,7 @@ class ChatService:
                     }
                 return None
             except Exception as e:
-                force_log(f"Error fetching chat thresholds: {e}")
+                force_log(f"Error fetching chat thresholds: {e}", "ChatService", "ERROR")
                 return None
             finally:
                 session.close()
@@ -165,7 +165,7 @@ class ChatService:
                 )
                 return results
             except Exception as e:
-                force_log(f"Error searching chats: {e}")
+                force_log(f"Error searching chats: {e}", "ChatService", "ERROR")
                 return []
             finally:
                 session.close()
@@ -177,7 +177,7 @@ class ChatService:
                 chats = session.query(Chat.chat_id).filter_by(is_active=True).all()
                 return [int(c[0]) for c in chats]
             except Exception as e:
-                force_log(f"Error fetching chat IDs: {e}")
+                force_log(f"Error fetching chat IDs: {e}", "ChatService", "ERROR")
                 return []
             finally:
                 session.close()
@@ -200,7 +200,7 @@ class ChatService:
                 )
                 return [int(c[0]) for c in chats]
             except Exception as e:
-                force_log(f"Error fetching non-free chat IDs: {e}")
+                force_log(f"Error fetching non-free chat IDs: {e}", "ChatService", "ERROR")
                 return []
             finally:
                 session.close()
@@ -236,7 +236,7 @@ class ChatService:
                 chats = query.all()
                 return [int(c[0]) for c in chats]
             except Exception as e:
-                force_log(f"Error fetching chat IDs by registered_by='{registered_by}': {e}")
+                force_log(f"Error fetching chat IDs by registered_by='{registered_by}': {e}", "ChatService", "ERROR")
                 return []
             finally:
                 session.close()
@@ -254,7 +254,7 @@ class ChatService:
                 )
                 return bool(exists)
             except Exception as e:
-                force_log(f"Error checking if chat exists: {e}")
+                force_log(f"Error checking if chat exists: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()
@@ -264,7 +264,7 @@ class ChatService:
             chat = await self.get_chat_by_chat_id(chat_id)
             return chat.enable_shift if chat else False
         except Exception as e:
-            force_log(f"Error checking shift enabled: {e}")
+            force_log(f"Error checking shift enabled: {e}", "ChatService", "ERROR")
             return False
 
     @staticmethod
@@ -278,7 +278,7 @@ class ChatService:
                 elif threshold_type.lower() == "khr":
                     update_data["khr_threshold"] = value
                 else:
-                    force_log(f"Invalid threshold type: {threshold_type}")
+                    force_log(f"Invalid threshold type: {threshold_type}", "ChatService", "ERROR")
                     return False
                 
                 result = (
@@ -289,14 +289,14 @@ class ChatService:
                 
                 session.commit()
                 if result > 0:
-                    force_log(f"Successfully updated {threshold_type} threshold to {value} for chat {chat_id}")
+                    force_log(f"Successfully updated {threshold_type} threshold to {value} for chat {chat_id}", "ChatService")
                     return True
                 else:
-                    force_log(f"No chat found with chat_id {chat_id}")
+                    force_log(f"No chat found with chat_id {chat_id}", "ChatService", "WARN")
                     return False
             except Exception as e:
                 session.rollback()
-                force_log(f"Error updating {threshold_type} threshold: {e}")
+                force_log(f"Error updating {threshold_type} threshold: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()
@@ -321,18 +321,18 @@ class ChatService:
                 session.commit()
                 if chat_result > 0 or income_result > 0:
                     force_log(
-                        f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}"
+                        f"Successfully migrated chat_id from {old_chat_id} to {new_chat_id}", "ChatService"
                     )
                     force_log(
-                        f"Updated {chat_result} chat records and {income_result} income_balance records"
+                        f"Updated {chat_result} chat records and {income_result} income_balance records", "ChatService"
                     )
                     return True
                 else:
-                    force_log(f"No records found with chat_id {old_chat_id}")
+                    force_log(f"No records found with chat_id {old_chat_id}", "ChatService", "WARN")
                     return False
             except Exception as e:
                 session.rollback()
-                force_log(f"Error migrating chat_id: {e}")
+                force_log(f"Error migrating chat_id: {e}", "ChatService", "ERROR")
                 return False
             finally:
                 session.close()

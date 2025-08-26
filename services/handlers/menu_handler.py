@@ -48,7 +48,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_daily_summary_menu: {e}", "MenuHandler")
+            force_log(f"Error in _handle_daily_summary_menu: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing daily menu: {str(e)}")
             return False
 
@@ -93,7 +93,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_current_date_summary: {e}", "MenuHandler")
+            force_log(f"Error in _handle_current_date_summary: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating current date summary: {str(e)}")
             return False
 
@@ -133,7 +133,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_weekly_summary_menu: {e}", "MenuHandler")
+            force_log(f"Error in _handle_weekly_summary_menu: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing weekly menu: {str(e)}")
             return False
 
@@ -166,7 +166,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_monthly_summary_menu: {e}", "MenuHandler")
+            force_log(f"Error in _handle_monthly_summary_menu: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing monthly menu: {str(e)}")
             return False
 
@@ -183,7 +183,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_shift_summary_menu: {e}", "MenuHandler")
+            force_log(f"Error in _handle_shift_summary_menu: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing shift menu: {str(e)}")
             return False
 
@@ -215,7 +215,7 @@ class MenuHandler:
 
             return True
         except Exception as e:
-            force_log(f"Error in _handle_report: {e}", "MenuHandler")
+            force_log(f"Error in _handle_report: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(
                 f"Error generating {report_type} report: {str(e)}"
             )
@@ -261,7 +261,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_date_summary: {e}", "MenuHandler")
+            force_log(f"Error in _handle_date_summary: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating date summary: {str(e)}")
             return False
 
@@ -290,7 +290,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_shift_report: {e}", "MenuHandler")
+            force_log(f"Error in _handle_shift_report: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating shift report: {str(e)}")
             return False
 
@@ -329,7 +329,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_other_shift_dates: {e}", "MenuHandler")
+            force_log(f"Error in _handle_other_shift_dates: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing other shift dates: {str(e)}")
             return False
 
@@ -379,7 +379,7 @@ class MenuHandler:
                     total_usd_count += usd_data["count"]
                     
                 except Exception as e:
-                    force_log(f"Error generating report for shift {shift.id}: {e}", "MenuHandler")
+                    force_log(f"Error generating report for shift {shift.id}: {e}", "MenuHandler", "ERROR")
                     reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
             
             # Combine all reports
@@ -432,7 +432,7 @@ class MenuHandler:
             return True
             
         except Exception as e:
-            force_log(f"Error in _handle_shift_date_report: {e}", "MenuHandler")
+            force_log(f"Error in _handle_shift_date_report: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating shift report: {str(e)}")
             return False
 
@@ -491,7 +491,7 @@ class MenuHandler:
             return True
             
         except Exception as e:
-            force_log(f"Error in _handle_show_all_month_dates: {e}", "MenuHandler")
+            force_log(f"Error in _handle_show_all_month_dates: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error showing all month dates: {str(e)}")
             return False
 
@@ -534,7 +534,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_other_dates: {e}", "MenuHandler")
+            force_log(f"Error in _handle_other_dates: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error: {str(e)}")
             return False
 
@@ -588,7 +588,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_week_summary: {e}", "MenuHandler")
+            force_log(f"Error in _handle_week_summary: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating week summary: {str(e)}")
             return False
 
@@ -622,7 +622,7 @@ class MenuHandler:
             return True
 
         except Exception as e:
-            force_log(f"Error in _handle_month_summary: {e}", "MenuHandler")
+            force_log(f"Error in _handle_month_summary: {e}", "MenuHandler", "ERROR")
             await query.edit_message_text(f"Error generating month summary: {str(e)}")
             return False
 
@@ -809,7 +809,7 @@ class MenuHandler:
             return 1008  # CALLBACK_QUERY_CODE
 
         except Exception as e:
-            force_log(f"Error in menu_callback_query_handler: {e}", "MenuHandler")
+            force_log(f"Error in menu_callback_query_handler: {e}", "MenuHandler", "ERROR")
             try:
                 await query.edit_message_text(
                     f"Error processing button action: {str(e)}"

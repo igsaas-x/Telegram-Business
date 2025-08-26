@@ -113,7 +113,7 @@ class TelegramAdminBot:
 
             return PACKAGE_SELECTION_CODE
         except Exception as e:
-            force_log(f"Error in package_selection_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in package_selection_handler: {e}", "TelegramAdminBot", "ERROR")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -165,7 +165,7 @@ class TelegramAdminBot:
 
         except Exception as e:
             await update.message.reply_text(f"Error: {str(e)}")  # type: ignore
-            force_log(f"Error in process_menu_chat_id: {e}", "TelegramAdminBot")
+            force_log(f"Error in process_menu_chat_id: {e}", "TelegramAdminBot", "ERROR")
 
         return CALLBACK_QUERY_CODE
 
@@ -261,7 +261,7 @@ class TelegramAdminBot:
             return CALLBACK_QUERY_CODE
 
         except Exception as e:
-            force_log(f"Error in callback_query_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in callback_query_handler: {e}", "TelegramAdminBot", "ERROR")
             try:
                 await query.edit_message_text(f"Error processing button action: {str(e)}")
             except Exception:
@@ -306,7 +306,7 @@ class TelegramAdminBot:
 
             return UPDATE_GROUP_SELECTION_CODE
         except Exception as e:
-            force_log(f"Error in update_group_selection_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_selection_handler: {e}", "TelegramAdminBot", "ERROR")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -359,7 +359,7 @@ class TelegramAdminBot:
             return UPDATE_GROUP_MENU_CODE
             
         except Exception as e:
-            force_log(f"Error in update_group_chat_selection: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_chat_selection: {e}", "TelegramAdminBot", "ERROR")
             await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
@@ -477,7 +477,7 @@ class TelegramAdminBot:
                 return ConversationHandler.END
                 
         except Exception as e:
-            force_log(f"Error in update_group_menu_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_menu_handler: {e}", "TelegramAdminBot", "ERROR")
             await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
@@ -499,9 +499,9 @@ class TelegramAdminBot:
             if permission_action:
                 username = input_text
                 if permission_action == "add":
-                    force_log(f"🔥 ADMIN_BOT: Calling add_allowed_user for chat_id={chat_id}, username={username}")
+                    force_log(f"🔥 ADMIN_BOT: Calling add_allowed_user for chat_id={chat_id}, username={username}", "TelegramAdminBot", "DEBUG")
                     success = await self.shift_permission_service.add_allowed_user(chat_id, username)
-                    force_log(f"🔥 ADMIN_BOT: add_allowed_user returned: {success}")
+                    force_log(f"🔥 ADMIN_BOT: add_allowed_user returned: {success}", "TelegramAdminBot", "DEBUG")
                     if success:
                         await update.message.reply_text(
                             f"✅ Successfully added @{username.lstrip('@')} to shift close permissions for chat {chat_id}"
@@ -529,7 +529,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
             
         except Exception as e:
-            force_log(f"Error in process_update_group_input: {e}", "TelegramAdminBot")
+            force_log(f"Error in process_update_group_input: {e}", "TelegramAdminBot", "ERROR")
             await update.message.reply_text(f"Error: {str(e)}")
             return ConversationHandler.END
             
@@ -575,7 +575,7 @@ class TelegramAdminBot:
             return ConversationHandler.END
             
         except Exception as e:
-            force_log(f"Error in process_threshold_input: {e}", "TelegramAdminBot")
+            force_log(f"Error in process_threshold_input: {e}", "TelegramAdminBot", "ERROR")
             await update.message.reply_text(f"Error: {str(e)}")
             return ConversationHandler.END
     
