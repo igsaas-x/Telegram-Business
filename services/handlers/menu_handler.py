@@ -355,10 +355,29 @@ class MenuHandler:
             
             # Generate reports for all shifts on that date
             reports = []
+            total_khr_amount = 0
+            total_khr_count = 0
+            total_usd_amount = 0
+            total_usd_count = 0
+            
             for shift in shifts:
                 try:
                     report = await shift_report(shift.id, shift.number, shift_date_obj)
                     reports.append(report)
+                    
+                    # Get shift summary for totals calculation
+                    shift_summary = await shift_service.get_shift_income_summary(shift.id, shift.chat_id)
+                    currencies = shift_summary.get("currencies", {})
+                    
+                    # Add to totals
+                    khr_data = currencies.get("KHR", {"amount": 0, "count": 0})
+                    usd_data = currencies.get("USD", {"amount": 0, "count": 0})
+                    
+                    total_khr_amount += int(khr_data["amount"])
+                    total_khr_count += khr_data["count"]
+                    total_usd_amount += usd_data["amount"]
+                    total_usd_count += usd_data["count"]
+                    
                 except Exception as e:
                     force_log(f"Error generating report for shift {shift.id}: {e}", "MenuHandler")
                     reports.append(f"កំហុសក្នុងការបង្កើតរបាយការណ៍វេន {shift.number}")
@@ -368,6 +387,27 @@ class MenuHandler:
                 final_report = reports[0]
             else:
                 final_report = "".join(reports)
+            
+            # Add total sum section if multiple shifts
+            if len(shifts) > 1:
+                final_report += "\n" + "═" * 40 + "\n"
+                final_report += f"📊 <b>សរុបទាំងអស់ថ្ងៃ {shift_date.strftime('%d-%m-%Y')}:</b>\n"
+                
+                # Format totals with same alignment as individual shift reports
+                khr_formatted = f"{total_khr_amount:,.0f}"
+                usd_formatted = f"{total_usd_amount:.2f}"
+                
+                # Calculate spacing for alignment
+                max_amount_length = max(len(khr_formatted), len(usd_formatted))
+                khr_spaces_needed = max_amount_length - len(khr_formatted) + 4
+                usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
+                
+                # Wrap totals in pre tags for proper alignment
+                total_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {total_khr_count}\n"
+                total_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {total_usd_count}"
+                
+                final_report += f"<pre>{total_data}</pre>\n"
+                final_report += f"🔢 <b>វេនសរុប:</b> {len(shifts)} វេន"
             
             await query.edit_message_text(final_report, parse_mode='HTML')
             return True
