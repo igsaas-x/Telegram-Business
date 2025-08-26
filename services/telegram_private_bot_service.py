@@ -35,7 +35,7 @@ class TelegramPrivateBot:
         self.group_package_service = GroupPackageService()
         self.menu_handler = MenuHandler()
         
-        force_log("TelegramPrivateBot initialized with token", "TelegramPrivateBot")
+        force_log("TelegramPrivateBot initialized with token", "TelegramPrivateBot", "INFO")
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
@@ -262,7 +262,7 @@ class TelegramPrivateBot:
         """Handle group search input for binding"""
         try:
             search_term = update.message.text.strip()
-            force_log(f"Searching for groups with term: {search_term}", "TelegramPrivateBot")
+            force_log(f"Searching for groups with term: {search_term}", "TelegramPrivateBot", "INFO")
             
             # Search for chats using the chat service search method
             matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
@@ -295,7 +295,7 @@ class TelegramPrivateBot:
             return BIND_GROUP_SELECTION_CODE
             
         except Exception as e:
-            force_log(f"Error in handle_bind_search: {e}", "TelegramPrivateBot")
+            force_log(f"Error in handle_bind_search: {e}", "TelegramPrivateBot", "ERROR")
             await update.message.reply_text("Error searching for groups.")
             return ConversationHandler.END
 
@@ -359,10 +359,10 @@ class TelegramPrivateBot:
         """Handle /menu command"""
         try:
             private_chat_id = update.effective_chat.id
-            force_log(f"Menu command called by user {private_chat_id}", "TelegramPrivateBot")
+            force_log(f"Menu command called by user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
             bound_groups = self.binding_service.get_bound_groups(private_chat_id)
-            force_log(f"Found {len(bound_groups)} bound groups for user {private_chat_id}", "TelegramPrivateBot")
+            force_log(f"Found {len(bound_groups)} bound groups for user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
             if not bound_groups:
                 await update.message.reply_text(
@@ -398,7 +398,7 @@ class TelegramPrivateBot:
                 
         except Exception as e:
             private_chat_id = getattr(update.effective_chat, 'id', 'unknown')
-            force_log(f"Error in menu_command for user {private_chat_id}: {e}", "TelegramPrivateBot")
+            force_log(f"Error in menu_command for user {private_chat_id}: {e}", "TelegramPrivateBot", "ERROR")
             await update.message.reply_text(
                 "An error occurred while processing your request. Please try again later."
             )
@@ -593,18 +593,18 @@ class TelegramPrivateBot:
 
     async def send_message(self, chat_id: int, message: str) -> bool:
         """Send a message to a specific chat"""
-        force_log(f"Private bot send_message called for chat_id: {chat_id}")
+        force_log(f"Private bot send_message called for chat_id: {chat_id}", "TelegramPrivateBot", "INFO")
         try:
             if self.app and self.app.bot:
-                force_log(f"Attempting to send message to private chat {chat_id}")
+                force_log(f"Attempting to send message to private chat {chat_id}", "TelegramPrivateBot", "DEBUG")
                 await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
-                force_log(f"Successfully sent message to private chat {chat_id}")
+                force_log(f"Successfully sent message to private chat {chat_id}", "TelegramPrivateBot", "INFO")
                 return True
             else:
-                force_log("Private bot application not initialized", "ERROR")
+                force_log("Private bot application not initialized", "TelegramPrivateBot", "ERROR")
                 return False
         except Exception as e:
-            force_log(f"Error sending message to private chat {chat_id}: {e}", "ERROR")
+            force_log(f"Error sending message to private chat {chat_id}: {e}", "TelegramPrivateBot", "ERROR")
             return False
 
     def setup(self):
@@ -643,7 +643,7 @@ class TelegramPrivateBot:
         self.app.add_handler(main_handler)
         self.app.add_handler(menu_handler)
 
-        force_log("TelegramPrivateBot handlers set up", "TelegramPrivateBot")
+        force_log("TelegramPrivateBot handlers set up", "TelegramPrivateBot", "INFO")
 
     async def start_polling(self):
         """Start the bot polling"""
@@ -654,4 +654,4 @@ class TelegramPrivateBot:
         await self.app.initialize()
         await self.app.start()
         await self.app.updater.start_polling()  # type: ignore
-        force_log("TelegramPrivateBot started polling", "TelegramPrivateBot")
+        force_log("TelegramPrivateBot started polling", "TelegramPrivateBot", "INFO")

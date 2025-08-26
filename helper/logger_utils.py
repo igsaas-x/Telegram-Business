@@ -2,7 +2,7 @@ import datetime
 import os
 
 
-def force_log(message, component="System"):
+def force_log(message, component="System", level="INFO"):
     """Write logs with hourly rotation"""
     try:
         # Ensure logs directory exists
@@ -17,15 +17,15 @@ def force_log(message, component="System"):
         # Write to the hourly log file
         with open(filename, "a", encoding="utf-8") as f:
             timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-            f.write(f"{timestamp} - {component} - {message}\n")
+            f.write(f"{timestamp} - {level} - {component} - {message}\n")
             f.flush()
     except Exception as e:
         # Fallback to simple file if anything goes wrong
         try:
             with open("telegram_bot_fallback.log", "a") as f:
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                f.write(f"{timestamp} - {component} - LOGGER_ERROR: {e}\n")
-                f.write(f"{timestamp} - {component} - {message}\n")
+                f.write(f"{timestamp} - ERROR - {component} - LOGGER_ERROR: {e}\n")
+                f.write(f"{timestamp} - {level} - {component} - {message}\n")
                 f.flush()
         except:
             pass
