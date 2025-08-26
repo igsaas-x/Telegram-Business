@@ -12,6 +12,7 @@ from telegram.ext import (
 
 from handlers.bot_command_handler import EventHandler
 from helper.logger_utils import force_log
+from services.chat_service import ChatService
 from services.shift_permission_service import ShiftPermissionService
 from .handlers import ChatSearchHandler, MenuHandler, PackageHandler
 
@@ -35,10 +36,11 @@ NOTE_INPUT_CODE = 1018
 QUERY_PACKAGE_SELECTION_CODE = 1019
 QUERY_PACKAGE_COMMAND_CODE = 1020
 QUERY_PACKAGE_CHAT_SELECTION_CODE = 1021
-SHIFT_PERMISSION_SELECTION_CODE = 1022
-SHIFT_PERMISSION_COMMAND_CODE = 1023
-SHIFT_PERMISSION_CHAT_SELECTION_CODE = 1024
-SHIFT_PERMISSION_USERNAME_CODE = 1025
+UPDATE_GROUP_SELECTION_CODE = 1022
+UPDATE_GROUP_COMMAND_CODE = 1023
+UPDATE_GROUP_CHAT_SELECTION_CODE = 1024
+UPDATE_GROUP_MENU_CODE = 1025
+UPDATE_THRESHOLD_CODE = 1026
 FEATURE_FLAG_SELECTION_CODE = 1026
 FEATURE_FLAG_COMMAND_CODE = 1027
 FEATURE_FLAG_CHAT_SELECTION_CODE = 1028
@@ -267,22 +269,22 @@ class TelegramAdminBot:
             return ConversationHandler.END
 
     @staticmethod
-    async def shift_permission(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /shift_permission command"""
-        context.user_data["command_type"] = "shift_permission"
+    async def update_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /update_group command"""
+        context.user_data["command_type"] = "update_group"
         keyboard = [
             [InlineKeyboardButton("Use Chat ID", callback_data="use_chat_id")],
             [InlineKeyboardButton("Use Group Name", callback_data="use_group_name")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "How would you like to identify the chat to manage shift permissions?", 
+            "How would you like to identify the group to update?", 
             reply_markup=reply_markup
         )
-        return SHIFT_PERMISSION_SELECTION_CODE
+        return UPDATE_GROUP_SELECTION_CODE
 
-    async def shift_permission_selection_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle shift permission selection"""
+    async def update_group_selection_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle update group selection"""
         query = update.callback_query
         try:
             if query:
@@ -294,23 +296,23 @@ class TelegramAdminBot:
                     await query.edit_message_text(
                         "Please provide the chat ID by replying to this message."
                     )
-                    return SHIFT_PERMISSION_COMMAND_CODE
+                    return UPDATE_GROUP_COMMAND_CODE
                 elif selection == "use_group_name":
                     context.user_data["selection_type"] = "group_name"
                     await query.edit_message_text(
                         "Please provide the group name to search. You can enter partial group name (up to 5 results will be shown)."
                     )
-                    return SHIFT_PERMISSION_COMMAND_CODE
+                    return UPDATE_GROUP_COMMAND_CODE
 
-            return SHIFT_PERMISSION_SELECTION_CODE
+            return UPDATE_GROUP_SELECTION_CODE
         except Exception as e:
-            force_log(f"Error in shift_permission_selection_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_selection_handler: {e}", "TelegramAdminBot")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def shift_permission_chat_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle chat selection for shift permissions"""
+    async def update_group_chat_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle chat selection for group updates"""
         query = update.callback_query
         await query.answer()
         
@@ -319,38 +321,50 @@ class TelegramAdminBot:
             chat_id = int(query.data.replace("select_chat_", ""))
             context.user_data["selected_chat_id"] = chat_id
             
-            # Get current allowed users
+            # Get current group info
+            chat = await ChatService.get_chat_by_chat_id(chat_id)
+            thresholds = await ChatService.get_chat_thresholds(chat_id)
             allowed_users = await self.shift_permission_service.get_allowed_users(chat_id)
+            
+            info_text = f"Group: {chat.group_name if chat else 'Unknown'}\n"
+            info_text += f"Chat ID: {chat_id}\n\n"
+            
+            if thresholds:
+                info_text += "Current Thresholds:\n"
+                if thresholds.get("usd_threshold") is not None:
+                    info_text += f"• USD: ${thresholds['usd_threshold']:.2f}\n"
+                if thresholds.get("khr_threshold") is not None:
+                    info_text += f"• KHR: ៛{thresholds['khr_threshold']:,.0f}\n"
+            else:
+                info_text += "Thresholds: Not set\n"
             
             if allowed_users:
                 users_text = "\n".join([f"• {user}" for user in allowed_users])
-                current_users = f"\n\nCurrent allowed users:\n{users_text}"
+                info_text += f"\nShift Permission Users:\n{users_text}"
             else:
-                current_users = "\n\nCurrent allowed users: None"
+                info_text += "\nShift Permission Users: None"
             
             keyboard = [
-                [InlineKeyboardButton("Add User", callback_data="add_user")],
-                [InlineKeyboardButton("Remove User", callback_data="remove_user")],
-                [InlineKeyboardButton("List Users", callback_data="list_users")],
-                [InlineKeyboardButton("Clear All", callback_data="clear_all")],
-                [InlineKeyboardButton("Cancel", callback_data="cancel")]
+                [InlineKeyboardButton("🔧 Shift Permissions", callback_data="shift_permissions")],
+                [InlineKeyboardButton("⚠️ Update Thresholds", callback_data="update_thresholds")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await query.edit_message_text(
-                f"Shift Permission Management\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
+                f"Group Update Menu\n\n{info_text}\n\nWhat would you like to update?",
                 reply_markup=reply_markup
             )
             
-            return SHIFT_PERMISSION_USERNAME_CODE
+            return UPDATE_GROUP_MENU_CODE
             
         except Exception as e:
-            force_log(f"Error in shift_permission_chat_selection: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_chat_selection: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def shift_permission_action_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle shift permission actions (add/remove/list/clear)"""
+    async def update_group_menu_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle group update menu selection"""
         query = update.callback_query
         await query.answer()
         
@@ -362,19 +376,71 @@ class TelegramAdminBot:
                 await query.edit_message_text("Error: No chat selected")
                 return ConversationHandler.END
             
-            if action == "add_user":
-                context.user_data["permission_action"] = "add"
-                await query.edit_message_text(
-                    "Please reply with the username to add (with or without @ symbol):"
-                )
-                return SHIFT_PERMISSION_USERNAME_CODE
+            if action == "shift_permissions":
+                # Show shift permissions menu
+                allowed_users = await self.shift_permission_service.get_allowed_users(chat_id)
                 
-            elif action == "remove_user":
-                context.user_data["permission_action"] = "remove"
+                if allowed_users:
+                    users_text = "\n".join([f"• {user}" for user in allowed_users])
+                    current_users = f"\n\nCurrent allowed users:\n{users_text}"
+                else:
+                    current_users = "\n\nCurrent allowed users: None"
+                
+                keyboard = [
+                    [InlineKeyboardButton("Add User", callback_data="add_user")],
+                    [InlineKeyboardButton("Remove User", callback_data="remove_user")],
+                    [InlineKeyboardButton("List Users", callback_data="list_users")],
+                    [InlineKeyboardButton("Clear All", callback_data="clear_all")],
+                    [InlineKeyboardButton("← Back", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("Cancel", callback_data="cancel")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await query.edit_message_text(
-                    "Please reply with the username to remove (with or without @ symbol):"
+                    f"Shift Permission Management\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
+                    reply_markup=reply_markup
                 )
-                return SHIFT_PERMISSION_USERNAME_CODE
+                
+                return UPDATE_GROUP_MENU_CODE
+                
+            elif action == "update_thresholds":
+                # Show threshold update menu
+                thresholds = await ChatService.get_chat_thresholds(chat_id)
+                
+                info_text = "Current Thresholds:\n"
+                if thresholds:
+                    if thresholds.get("usd_threshold") is not None:
+                        info_text += f"• USD: ${thresholds['usd_threshold']:.2f}\n"
+                    else:
+                        info_text += "• USD: Not set\n"
+                    if thresholds.get("khr_threshold") is not None:
+                        info_text += f"• KHR: ៛{thresholds['khr_threshold']:,.0f}\n"
+                    else:
+                        info_text += "• KHR: Not set\n"
+                else:
+                    info_text += "• USD: Not set\n• KHR: Not set\n"
+                
+                keyboard = [
+                    [InlineKeyboardButton("Set USD Threshold", callback_data="set_usd_threshold")],
+                    [InlineKeyboardButton("Set KHR Threshold", callback_data="set_khr_threshold")],
+                    [InlineKeyboardButton("← Back", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("Cancel", callback_data="cancel")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"Threshold Management\nChat ID: {chat_id}\n\n{info_text}\nWhat would you like to update?",
+                    reply_markup=reply_markup
+                )
+                
+                return UPDATE_GROUP_MENU_CODE
+                
+            elif action in ["add_user", "remove_user"]:
+                context.user_data["permission_action"] = action.replace("_user", "")
+                await query.edit_message_text(
+                    f"Please reply with the username to {action.replace('_user', '').replace('_', ' ')} (with or without @ symbol):"
+                )
+                return UPDATE_GROUP_MENU_CODE
                 
             elif action == "list_users":
                 allowed_users = await self.shift_permission_service.get_allowed_users(chat_id)
@@ -394,59 +460,125 @@ class TelegramAdminBot:
                 )
                 return ConversationHandler.END
                 
+            elif action in ["set_usd_threshold", "set_khr_threshold"]:
+                threshold_type = "USD" if "usd" in action else "KHR"
+                context.user_data["threshold_type"] = threshold_type.lower()
+                await query.edit_message_text(
+                    f"Please reply with the new {threshold_type} threshold value (numbers only):"
+                )
+                return UPDATE_THRESHOLD_CODE
+                
+            elif action == "back_to_menu":
+                # Redirect back to the main group update menu
+                return await self.update_group_chat_selection(update, context)
+                
             elif action == "cancel":
                 await query.edit_message_text("Operation cancelled")
                 return ConversationHandler.END
                 
         except Exception as e:
-            force_log(f"Error in shift_permission_action_handler: {e}", "TelegramAdminBot")
+            force_log(f"Error in update_group_menu_handler: {e}", "TelegramAdminBot")
             await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
 
-    async def process_shift_permission_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Process username input for shift permissions"""
+    async def process_update_group_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Process input for group updates (username or threshold)"""
         if not update.message or not update.message.text:
             return ConversationHandler.END
         
         try:
-            username = update.message.text.strip()
+            input_text = update.message.text.strip()
             chat_id = context.user_data.get("selected_chat_id")
-            action = context.user_data.get("permission_action")
             
-            if not chat_id or not action:
-                await update.message.reply_text("Error: Missing chat or action information")
+            if not chat_id:
+                await update.message.reply_text("Error: No chat selected")
                 return ConversationHandler.END
             
-            if action == "add":
-                force_log(f"🔥 ADMIN_BOT: Calling add_allowed_user for chat_id={chat_id}, username={username}")
-                success = await self.shift_permission_service.add_allowed_user(chat_id, username)
-                force_log(f"🔥 ADMIN_BOT: add_allowed_user returned: {success}")
-                if success:
-                    await update.message.reply_text(
-                        f"✅ Successfully added @{username.lstrip('@')} to shift close permissions for chat {chat_id}"
-                    )
-                else:
-                    await update.message.reply_text(
-                        f"⚠️ User @{username.lstrip('@')} already has permissions or an error occurred"
-                    )
-                    
-            elif action == "remove":
-                success = await self.shift_permission_service.remove_allowed_user(chat_id, username)
-                if success:
-                    await update.message.reply_text(
-                        f"✅ Successfully removed @{username.lstrip('@')} from shift close permissions for chat {chat_id}"
-                    )
-                else:
-                    await update.message.reply_text(
-                        f"⚠️ User @{username.lstrip('@')} doesn't have permissions or an error occurred"
-                    )
+            # Handle shift permission actions
+            permission_action = context.user_data.get("permission_action")
+            if permission_action:
+                username = input_text
+                if permission_action == "add":
+                    force_log(f"🔥 ADMIN_BOT: Calling add_allowed_user for chat_id={chat_id}, username={username}")
+                    success = await self.shift_permission_service.add_allowed_user(chat_id, username)
+                    force_log(f"🔥 ADMIN_BOT: add_allowed_user returned: {success}")
+                    if success:
+                        await update.message.reply_text(
+                            f"✅ Successfully added @{username.lstrip('@')} to shift close permissions for chat {chat_id}"
+                        )
+                    else:
+                        await update.message.reply_text(
+                            f"⚠️ User @{username.lstrip('@')} already has permissions or an error occurred"
+                        )
+                        
+                elif permission_action == "remove":
+                    success = await self.shift_permission_service.remove_allowed_user(chat_id, username)
+                    if success:
+                        await update.message.reply_text(
+                            f"✅ Successfully removed @{username.lstrip('@')} from shift close permissions for chat {chat_id}"
+                        )
+                    else:
+                        await update.message.reply_text(
+                            f"⚠️ User @{username.lstrip('@')} doesn't have permissions or an error occurred"
+                        )
+                
+                # Clear the action
+                context.user_data.pop("permission_action", None)
+                return ConversationHandler.END
             
             return ConversationHandler.END
             
         except Exception as e:
-            force_log(f"Error in process_shift_permission_username: {e}", "TelegramAdminBot")
+            force_log(f"Error in process_update_group_input: {e}", "TelegramAdminBot")
             await update.message.reply_text(f"Error: {str(e)}")
             return ConversationHandler.END
+            
+    async def process_threshold_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Process threshold value input"""
+        if not update.message or not update.message.text:
+            return ConversationHandler.END
+        
+        try:
+            input_text = update.message.text.strip()
+            chat_id = context.user_data.get("selected_chat_id")
+            threshold_type = context.user_data.get("threshold_type")
+            
+            if not chat_id or not threshold_type:
+                await update.message.reply_text("Error: Missing chat or threshold type information")
+                return ConversationHandler.END
+            
+            try:
+                threshold_value = float(input_text)
+                if threshold_value <= 0:
+                    await update.message.reply_text("Error: Threshold value must be greater than 0")
+                    return ConversationHandler.END
+            except ValueError:
+                await update.message.reply_text("Error: Please enter a valid number")
+                return ConversationHandler.END
+            
+            # Update threshold in database using ChatService
+            success = await ChatService.update_chat_threshold(chat_id, threshold_type, threshold_value)
+            
+            if success:
+                currency_symbol = "$" if threshold_type == "usd" else "៛"
+                formatted_value = f"{threshold_value:.2f}" if threshold_type == "usd" else f"{threshold_value:,.0f}"
+                await update.message.reply_text(
+                    f"✅ Successfully updated {threshold_type.upper()} threshold to {currency_symbol}{formatted_value} for chat {chat_id}"
+                )
+            else:
+                await update.message.reply_text(
+                    f"⚠️ Failed to update {threshold_type.upper()} threshold for chat {chat_id}"
+                )
+            
+            # Clear the threshold type
+            context.user_data.pop("threshold_type", None)
+            return ConversationHandler.END
+            
+        except Exception as e:
+            force_log(f"Error in process_threshold_input: {e}", "TelegramAdminBot")
+            await update.message.reply_text(f"Error: {str(e)}")
+            return ConversationHandler.END
+    
 
     @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -538,19 +670,22 @@ class TelegramAdminBot:
             per_message=False,
         )
 
-        shift_permission_handler = ConversationHandler(
-            entry_points=[CommandHandler("shift_permission", self.shift_permission)],
+        update_group_handler = ConversationHandler(
+            entry_points=[CommandHandler("update_group", self.update_group)],
             states={
-                SHIFT_PERMISSION_SELECTION_CODE: [CallbackQueryHandler(self.shift_permission_selection_handler)],
-                SHIFT_PERMISSION_COMMAND_CODE: [
+                UPDATE_GROUP_SELECTION_CODE: [CallbackQueryHandler(self.update_group_selection_handler)],
+                UPDATE_GROUP_COMMAND_CODE: [
                     MessageHandler(filters.TEXT & filters.REPLY, self.chat_search_handler.shared_process_input),
-                    CallbackQueryHandler(self.shift_permission_selection_handler),
+                    CallbackQueryHandler(self.update_group_selection_handler),
                 ],
                 CHAT_SELECTION_CODE: [CallbackQueryHandler(self.chat_search_handler.handle_chat_selection)],
-                SHIFT_PERMISSION_CHAT_SELECTION_CODE: [CallbackQueryHandler(self.shift_permission_chat_selection)],
-                SHIFT_PERMISSION_USERNAME_CODE: [
-                    MessageHandler(filters.TEXT & filters.REPLY, self.process_shift_permission_username),
-                    CallbackQueryHandler(self.shift_permission_action_handler),
+                UPDATE_GROUP_CHAT_SELECTION_CODE: [CallbackQueryHandler(self.update_group_chat_selection)],
+                UPDATE_GROUP_MENU_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_update_group_input),
+                    CallbackQueryHandler(self.update_group_menu_handler),
+                ],
+                UPDATE_THRESHOLD_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_threshold_input),
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
@@ -563,7 +698,7 @@ class TelegramAdminBot:
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
         self.app.add_handler(query_package_handler)
-        self.app.add_handler(shift_permission_handler)
+        self.app.add_handler(update_group_handler)
 
         force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 

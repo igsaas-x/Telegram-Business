@@ -148,39 +148,15 @@ class ChatSearchHandler:
                         package_handler = PackageHandler()
                         return await package_handler.display_package_details(update, context)
                     
-                    # For shift permission command, handle directly here
-                    elif command_type == "shift_permission":
-                        # Import shift permission service
-                        from services.shift_permission_service import ShiftPermissionService
-                        shift_permission_service = ShiftPermissionService()
-                        
-                        # Get current allowed users
-                        allowed_users = await shift_permission_service.get_allowed_users(int(chat_id))
-                        
-                        if allowed_users:
-                            users_text = "\n".join([f"• {user}" for user in allowed_users])
-                            current_users = f"\n\nCurrent allowed users:\n{users_text}"
-                        else:
-                            current_users = "\n\nCurrent allowed users: None"
-                        
+                    # For update_group command, route to the new handler
+                    elif command_type == "update_group":
                         # Store chat_id for later use
                         context.user_data["selected_chat_id"] = int(chat_id)
                         
-                        keyboard = [
-                            [InlineKeyboardButton("Add User", callback_data="add_user")],
-                            [InlineKeyboardButton("Remove User", callback_data="remove_user")],
-                            [InlineKeyboardButton("List Users", callback_data="list_users")],
-                            [InlineKeyboardButton("Clear All", callback_data="clear_all")],
-                            [InlineKeyboardButton("Cancel", callback_data="cancel")]
-                        ]
-                        reply_markup = InlineKeyboardMarkup(keyboard)
-                        
-                        await query.edit_message_text(
-                            f"Shift Permission Management\nSelected chat ID: {chat_id}{current_users}\n\nWhat would you like to do?",
-                            reply_markup=reply_markup
-                        )
-                        
-                        return 1025  # SHIFT_PERMISSION_USERNAME_CODE
+                        # Import the telegram admin bot service to call the handler
+                        # We can't directly call the method here, so we'll return a special code
+                        # that indicates we should route to the update_group_chat_selection
+                        return 1024  # UPDATE_GROUP_CHAT_SELECTION_CODE
                         
                     # For other commands, execute directly
                     elif command_type == "enable_shift":
@@ -214,6 +190,8 @@ class ChatSearchHandler:
                         return 1006  # ENABLE_SHIFT_COMMAND_CODE
                     elif command_type == "query_package":
                         return 1020  # QUERY_PACKAGE_COMMAND_CODE
+                    elif command_type == "update_group":
+                        return 1023  # UPDATE_GROUP_COMMAND_CODE
                     else:
                         return 1003  # PACKAGE_COMMAND_CODE
 
@@ -227,6 +205,8 @@ class ChatSearchHandler:
                         return 1006  # ENABLE_SHIFT_COMMAND_CODE
                     elif command_type == "query_package":
                         return 1020  # QUERY_PACKAGE_COMMAND_CODE
+                    elif command_type == "update_group":
+                        return 1023  # UPDATE_GROUP_COMMAND_CODE
                     else:
                         return 1003  # PACKAGE_COMMAND_CODE
 
@@ -327,6 +307,8 @@ class ChatSearchHandler:
             # Return appropriate state code based on command type
             if command_type == "query_package":
                 return 1021  # QUERY_PACKAGE_CHAT_SELECTION_CODE
+            elif command_type == "update_group":
+                return 1024  # UPDATE_GROUP_CHAT_SELECTION_CODE
             else:
                 return 1010  # CHAT_SELECTION_CODE
             

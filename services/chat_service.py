@@ -268,6 +268,40 @@ class ChatService:
             return False
 
     @staticmethod
+    async def update_chat_threshold(chat_id: int, threshold_type: str, value: float) -> bool:
+        """Update threshold value (USD or KHR) for a chat"""
+        with get_db_session() as session:
+            try:
+                update_data = {}
+                if threshold_type.lower() == "usd":
+                    update_data["usd_threshold"] = value
+                elif threshold_type.lower() == "khr":
+                    update_data["khr_threshold"] = value
+                else:
+                    force_log(f"Invalid threshold type: {threshold_type}")
+                    return False
+                
+                result = (
+                    session.query(Chat)
+                    .filter_by(chat_id=chat_id)
+                    .update(update_data)
+                )
+                
+                session.commit()
+                if result > 0:
+                    force_log(f"Successfully updated {threshold_type} threshold to {value} for chat {chat_id}")
+                    return True
+                else:
+                    force_log(f"No chat found with chat_id {chat_id}")
+                    return False
+            except Exception as e:
+                session.rollback()
+                force_log(f"Error updating {threshold_type} threshold: {e}")
+                return False
+            finally:
+                session.close()
+
+    @staticmethod
     async def migrate_chat_id(old_chat_id: int, new_chat_id: int) -> bool:
         """Migrate chat_id from old to new (for group migrations)"""
         with get_db_session() as session:
