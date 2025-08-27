@@ -14,9 +14,10 @@ from telegram.ext import (
 
 from common.enums import ServicePackage
 from handlers.business_event_handler import BusinessEventHandler
-from helper import force_log
+from helper import force_log, DateUtils
 from services import ChatService, UserService, GroupPackageService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+from services.shift_service import ShiftService
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -39,7 +40,8 @@ class AutosumBusinessBot:
         self.app: Application | None = None
         self.chat_service = ChatService()
         self.user_service = UserService()
-        self.event_handler = BusinessEventHandler()
+        self.shift_service = ShiftService()
+        self.event_handler = BusinessEventHandler(bot_service=self)
         self.group_package_service = GroupPackageService()
         force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")
 
@@ -69,18 +71,18 @@ class AutosumBusinessBot:
                                 original_message.message_id, update.effective_chat.id, note
                             )
                             if success:
-                                force_log(f"Added note to transaction {income_record.id}: {note[:50]}...")
+                                force_log(f"Added note to transaction {income_record.id}: {note[:50]}...", "AutosumBusinessBot")
                                 # Send a confirmation message
                                 await update.message.reply_text(
                                     f"✅ Note added to transaction: {note[:100]}{'...' if len(note) > 100 else ''}"
                                 )
                             else:
-                                force_log(f"Failed to add note to message_id {original_message.message_id}")
+                                force_log(f"Failed to add note to message_id {original_message.message_id}", "AutosumBusinessBot", "WARN")
                     else:
-                        force_log(f"Reply to bot message {original_message.message_id} but no transaction found in DB")
+                        force_log(f"Reply to bot message {original_message.message_id} but no transaction found in DB", "AutosumBusinessBot")
                 
         except Exception as e:
-            force_log(f"Error in handle_reply_message: {e}")
+            force_log(f"Error in handle_reply_message: {e}", "AutosumBusinessBot", "ERROR")
             # Don't respond with error for reply handler to avoid spam
 
     def _convert_buttons_to_keyboard(self, buttons):
@@ -143,10 +145,30 @@ class AutosumBusinessBot:
         else:
             private_chats = None
         if private_chats:
-            message = f"""សូមប្រើPrivate Groupដើម្បីបូក
-            """
-            await update.message.reply_text(message)
-            return ConversationHandler.END
+            # Allow only close shift functionality in public groups bound to private chats
+            # Get current shift information to display
+            try:
+                current_shift = await self.shift_service.get_current_shift(chat_id)
+                if current_shift:
+                    current_date = DateUtils.now().strftime('%d-%B-%Y')
+                    message = f"""វេនទី {current_shift.number}: ថ្ងៃទី {current_date}"""
+                else:
+                    current_date = DateUtils.now().strftime('%d-%B-%Y')
+                    message = f"""វេនទី -: ថ្ងៃទី {current_date}"""
+            except Exception as e:
+                force_log(f"Error getting shift info: {e}", "AutosumBusinessBot")
+                current_date = DateUtils.now().strftime('%d-%B-%Y')
+                message = f"""វេនទី -: ថ្ងៃទី {current_date}"""
+            
+            # Create a limited menu with just the close shift button
+            keyboard = [
+                [InlineKeyboardButton("🛑 បិទបញ្ជី", callback_data="close_shift")],
+                [InlineKeyboardButton("ត្រលប់ក្រោយ", callback_data="close_menu")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(message, reply_markup=reply_markup)
+            return BUSINESS_MENU_CODE
 
         # Create a mock event object for the business event handler
         class MockEvent:
@@ -198,17 +220,17 @@ class AutosumBusinessBot:
                 self.parent = parent
                 self.chat = query.message.chat
 
-            async def edit(self, message, buttons=None):
+            async def edit(self, message, buttons=None, parse_mode=None):
                 keyboard = (
                     self.parent._convert_buttons_to_keyboard(buttons)
                     if buttons
                     else None
                 )
                 try:
-                    await self.query.edit_message_text(message, reply_markup=keyboard)
+                    await self.query.edit_message_text(message, reply_markup=keyboard, parse_mode=parse_mode)
                 except Exception as e:
                     if "Message is not modified" in str(e):
-                        force_log(f"Message content is identical, skipping edit for chat {self.chat_id}")
+                        force_log(f"Message content is identical, skipping edit for chat {self.chat_id}", "AutosumBusinessBot")
                         # Just answer the callback to remove loading state
                         await self.query.answer()
                     else:
@@ -220,7 +242,7 @@ class AutosumBusinessBot:
                 try:
                     await self.query.message.delete()
                 except Exception as e:
-                    force_log(f"Error deleting message in chat {self.chat_id}: {e}")
+                    force_log(f"Error deleting message in chat {self.chat_id}: {e}", "AutosumBusinessBot", "WARN")
 
             async def respond(self, message, buttons=None, parse_mode=None):
                 """Send a new message with optional HTML parsing"""
@@ -239,7 +261,7 @@ class AutosumBusinessBot:
                     # Answer the callback to remove loading state
                     await self.query.answer()
                 except Exception as e:
-                    force_log(f"Error responding to chat {self.chat_id}: {e}")
+                    force_log(f"Error responding to chat {self.chat_id}: {e}", "AutosumBusinessBot", "ERROR")
                     raise e
 
             async def get_sender(self):
@@ -468,7 +490,7 @@ class AutosumBusinessBot:
             await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=keyboard)
 
         except Exception as e:
-            force_log(f"Error: {e}", "AutosumBusinessBot")
+            force_log(f"Error: {e}", "AutosumBusinessBot", "ERROR")
             await query.edit_message_text("❌ Error", reply_markup=None)
 
     async def handle_register_skip_shift(
@@ -656,10 +678,10 @@ class AutosumBusinessBot:
                 await self.app.bot.send_message(chat_id=chat_id, text=message)
                 return True
             else:
-                force_log("Bot application not initialized")
+                force_log("Bot application not initialized", "AutosumBusinessBot", "WARN")
                 return False
         except Exception as e:
-            force_log(f"Error sending message to chat {chat_id}: {e}")
+            force_log(f"Error sending message to chat {chat_id}: {e}", "AutosumBusinessBot", "ERROR")
             return False
 
     async def stop(self):

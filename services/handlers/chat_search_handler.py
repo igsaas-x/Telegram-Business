@@ -22,7 +22,7 @@ class ChatSearchHandler:
                 return ConversationHandler.END
 
             identifier: str = chat.user.identifier if chat.user else ""  # type: ignore
-            force_log(f"Identifier: {identifier}", "ChatSearchHandler")
+            force_log(f"Identifier: {identifier}", "ChatSearchHandler", "DEBUG")
             user = await self.user_service.get_user_by_identifier(identifier)
             if not user:
                 await update.message.reply_text("User not found.")  # type: ignore
@@ -43,7 +43,7 @@ class ChatSearchHandler:
     async def search_and_show_chats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         try:
             search_term = update.message.text.strip()  # type: ignore
-            force_log(f"Searching for chats with term: {search_term}", "ChatSearchHandler")
+            force_log(f"Searching for chats with term: {search_term}", "ChatSearchHandler", "DEBUG")
             
             # Search for chats using the new search method
             matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
@@ -86,7 +86,7 @@ class ChatSearchHandler:
             return 1010  # CHAT_SELECTION_CODE
             
         except Exception as e:
-            force_log(f"Error in search_and_show_chats: {e}", "ChatSearchHandler")
+            force_log(f"Error in search_and_show_chats: {e}", "ChatSearchHandler", "ERROR")
             await update.message.reply_text("Error searching for chats.")  # type: ignore
             return ConversationHandler.END
 
@@ -104,7 +104,7 @@ class ChatSearchHandler:
                 if callback_data.startswith("select_chat_"):
                     chat_id = callback_data.replace("select_chat_", "")
                     command_type = context.user_data.get("command_type")  # type: ignore
-                    force_log(f"Selected chat_id: {chat_id} for command: {command_type}", "ChatSearchHandler")
+                    force_log(f"Selected chat_id: {chat_id} for command: {command_type}", "ChatSearchHandler", "DEBUG")
                     
                     # Get the selected chat
                     chat = await self.chat_service.get_chat_by_chat_id(int(chat_id))
@@ -148,13 +148,23 @@ class ChatSearchHandler:
                         package_handler = PackageHandler()
                         return await package_handler.display_package_details(update, context)
                     
+                    # For update_group command, route to the new handler
+                    elif command_type == "update_group":
+                        # Store chat_id for later use
+                        context.user_data["selected_chat_id"] = int(chat_id)
+                        
+                        # Import the telegram admin bot service to call the handler
+                        # We can't directly call the method here, so we'll return a special code
+                        # that indicates we should route to the update_group_chat_selection
+                        return 1024  # UPDATE_GROUP_CHAT_SELECTION_CODE
+                        
                     # For other commands, execute directly
                     elif command_type == "enable_shift":
                         await query.edit_message_text(f"Executing enable shift for chat: {chat.group_name}")
                         return await self.execute_enable_shift_command_from_query(query, int(chat_id))
                         
         except Exception as e:
-            force_log(f"Error in handle_chat_selection: {e}", "ChatSearchHandler")
+            force_log(f"Error in handle_chat_selection: {e}", "ChatSearchHandler", "ERROR")
             if query:
                 await query.edit_message_text("Error processing selection.")
             return ConversationHandler.END
@@ -180,6 +190,8 @@ class ChatSearchHandler:
                         return 1006  # ENABLE_SHIFT_COMMAND_CODE
                     elif command_type == "query_package":
                         return 1020  # QUERY_PACKAGE_COMMAND_CODE
+                    elif command_type == "update_group":
+                        return 1023  # UPDATE_GROUP_COMMAND_CODE
                     else:
                         return 1003  # PACKAGE_COMMAND_CODE
 
@@ -193,11 +205,13 @@ class ChatSearchHandler:
                         return 1006  # ENABLE_SHIFT_COMMAND_CODE
                     elif command_type == "query_package":
                         return 1020  # QUERY_PACKAGE_COMMAND_CODE
+                    elif command_type == "update_group":
+                        return 1023  # UPDATE_GROUP_COMMAND_CODE
                     else:
                         return 1003  # PACKAGE_COMMAND_CODE
 
         except Exception as e:
-            force_log(f"Error in shared_selection_handler: {e}", "ChatSearchHandler")
+            force_log(f"Error in shared_selection_handler: {e}", "ChatSearchHandler", "ERROR")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -222,7 +236,7 @@ class ChatSearchHandler:
         try:
             search_term = update.message.text.strip()  # type: ignore
             command_type = context.user_data.get("command_type")  # type: ignore
-            force_log(f"Searching for chats with term: {search_term} for command: {command_type}", "ChatSearchHandler")
+            force_log(f"Searching for chats with term: {search_term} for command: {command_type}", "ChatSearchHandler", "DEBUG")
             
             # Search for chats using the new search method
             matching_chats = await self.chat_service.search_chats_by_chat_id_or_name(search_term, 5)
@@ -293,11 +307,13 @@ class ChatSearchHandler:
             # Return appropriate state code based on command type
             if command_type == "query_package":
                 return 1021  # QUERY_PACKAGE_CHAT_SELECTION_CODE
+            elif command_type == "update_group":
+                return 1024  # UPDATE_GROUP_CHAT_SELECTION_CODE
             else:
                 return 1010  # CHAT_SELECTION_CODE
             
         except Exception as e:
-            force_log(f"Error in search_and_show_chats_for_command: {e}", "ChatSearchHandler")
+            force_log(f"Error in search_and_show_chats_for_command: {e}", "ChatSearchHandler", "ERROR")
             await update.message.reply_text("Error searching for chats.")  # type: ignore
             return ConversationHandler.END
 
@@ -309,7 +325,7 @@ class ChatSearchHandler:
             # Use the existing process_enable_shift_chat_id logic
             return await self.process_enable_shift_chat_id(update, context)
         except Exception as e:
-            force_log(f"Error in execute_enable_shift_command: {e}", "ChatSearchHandler")
+            force_log(f"Error in execute_enable_shift_command: {e}", "ChatSearchHandler", "ERROR")
             await update.message.reply_text("Error enabling shift for chat.")  # type: ignore
             return ConversationHandler.END
 
@@ -325,7 +341,7 @@ class ChatSearchHandler:
                 await query.edit_message_text(f"❌ Failed to enable shift for chat {chat_id}")
             return ConversationHandler.END
         except Exception as e:
-            force_log(f"Error in execute_enable_shift_command_from_query: {e}", "ChatSearchHandler")
+            force_log(f"Error in execute_enable_shift_command_from_query: {e}", "ChatSearchHandler", "ERROR")
             await query.edit_message_text("Error enabling shift for chat.")
             return ConversationHandler.END
 

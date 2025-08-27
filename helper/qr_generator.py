@@ -38,7 +38,7 @@ class QRGenerator:
             return final_img
             
         except Exception as e:
-            force_log(f"Error generating Wifi QR with text: {e}", self.logger_name)
+            force_log(f"Error generating Wifi QR with text: {e}", self.logger_name, "ERROR")
             raise e
     
     def _create_qr_code(self, data: str) -> Image.Image:
@@ -64,7 +64,7 @@ class QRGenerator:
             return qr_img
             
         except Exception as e:
-            force_log(f"Error creating QR code: {e}", self.logger_name)
+            force_log(f"Error creating QR code: {e}", self.logger_name, "ERROR")
             raise e
     
     def _add_text_overlay(self, qr_img: Image.Image, wifi_name: str, wifi_password: str) -> Image.Image:
@@ -89,7 +89,7 @@ class QRGenerator:
             return final_img
             
         except Exception as e:
-            force_log(f"Error adding text overlay: {e}", self.logger_name)
+            force_log(f"Error adding text overlay: {e}", self.logger_name, "ERROR")
             raise e
     
     def _draw_text_lines(self, img: Image.Image, qr_width: int, qr_height: int, wifi_name: str, wifi_password: str):
@@ -136,7 +136,7 @@ class QRGenerator:
                 force_log(f"Drew line {i+1}: '{line}' at ({x_pos}, {y_pos})", self.logger_name)
                 
         except Exception as e:
-            force_log(f"Error drawing text lines: {e}", self.logger_name)
+            force_log(f"Error drawing text lines: {e}", self.logger_name, "ERROR")
             raise e
     
     def _load_font(self, size: int) -> ImageFont.FreeTypeFont:
@@ -172,7 +172,7 @@ class QRGenerator:
                     force_log(f"Successfully loaded font: {path}, size: {actual_size}", self.logger_name)
                     return font
                 except (OSError, IOError) as e:
-                    force_log(f"Failed to load font {path}: {e}", self.logger_name)
+                    force_log(f"Failed to load font {path}: {e}", self.logger_name, "WARN")
                     continue
             
             # Fallback - try to use default font with larger size
@@ -185,7 +185,7 @@ class QRGenerator:
                 return ImageFont.load_default()
             
         except Exception as e:
-            force_log(f"Error in _load_font: {e}", self.logger_name)
+            force_log(f"Error in _load_font: {e}", self.logger_name, "ERROR")
             return ImageFont.load_default()
     
     def _get_centered_x_position(self, draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, img_width: int) -> int:
@@ -214,7 +214,7 @@ class QRGenerator:
             return x_pos
             
         except Exception as e:
-            force_log(f"Error calculating text position: {e}, using fallback", self.logger_name)
+            force_log(f"Error calculating text position: {e}, using fallback", self.logger_name, "ERROR")
             return 10  # Fallback to left margin
     
     def image_to_bytes(self, img: Image.Image, format: str = 'PNG') -> io.BytesIO:
@@ -226,5 +226,5 @@ class QRGenerator:
             force_log(f"Image converted to bytes, format: {format}", self.logger_name)
             return bio
         except Exception as e:
-            force_log(f"Error converting image to bytes: {e}", self.logger_name)
+            force_log(f"Error converting image to bytes: {e}", self.logger_name, "ERROR")
             raise e

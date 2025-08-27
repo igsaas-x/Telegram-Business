@@ -16,7 +16,7 @@ class AutoCloseScheduler:
     async def start_scheduler(self):
         """Start the auto-close scheduler to run every minute"""
         self.is_running = True
-        force_log("Auto-close scheduler started - will run every minute")
+        force_log("Auto-close scheduler started - will run every minute", "AutoCloseScheduler")
 
         while self.is_running:
             try:
@@ -24,18 +24,18 @@ class AutoCloseScheduler:
                 # Wait 1 minute (60 seconds) before next run
                 await asyncio.sleep(60)
             except Exception as e:
-                force_log(f"Error in auto-close scheduler loop: {e}")
+                force_log(f"Error in auto-close scheduler loop: {e}", "AutoCloseScheduler", "ERROR")
                 # Wait 1 minute before retrying if there's an error
                 await asyncio.sleep(60)
 
     async def stop_scheduler(self):
         """Stop the auto-close scheduler"""
         self.is_running = False
-        force_log("Auto-close scheduler stopped")
+        force_log("Auto-close scheduler stopped", "AutoCloseScheduler")
 
     async def check_auto_close_shifts(self):
         """Check and auto-close shifts based on configuration"""
-        force_log("Starting auto-close shift check...")
+        force_log("Starting auto-close shift check...", "AutoCloseScheduler", "DEBUG")
 
         try:
             # Use the existing method from ShiftService to check and auto-close all shifts
@@ -43,26 +43,26 @@ class AutoCloseScheduler:
 
             if closed_shifts:
                 force_log(
-                    f"Auto-closed {len(closed_shifts)} shifts: {[shift['id'] for shift in closed_shifts]}"
+                    f"Auto-closed {len(closed_shifts)} shifts: {[shift['id'] for shift in closed_shifts]}", "AutoCloseScheduler"
                 )
 
                 # Send shift summaries to chats
                 for shift in closed_shifts:
                     force_log(
-                        f"Auto-closed shift {shift['id']} for chat {shift['chat_id']}"
+                        f"Auto-closed shift {shift['id']} for chat {shift['chat_id']}", "AutoCloseScheduler"
                     )
 
                     # Send shift summary to chat if bot service is available
                     if self.bot_service:
                         await self._send_shift_summary(shift)
             else:
-                force_log("No shifts needed auto-closing")
+                force_log("No shifts needed auto-closing", "AutoCloseScheduler", "DEBUG")
 
         except Exception as e:
-            force_log(f"Error in auto-close shift check: {e}")
+            force_log(f"Error in auto-close shift check: {e}", "AutoCloseScheduler", "ERROR")
             import traceback
 
-            force_log(f"Traceback: {traceback.format_exc()}")
+            force_log(f"Traceback: {traceback.format_exc()}", "AutoCloseScheduler", "ERROR")
 
     async def _send_shift_summary(self, shift_info: dict):
         """Send shift summary to the chat"""
@@ -123,16 +123,16 @@ class AutoCloseScheduler:
             # Send message
             success = await self.bot_service.send_message(chat_id, message)
             if success:
-                force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}")
+                force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler")
             else:
                 force_log(
-                    f"Failed to send shift summary for shift {shift_id} to chat {chat_id}"
+                    f"Failed to send shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler", "WARN"
                 )
 
         except Exception as e:
             force_log(
-                f"Error sending shift summary for shift {shift_info.get('id', 'unknown')}: {e}"
+                f"Error sending shift summary for shift {shift_info.get('id', 'unknown')}: {e}", "AutoCloseScheduler", "ERROR"
             )
             import traceback
 
-            force_log(f"Shift summary error traceback: {traceback.format_exc()}")
+            force_log(f"Shift summary error traceback: {traceback.format_exc()}", "AutoCloseScheduler", "ERROR")

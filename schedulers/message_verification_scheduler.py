@@ -27,7 +27,7 @@ class MessageVerificationScheduler:
     async def start_scheduler(self):
         """Start the scheduler to run every 20 minutes"""
         self.is_running = True
-        force_log("Message verification scheduler started - will run every 20 minutes")
+        force_log("Message verification scheduler started - will run every 20 minutes", "MessageVerificationScheduler")
 
         while self.is_running:
             try:
@@ -35,18 +35,18 @@ class MessageVerificationScheduler:
                 # Wait 20 minutes (1200 seconds) before next run
                 await asyncio.sleep(1200)
             except Exception as e:
-                force_log(f"Error in scheduler loop: {e}")
+                force_log(f"Error in scheduler loop: {e}", "MessageVerificationScheduler", "ERROR")
                 # Wait 1 minute before retrying if there's an error
                 await asyncio.sleep(60)
 
     async def stop_scheduler(self):
         """Stop the scheduler"""
         self.is_running = False
-        force_log("Message verification scheduler stopped")
+        force_log("Message verification scheduler stopped", "MessageVerificationScheduler")
 
     async def verify_messages(self):
         """Main verification method that reads messages from last 20 minutes"""
-        force_log("Starting message verification job...")
+        force_log("Starting message verification job...", "MessageVerificationScheduler")
 
         try:
             # Get chat IDs based on which telethon client this is
@@ -110,10 +110,10 @@ class MessageVerificationScheduler:
             )
 
         except Exception as e:
-            force_log(f"Error in verify_messages: {e}")
+            force_log(f"Error in verify_messages: {e}", "MessageVerificationScheduler", "ERROR")
             import traceback
 
-            force_log(f"Traceback: {traceback.format_exc()}")
+            force_log(f"Traceback: {traceback.format_exc()}", "MessageVerificationScheduler", "ERROR")
 
     async def _get_bot_messages_in_timeframe(
         self, chat_id: int, start_time: datetime.datetime, end_time: datetime.datetime
@@ -159,6 +159,8 @@ class MessageVerificationScheduler:
                             "SathapanaBank_bot",
                             "chipmongbankpaymentbot",
                             "prasac_merchant_payment_bot",
+                            "AMKPlc_bot",
+                            "prince_pay_bot",
                             "s7pos_bot"
                         }
                         
@@ -316,4 +318,4 @@ class MessageVerificationScheduler:
             force_log(f"Error verifying/storing message {message.id}: {e}")
             import traceback
 
-            force_log(f"Traceback: {traceback.format_exc()}")
+            force_log(f"Traceback: {traceback.format_exc()}", "MessageVerificationScheduler", "ERROR")

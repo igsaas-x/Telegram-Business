@@ -217,7 +217,7 @@ class TelegramUtilsBot:
             return PDF_OPTION_CODE
             
         except Exception as e:
-            force_log(f"Error generating Utils code: {e}", "TelegramUtilsBot")
+            force_log(f"Error generating Utils code: {e}", "TelegramUtilsBot", "ERROR")
             await update.message.reply_text(
                 "❌ Error generating QR code. Please try again with /start"
             )
@@ -271,7 +271,7 @@ class TelegramUtilsBot:
             context.user_data.clear()
             
         except Exception as e:
-            force_log(f"Error generating PDF: {e}", "TelegramUtilsBot")
+            force_log(f"Error generating PDF: {e}", "TelegramUtilsBot", "ERROR")
             await query.edit_message_caption(
                 caption=f"{query.message.caption}\n\n❌ Error generating PDF. Please try again."
             )

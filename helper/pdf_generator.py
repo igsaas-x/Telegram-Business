@@ -66,7 +66,7 @@ class PDFGenerator:
             return pdf_buffer
             
         except Exception as e:
-            force_log(f"Error creating PDF: {e}", self.logger_name)
+            force_log(f"Error creating PDF: {e}", self.logger_name, "ERROR")
             raise e
     
     def create_wifi_qr_pdf(self, qr_image: Image.Image, wifi_name: str) -> io.BytesIO:
@@ -85,7 +85,7 @@ class PDFGenerator:
             return self.create_qr_pdf(qr_image, f"Wifi-QR-{wifi_name}")
             
         except Exception as e:
-            force_log(f"Error creating Wifi QR PDF: {e}", self.logger_name)
+            force_log(f"Error creating Wifi QR PDF: {e}", self.logger_name, "ERROR")
             raise e
     
     def get_pdf_filename(self, wifi_name: str) -> str:

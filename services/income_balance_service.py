@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
@@ -13,24 +14,26 @@ from .shift_service import ShiftService
 class IncomeService:
     def __init__(self):
         self.shift_service = ShiftService()
+        # Threshold warning service will be set from telethon client
+        self.threshold_warning_service = None
 
     async def ensure_active_shift(self, chat_id: int) -> int:
-        force_log(f"_ensure_active_shift called for chat_id: {chat_id}")
+        force_log(f"_ensure_active_shift called for chat_id: {chat_id}", "IncomeService", "DEBUG")
         try:
 
             current_shift = await self.shift_service.get_current_shift(chat_id)
             if current_shift:
-                force_log(f"Found existing shift {current_shift.id} for chat {chat_id}")
+                force_log(f"Found existing shift {current_shift.id} for chat {chat_id}", "IncomeService", "DEBUG")
                 return current_shift.id
             else:
                 # No active shift found, create a new one
-                force_log(f"No active shift found, creating new one for chat {chat_id}")
+                force_log(f"No active shift found, creating new one for chat {chat_id}", "IncomeService", "DEBUG")
                 new_shift = await self.shift_service.create_shift(chat_id)
-                force_log(f"Created new shift {new_shift.id} for chat {chat_id}")
+                force_log(f"Created new shift {new_shift.id} for chat {chat_id}", "IncomeService")
                 return new_shift.id
 
         except Exception as e:
-            force_log(f"ERROR in _ensure_active_shift: {e}")
+            force_log(f"ERROR in _ensure_active_shift: {e}", "IncomeService", "ERROR")
             raise e
 
     async def update_shift(self, income_id: int, shift: int):
@@ -54,14 +57,14 @@ class IncomeService:
                 if income:
                     income.note = note
                     db.commit()
-                    force_log(f"Updated note for transaction {income.id} in chat {chat_id}: {note}")
+                    force_log(f"Updated note for transaction {income.id} in chat {chat_id}: {note}", "IncomeService")
                     return True
                 else:
-                    force_log(f"No transaction found with message_id {message_id} in chat {chat_id}")
+                    force_log(f"No transaction found with message_id {message_id} in chat {chat_id}", "IncomeService", "WARN")
                     return False
                     
         except Exception as e:
-            force_log(f"Error updating note: {e}")
+            force_log(f"Error updating note: {e}", "IncomeService", "ERROR")
             return False
 
     async def get_income_by_message_id(self, message_id: int, chat_id: int) -> IncomeBalance | None:
@@ -73,7 +76,7 @@ class IncomeService:
                     IncomeBalance.chat_id == chat_id
                 ).first()
         except Exception as e:
-            force_log(f"Error getting income by message_id: {e}")
+            force_log(f"Error getting income by message_id: {e}", "IncomeService", "ERROR")
             return None
 
     async def get_last_shift_id(self, chat_id: int) -> IncomeBalance | None:
@@ -103,7 +106,8 @@ class IncomeService:
         Insert income
         """
         force_log(
-            f"insert_income called: chat_id={chat_id}, amount={amount}, currency={currency}, shift_id={shift_id}"
+            f"insert_income called: chat_id={chat_id}, amount={amount}, currency={currency}, shift_id={shift_id}",
+            "IncomeService", "DEBUG"
         )
         try:
             from_symbol = CurrencyEnum.from_symbol(currency)
@@ -114,19 +118,21 @@ class IncomeService:
             if shift_id is 0:
                 if enable_shift:
                     force_log(
-                        f"No shift_id provided, ensuring active shift for chat {chat_id}"
+                        f"No shift_id provided, ensuring active shift for chat {chat_id}",
+                        "IncomeService", "DEBUG"
                     )
                     shift_id = await self.ensure_active_shift(chat_id)
-                    force_log(f"Using shift_id: {shift_id}")
+                    force_log(f"Using shift_id: {shift_id}", "IncomeService", "DEBUG")
                 else:
                     force_log(
-                        f"Shifts disabled for chat {chat_id}, setting shift_id to None"
+                        f"Shifts disabled for chat {chat_id}, setting shift_id to None",
+                        "IncomeService", "DEBUG"
                     )
                     shift_id = 0
 
             with get_db_session() as db:
                 try:
-                    force_log(f"Creating IncomeBalance record with shift_id={shift_id}")
+                    force_log(f"Creating IncomeBalance record with shift_id={shift_id}", "IncomeService", "DEBUG")
                     new_income = IncomeBalance(
                         chat_id=chat_id,
                         amount=amount,
@@ -144,17 +150,40 @@ class IncomeService:
                     db.commit()
                     db.refresh(new_income)
                     force_log(
-                        f"Successfully saved IncomeBalance record with id={new_income.id}"
+                        f"Successfully saved IncomeBalance record with id={new_income.id}",
+                        "IncomeService"
                     )
+                    
+                    # Check thresholds after saving income (fire and forget)
+                    if self.threshold_warning_service:
+                        asyncio.create_task(self._check_thresholds_async(
+                            chat_id=chat_id,
+                            shift_id=shift_id,
+                            new_income_amount=amount,
+                            new_income_currency=currency_code
+                        ))
+                    
                     return new_income
 
                 except Exception as e:
-                    force_log(f"ERROR in database operation: {e}")
+                    force_log(f"ERROR in database operation: {e}", "IncomeService", "ERROR")
                     db.rollback()
                     raise e
         except Exception as e:
-            force_log(f"ERROR in insert_income: {e}")
+            force_log(f"ERROR in insert_income: {e}", "IncomeService", "ERROR")
             raise e
+
+    async def _check_thresholds_async(self, chat_id: int, shift_id: int, new_income_amount: float, new_income_currency: str):
+        """Non-blocking threshold check helper method"""
+        try:
+            await self.threshold_warning_service.check_and_send_warnings(
+                chat_id=chat_id,
+                new_income_amount=new_income_amount,
+                new_income_currency=new_income_currency
+            )
+        except Exception as threshold_error:
+            # Don't fail the income saving if threshold check fails
+            force_log(f"Error in threshold check (non-blocking): {threshold_error}", "IncomeService", "ERROR")
 
     async def get_income(self, income_id: int) -> IncomeBalance | None:
         with get_db_session() as db:
@@ -170,7 +199,8 @@ class IncomeService:
         self, chat_id: int, message_id: int
     ) -> bool:
         force_log(
-            f"Searching for existing income with chat_id: {chat_id} and message_id: {message_id}"
+            f"Searching for existing income with chat_id: {chat_id} and message_id: {message_id}",
+            "IncomeService", "DEBUG"
         )
         with get_db_session() as db:
             result = (
@@ -183,16 +213,18 @@ class IncomeService:
             )
             found = result is not None
             force_log(
-                f"Chat ID {chat_id} + Message ID {message_id} duplicate check: {'FOUND' if found else 'NOT FOUND'}"
+                f"Chat ID {chat_id} + Message ID {message_id} duplicate check: {'FOUND' if found else 'NOT FOUND'}",
+                "IncomeService", "DEBUG"
             )
             return found
 
     async def get_income_by_trx_id(self, trx_id: str | None, chat_id: int) -> bool:
         if trx_id is None:
-            force_log("Transaction ID is None, returning False")
+            force_log("Transaction ID is None, returning False", "IncomeService", "DEBUG")
             return False
         force_log(
-            f"Searching for existing income with trx_id: {trx_id} and chat_id: {chat_id}"
+            f"Searching for existing income with trx_id: {trx_id} and chat_id: {chat_id}",
+            "IncomeService", "DEBUG"
         )
         with get_db_session() as db:
             result = (
@@ -204,7 +236,8 @@ class IncomeService:
             )
             found = result is not None
             force_log(
-                f"Transaction ID {trx_id} duplicate check for chat {chat_id}: {'FOUND' if found else 'NOT FOUND'}"
+                f"Transaction ID {trx_id} duplicate check for chat {chat_id}: {'FOUND' if found else 'NOT FOUND'}",
+                "IncomeService", "DEBUG"
             )
             return found
 
@@ -218,7 +251,8 @@ class IncomeService:
         Returns True if duplicate found, False if unique
         """
         force_log(
-            f"Checking duplicate with chat_id: {chat_id}, trx_id: {trx_id}, message_id: {message_id}"
+            f"Checking duplicate with chat_id: {chat_id}, trx_id: {trx_id}, message_id: {message_id}",
+            "IncomeService", "DEBUG"
         )
 
         with get_db_session() as db:
@@ -236,7 +270,8 @@ class IncomeService:
 
                 if duplicate:
                     force_log(
-                        f"Duplicate found by combination: chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}"
+                        f"Duplicate found by combination: chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}",
+                        "IncomeService", "DEBUG"
                     )
                     return True
             else:
@@ -252,12 +287,14 @@ class IncomeService:
 
                 if duplicate:
                     force_log(
-                        f"Duplicate found by combination: chat_id={chat_id}, message_id={message_id} (trx_id is null)"
+                        f"Duplicate found by combination: chat_id={chat_id}, message_id={message_id} (trx_id is null)",
+                        "IncomeService", "DEBUG"
                     )
                     return True
 
             force_log(
-                f"No duplicate found for chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}"
+                f"No duplicate found for chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}",
+                "IncomeService", "DEBUG"
             )
             return False
 

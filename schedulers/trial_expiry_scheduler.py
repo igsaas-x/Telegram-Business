@@ -22,7 +22,7 @@ class TrialExpiryScheduler:
         Find groups with trial packages that have expired (7+ days) without payment
         and convert them to free packages.
         """
-        force_log("Trial Expiry Scheduler - Converting expired trials to free packages", "trial_expiry_scheduler")
+        force_log("Trial Expiry Scheduler - Converting expired trials to free packages", "TrialExpiryScheduler")
         try:
             with get_db_session() as session:
                 # Calculate the cutoff date (7 days ago) in Cambodia timezone
@@ -50,23 +50,24 @@ class TrialExpiryScheduler:
                         converted_count += 1
 
                         force_log(
-                            f"Converted trial group {group_package.chat_group_id} to FREE package. "
-                            "Expiry Scheduler"
+                            f"Converted trial group {group_package.chat_group_id} to FREE package.",
+                            "TrialExpiryScheduler"
                         )
 
                     except Exception as e:
                         session.rollback()
                         force_log(
-                            f"Failed to convert group {group_package.chat_group_id} to FREE: {str(e)}"
+                            f"Failed to convert group {group_package.chat_group_id} to FREE: {str(e)}",
+                            "TrialExpiryScheduler", "ERROR"
                         )
 
                 if converted_count > 0:
-                    force_log(f"Successfully converted {converted_count} expired trial groups to FREE packages")
+                    force_log(f"Successfully converted {converted_count} expired trial groups to FREE packages", "TrialExpiryScheduler")
                 else:
-                    force_log("No expired trial groups found to convert")
+                    force_log("No expired trial groups found to convert", "TrialExpiryScheduler")
 
         except Exception as e:
-            force_log(f"Error in convert_expired_trials_to_free: {str(e)}")
+            force_log(f"Error in convert_expired_trials_to_free: {str(e)}", "TrialExpiryScheduler", "ERROR")
 
     async def start_scheduler(self):
         """
@@ -79,13 +80,13 @@ class TrialExpiryScheduler:
         # For testing purposes, you can also run it every minute:
         # schedule.every().minute.do(self.convert_expired_trials_to_free)
 
-        force_log("Trial expiry scheduler started. Job will run daily at 9:00 AM Cambodia time (Asia/Phnom_Penh)")
+        force_log("Trial expiry scheduler started. Job will run daily at 9:00 AM Cambodia time (Asia/Phnom_Penh)", "TrialExpiryScheduler")
 
         try:
             while True:
                 schedule.run_pending()
                 await asyncio.sleep(60)  # Check every minute
         except KeyboardInterrupt:
-            force_log("Trial expiry scheduler stopped by user")
+            force_log("Trial expiry scheduler stopped by user", "TrialExpiryScheduler")
         except Exception as e:
-            force_log(f"Error in scheduler: {str(e)}")
+            force_log(f"Error in scheduler: {str(e)}", "TrialExpiryScheduler", "ERROR")

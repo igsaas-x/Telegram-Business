@@ -58,7 +58,7 @@ class ShiftService:
     async def close_shift(self, shift_id: int) -> Shift | None:
         """Close a shift by setting end_time and is_closed"""
         current_time = DateUtils.now()
-        force_log(f"CLOSE_SHIFT: Attempting to close shift_id {shift_id} at {current_time}")
+        force_log(f"CLOSE_SHIFT: Attempting to close shift_id {shift_id} at {current_time}", "ShiftService", "DEBUG")
 
         # Get or create a lock for this specific shift_id
         if shift_id not in self._close_shift_locks:
@@ -67,27 +67,27 @@ class ShiftService:
         lock = self._close_shift_locks[shift_id]
         
         async with lock:
-            force_log(f"CLOSE_SHIFT: Acquired lock for shift_id {shift_id}")
+            force_log(f"CLOSE_SHIFT: Acquired lock for shift_id {shift_id}", "ShiftService", "DEBUG")
             
             with get_db_session() as db:
                 shift = db.query(Shift).filter(Shift.id == shift_id).first()
                 if not shift:
-                    force_log(f"CLOSE_SHIFT: Shift {shift_id} not found")
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} not found", "ShiftService", "WARN")
                     return None
                     
                 if shift.is_closed:
-                    force_log(f"CLOSE_SHIFT: Shift {shift_id} is already closed at {shift.end_time}")
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} is already closed at {shift.end_time}", "ShiftService")
                     return shift  # Return the already closed shift
                     
                 # Double-check it's still open (race condition protection)
                 if shift.end_time is not None:
-                    force_log(f"CLOSE_SHIFT: Shift {shift_id} already has end_time {shift.end_time}, marking as closed")
+                    force_log(f"CLOSE_SHIFT: Shift {shift_id} already has end_time {shift.end_time}, marking as closed", "ShiftService")
                     shift.is_closed = True
                     db.commit()
                     db.refresh(shift)
                     return shift
                     
-                force_log(f"CLOSE_SHIFT: Successfully closing shift {shift_id} (was open since {shift.start_time})")
+                force_log(f"CLOSE_SHIFT: Successfully closing shift {shift_id} (was open since {shift.start_time})", "ShiftService")
                 shift.end_time = current_time
                 shift.is_closed = True
                 db.commit()
@@ -123,8 +123,8 @@ class ShiftService:
                 .all()
             )
 
-    async def get_shifts_by_end_date(self, chat_id: int, end_date: date) -> list[Shift]:
-        """Get shifts that ended on a specific date (for admin bot)"""
+    async def get_shifts_by_start_date(self, chat_id: int, start_date: date) -> list[Shift]:
+        """Get shifts that started on a specific date (for admin bot)"""
         with get_db_session() as db:
             from sqlalchemy import func
             
@@ -132,11 +132,9 @@ class ShiftService:
                 db.query(Shift)
                 .filter(
                     Shift.chat_id == chat_id,
-                    func.date(Shift.end_time) == end_date,
-                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
-                    Shift.is_closed == True
+                    func.date(Shift.start_time) == start_date
                 )
-                .order_by(Shift.number)
+                .order_by(Shift.id)
                 .all()
             )
 
@@ -203,23 +201,50 @@ class ShiftService:
 
             return [d[0] for d in dates]
 
-    async def get_recent_end_dates_with_shifts(
+    async def get_recent_start_dates_with_shifts(
         self, chat_id: int, days: int = 3
     ) -> list[date]:
-        """Get last N dates based on shift end dates (for admin bot)"""
+        """Get last N dates based on shift start dates (for admin bot)"""
         with get_db_session() as db:
             from sqlalchemy import func
             
             dates = (
-                db.query(func.date(Shift.end_time))
+                db.query(func.date(Shift.start_time))
+                .filter(Shift.chat_id == chat_id)
+                .distinct()
+                .order_by(func.date(Shift.start_time).desc())
+                .limit(days)
+                .all()
+            )
+
+            return [d[0] for d in dates]
+
+    async def get_all_start_dates_with_shifts_in_month(
+        self, chat_id: int, year: int, month: int
+    ) -> list[date]:
+        """Get all dates with shifts in a specific month"""
+        with get_db_session() as db:
+            from sqlalchemy import func, and_
+            from datetime import datetime
+            
+            # Create start and end of month
+            start_of_month = datetime(year, month, 1)
+            if month == 12:
+                end_of_month = datetime(year + 1, 1, 1)
+            else:
+                end_of_month = datetime(year, month + 1, 1)
+            
+            dates = (
+                db.query(func.date(Shift.start_time))
                 .filter(
-                    Shift.chat_id == chat_id,
-                    Shift.end_time.is_not(None),  # Only closed shifts have end_time
-                    Shift.is_closed == True
+                    and_(
+                        Shift.chat_id == chat_id,
+                        Shift.start_time >= start_of_month,
+                        Shift.start_time < end_of_month
+                    )
                 )
                 .distinct()
-                .order_by(func.date(Shift.end_time).desc())
-                .limit(days)
+                .order_by(func.date(Shift.start_time).desc())
                 .all()
             )
 
@@ -352,12 +377,14 @@ class ShiftService:
                         )
                         db.add(new_shift)
                         force_log(
-                            f"Auto-created new shift #{new_shift.number} for chat {closed_shift.chat_id} after closing shift #{closed_shift.number}"
+                            f"Auto-created new shift #{new_shift.number} for chat {closed_shift.chat_id} after closing shift #{closed_shift.number}",
+                            "ShiftService"
                         )
                     except Exception as e:
                         force_log(
                             f"Error creating new shift after auto-close for chat {closed_shift.chat_id}: {e}",
-                            "ERROR",
+                            "ShiftService",
+                            "ERROR"
                         )
 
                 # Commit the new shifts
@@ -406,7 +433,7 @@ class ShiftService:
                         should_close = True
                         break  # Exit loop once we find a matching close time
                 except (ValueError, IndexError):
-                    force_log(f"fail to parse time:{time_str}", "shift_model")
+                    force_log(f"fail to parse time:{time_str}", "ShiftService", "WARN")
                     continue  # Skip invalid time formats
 
         if should_close:

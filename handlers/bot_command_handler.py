@@ -51,33 +51,34 @@ class EventHandler:
                 )
 
                 force_log(
-                    f"Notified group {event.chat_id} to add @autosum_kh with button"
+                    f"Notified group {event.chat_id} to add @autosum_kh with button",
+                    "EventHandler"
                 )
                 return notification_message, False
 
             except Exception as e:
-                force_log(f"Error checking participants in group {event.chat_id}: {e}")
+                force_log(f"Error checking participants in group {event.chat_id}: {e}", "EventHandler", "ERROR")
                 return None, False
 
         except Exception as e:
-            force_log(f"Error in _check_and_notify_autosum_missing: {e}")
+            force_log(f"Error in _check_and_notify_autosum_missing: {e}", "EventHandler", "ERROR")
             return None, False
 
     async def menu(self, event):
         # Debug logging to understand what's happening
-        force_log(f"Menu called - Chat ID: {event.chat_id}, is_private: {event.is_private}, chat type: {type(event.chat)}")
+        force_log(f"Menu called - Chat ID: {event.chat_id}, is_private: {event.is_private}, chat type: {type(event.chat)}", "EventHandler", "DEBUG")
         
         if event.is_private:
-            force_log("Detected as private chat, sending group-only message")
+            force_log("Detected as private chat, sending group-only message", "EventHandler")
             await event.respond("❌ This bot only works in groups. Please add this bot to a group to use it.")
             return
 
         # Check if chat is activated and trial status
         chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
-        force_log(f"Chat found: {chat is not None}, is_active: {chat.is_active if chat else 'N/A'}, created_at: {chat.created_at if chat else 'N/A'}")
+        force_log(f"Chat found: {chat is not None}, is_active: {chat.is_active if chat else 'N/A'}, created_at: {chat.created_at if chat else 'N/A'}", "EventHandler", "DEBUG")
         if not chat:
             # Chat is not registered - ask user to register first
-            force_log("Chat not found in database - not registered")
+            force_log("Chat not found in database - not registered", "EventHandler")
             message = (
                 "❌ This group is not registered.\n\n"
                 "Please use /register to register this group, or contact admin for assistance:\n"
@@ -98,7 +99,7 @@ class EventHandler:
 
             if DateUtils.now() > trial_end:
                 # Trial expired - ask user to register or contact admin
-                force_log("Trial period expired, asking user to register or contact admin")
+                force_log("Trial period expired, asking user to register or contact admin", "EventHandler")
 
                 register_message = (
                     "❌ This group's trial period has expired.\n\n"
@@ -176,19 +177,20 @@ class EventHandler:
             # Make the chat active during registration
             try:
                 await chat_service.update_chat_status(chat_id, True)
-                force_log(f"Set chat_id {chat_id} as active during registration")
+                force_log(f"Set chat_id {chat_id} as active during registration", "EventHandler")
             except Exception as status_error:
-                force_log(f"Error setting chat status to active for chat_id {chat_id}: {status_error}")
+                force_log(f"Error setting chat status to active for chat_id {chat_id}: {status_error}", "EventHandler", "ERROR")
             
             # Assign TRIAL package for normal bot registrations
             try:
                 await self.group_package_service.create_group_package(
                     chat_id, ServicePackage.TRIAL
                 )
-                force_log(f"Assigned TRIAL package to chat_id: {chat_id}")
+                force_log(f"Assigned TRIAL package to chat_id: {chat_id}", "EventHandler")
             except Exception as package_error:
                 force_log(
-                    f"Error assigning TRIAL package to chat_id {chat_id}: {package_error}"
+                    f"Error assigning TRIAL package to chat_id {chat_id}: {package_error}",
+                    "EventHandler", "ERROR"
                 )
             # Check and notify if @autosum_kh is missing after successful registration
             telethon_message, not_added = await self._check_and_notify_autosum_missing(
@@ -209,30 +211,30 @@ class EventHandler:
             await event.respond(message)
 
     async def message(self, event):
-        force_log(f"Message received: '{event.message.text}'", "EventHandler")
+        force_log(f"Message received: '{event.message.text}'", "EventHandler", "DEBUG")
         if event.message.text.startswith("/"):
-            force_log("Message is a command, skipping", "EventHandler")
+            force_log("Message is a command, skipping", "EventHandler", "DEBUG")
             return
 
         replied_message = await event.message.get_reply_message()
         if not replied_message:
-            force_log("No replied message found", "EventHandler")
+            force_log("No replied message found", "EventHandler", "DEBUG")
             return
 
-        force_log(f"Reply detected to message ID: {replied_message.id}", "EventHandler")
+        force_log(f"Reply detected to message ID: {replied_message.id}", "EventHandler", "DEBUG")
         chat_id = event.chat_id
         question = await self.conversation_service.get_question_by_chat_and_message_id(
             chat_id=chat_id, message_id=replied_message.id
         )
 
         if question:
-            force_log(f"Found question with type: {question.question_type}", "EventHandler")
+            force_log(f"Found question with type: {question.question_type}", "EventHandler", "DEBUG")
         else:
-            force_log("No question found for this message ID", "EventHandler")
+            force_log("No question found for this message ID", "EventHandler", "DEBUG")
             return
 
         if question and question.question_type == "date_input":  # type: ignore
-            force_log("Calling date input handler", "EventHandler")
+            force_log("Calling date input handler", "EventHandler", "DEBUG")
             await self.command_handler.handle_date_input_response(event, question)
             return
 
