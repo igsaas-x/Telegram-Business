@@ -71,18 +71,18 @@ class AutosumBusinessBot:
                                 original_message.message_id, update.effective_chat.id, note
                             )
                             if success:
-                                force_log(f"Added note to transaction {income_record.id}: {note[:50]}...")
+                                force_log(f"Added note to transaction {income_record.id}: {note[:50]}...", "AutosumBusinessBot")
                                 # Send a confirmation message
                                 await update.message.reply_text(
                                     f"✅ Note added to transaction: {note[:100]}{'...' if len(note) > 100 else ''}"
                                 )
                             else:
-                                force_log(f"Failed to add note to message_id {original_message.message_id}")
+                                force_log(f"Failed to add note to message_id {original_message.message_id}", "AutosumBusinessBot", "WARN")
                     else:
-                        force_log(f"Reply to bot message {original_message.message_id} but no transaction found in DB")
+                        force_log(f"Reply to bot message {original_message.message_id} but no transaction found in DB", "AutosumBusinessBot")
                 
         except Exception as e:
-            force_log(f"Error in handle_reply_message: {e}")
+            force_log(f"Error in handle_reply_message: {e}", "AutosumBusinessBot", "ERROR")
             # Don't respond with error for reply handler to avoid spam
 
     def _convert_buttons_to_keyboard(self, buttons):
@@ -230,7 +230,7 @@ class AutosumBusinessBot:
                     await self.query.edit_message_text(message, reply_markup=keyboard, parse_mode=parse_mode)
                 except Exception as e:
                     if "Message is not modified" in str(e):
-                        force_log(f"Message content is identical, skipping edit for chat {self.chat_id}")
+                        force_log(f"Message content is identical, skipping edit for chat {self.chat_id}", "AutosumBusinessBot")
                         # Just answer the callback to remove loading state
                         await self.query.answer()
                     else:
@@ -242,7 +242,7 @@ class AutosumBusinessBot:
                 try:
                     await self.query.message.delete()
                 except Exception as e:
-                    force_log(f"Error deleting message in chat {self.chat_id}: {e}")
+                    force_log(f"Error deleting message in chat {self.chat_id}: {e}", "AutosumBusinessBot", "WARN")
 
             async def respond(self, message, buttons=None, parse_mode=None):
                 """Send a new message with optional HTML parsing"""
@@ -261,7 +261,7 @@ class AutosumBusinessBot:
                     # Answer the callback to remove loading state
                     await self.query.answer()
                 except Exception as e:
-                    force_log(f"Error responding to chat {self.chat_id}: {e}")
+                    force_log(f"Error responding to chat {self.chat_id}: {e}", "AutosumBusinessBot", "ERROR")
                     raise e
 
             async def get_sender(self):
@@ -490,7 +490,7 @@ class AutosumBusinessBot:
             await query.edit_message_text("✅ បើកវេនដោយជោគជ័យ!", reply_markup=keyboard)
 
         except Exception as e:
-            force_log(f"Error: {e}", "AutosumBusinessBot")
+            force_log(f"Error: {e}", "AutosumBusinessBot", "ERROR")
             await query.edit_message_text("❌ Error", reply_markup=None)
 
     async def handle_register_skip_shift(
@@ -678,10 +678,10 @@ class AutosumBusinessBot:
                 await self.app.bot.send_message(chat_id=chat_id, text=message)
                 return True
             else:
-                force_log("Bot application not initialized")
+                force_log("Bot application not initialized", "AutosumBusinessBot", "WARN")
                 return False
         except Exception as e:
-            force_log(f"Error sending message to chat {chat_id}: {e}")
+            force_log(f"Error sending message to chat {chat_id}: {e}", "AutosumBusinessBot", "ERROR")
             return False
 
     async def stop(self):

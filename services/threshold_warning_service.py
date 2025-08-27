@@ -28,12 +28,12 @@ class ThresholdWarningService:
             if not self.telethon_client:
                 return
             
-            force_log(f"ThresholdWarningService: Checking transaction threshold for chat {chat_id}, amount: {new_income_amount} {new_income_currency}")
+            force_log(f"ThresholdWarningService: Checking transaction threshold for chat {chat_id}, amount: {new_income_amount} {new_income_currency}", "ThresholdWarningService", "DEBUG")
             
             # Get thresholds for this chat
             thresholds = await ChatService.get_chat_thresholds(chat_id)
             if not thresholds:
-                force_log(f"ThresholdWarningService: No thresholds set for chat {chat_id}")
+                force_log(f"ThresholdWarningService: No thresholds set for chat {chat_id}", "ThresholdWarningService")
                 return
             
             warnings_to_send = []
@@ -65,7 +65,7 @@ class ThresholdWarningService:
                 await self._send_warning_message(chat_id, warning_msg)
                     
         except Exception as e:
-            force_log(f"ThresholdWarningService: Error in check_and_send_warnings: {e}", "ERROR")
+            force_log(f"ThresholdWarningService: Error in check_and_send_warnings: {e}", "ThresholdWarningService", "ERROR")
     
     async def _send_warning_message(self, chat_id: int, warning_msg: str):
         """Send threshold warning message to the chat"""
@@ -75,6 +75,6 @@ class ThresholdWarningService:
                 message=warning_msg,
                 parse_mode='html'
             )
-            force_log(f"ThresholdWarningService: Sent warning to chat {chat_id}: {warning_msg}")
+            force_log(f"ThresholdWarningService: Sent warning to chat {chat_id}: {warning_msg}", "ThresholdWarningService")
         except Exception as send_error:
-            force_log(f"ThresholdWarningService: Error sending warning: {send_error}", "ERROR")
+            force_log(f"ThresholdWarningService: Error sending warning: {send_error}", "ThresholdWarningService", "ERROR")

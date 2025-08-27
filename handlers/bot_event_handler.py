@@ -54,7 +54,7 @@ class CommandHandler:
     async def handle_date_input_response(self, event, question):
         try:
             input_str = event.message.text.strip()
-            force_log(f"Date input received: '{input_str}'", "CommandHandler")
+            force_log(f"Date input received: '{input_str}'", "CommandHandler", "DEBUG")
 
             conversation_service = ConversationService()
             context_data = {}
@@ -64,16 +64,16 @@ class CommandHandler:
             current_month = context_data.get(
                 "current_month", DateUtils.now().strftime("%Y-%m")
             )
-            force_log(f"Current month: {current_month}", "CommandHandler")
+            force_log(f"Current month: {current_month}", "CommandHandler", "DEBUG")
 
             # Check if input is a date range (e.g., "1-5" or "01-05")
             if '-' in input_str and input_str.count('-') == 1:
-                force_log(f"Processing date range: {input_str}", "CommandHandler")
+                force_log(f"Processing date range: {input_str}", "CommandHandler", "DEBUG")
                 try:
                     start_day_str, end_day_str = input_str.split('-')
                     start_day = int(start_day_str.strip())
                     end_day = int(end_day_str.strip())
-                    force_log(f"Parsed range: {start_day} to {end_day}", "CommandHandler")
+                    force_log(f"Parsed range: {start_day} to {end_day}", "CommandHandler", "DEBUG")
 
                     # Validate date range
                     if start_day < 1 or start_day > 31 or end_day < 1 or end_day > 31:
@@ -106,8 +106,8 @@ class CommandHandler:
                     )
 
                     # Debug logging for date range
-                    force_log(f"Date range query: {start_date} to {end_date} (exclusive)", "CommandHandler")
-                    force_log(f"User input range: day {start_day} to {end_day}", "CommandHandler")
+                    force_log(f"Date range query: {start_date} to {end_date} (exclusive)", "CommandHandler", "DEBUG")
+                    force_log(f"User input range: day {start_day} to {end_day}", "CommandHandler", "DEBUG")
 
                     income_service = IncomeService()
                     incomes = await income_service.get_income_by_date_and_chat_id(
@@ -133,7 +133,8 @@ class CommandHandler:
                     )
                     force_log(
                         f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions",
-                        "CommandHandler")
+                        "CommandHandler"
+                    )
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
 
                 except ValueError:
@@ -180,7 +181,7 @@ class CommandHandler:
                     await event.respond("សូមវាយថ្ងៃជាលេខពី 1 ដល់ 31 ឬជួរថ្ងៃ ឧទាហរណ៍: 1-5")
 
         except Exception as e:
-            force_log(f"Error in handle_date_input_response: {e}")
+            force_log(f"Error in handle_date_input_response: {e}", "BotEventHandler", "ERROR")
             await event.respond("មានបញ្ហាក្នុងការដំណើរការសំណើរបស់អ្នក។ សូមព្យាយាមម្តងទៀត។")
 
     async def close(self, event):
@@ -333,7 +334,7 @@ class CommandHandler:
             )
             
         except Exception as e:
-            force_log(f"Error in handle_other_dates: {e}", "BotEventHandler")
+            force_log(f"Error in handle_other_dates: {e}", "BotEventHandler", "ERROR")
             await event.edit(f"Error: {str(e)}")
 
     async def handle_date_summary(self, event, data):

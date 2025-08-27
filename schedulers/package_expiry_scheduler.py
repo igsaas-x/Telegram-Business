@@ -24,7 +24,7 @@ class PackageExpiryScheduler:
         """
         Find groups with packages expiring in 3 days and send notifications to the groups.
         """
-        force_log("Package Expiry Scheduler - Checking for packages expiring in 3 days", "package_expiry_scheduler")
+        force_log("Package Expiry Scheduler - Checking for packages expiring in 3 days", "PackageExpiryScheduler")
         try:
             with get_db_session() as session:
                 # Calculate the date 3 days from now in Cambodia timezone
@@ -108,14 +108,14 @@ class PackageExpiryScheduler:
                 #         )
 
                 if expiring_packages:
-                    force_log(f"Found {len(expiring_packages)} packages expiring in 3 days")
+                    force_log(f"Found {len(expiring_packages)} packages expiring in 3 days", "PackageExpiryScheduler")
                     # Send admin alert only
                     await self.send_admin_alert(expiring_packages)
                 else:
-                    force_log("No packages found expiring in 3 days")
+                    force_log("No packages found expiring in 3 days", "PackageExpiryScheduler")
 
         except Exception as e:
-            force_log(f"Error in notify_expiring_packages: {str(e)}", "package_expiry_scheduler")
+            force_log(f"Error in notify_expiring_packages: {str(e)}", "PackageExpiryScheduler", "ERROR")
 
     async def send_admin_alert(self, expiring_packages):
         """
@@ -162,12 +162,12 @@ class PackageExpiryScheduler:
             success = await self.admin_bot_service.send_message(self.admin_group_id, admin_message)
             
             if success:
-                force_log(f"Successfully sent admin alert for {len(expiring_packages)} expiring packages", "package_expiry_scheduler")
+                force_log(f"Successfully sent admin alert for {len(expiring_packages)} expiring packages", "PackageExpiryScheduler")
             else:
-                force_log("Failed to send admin alert", "package_expiry_scheduler")
+                force_log("Failed to send admin alert", "PackageExpiryScheduler", "WARN")
                 
         except Exception as e:
-            force_log(f"Error sending admin alert: {str(e)}", "package_expiry_scheduler")
+            force_log(f"Error sending admin alert: {str(e)}", "PackageExpiryScheduler", "ERROR")
 
     async def start_scheduler(self):
         """
@@ -179,13 +179,13 @@ class PackageExpiryScheduler:
             lambda: asyncio.create_task(self.notify_expiring_packages())
         )
 
-        force_log("Package expiry scheduler started. Job will run daily at 10:00 AM Cambodia time (Asia/Phnom_Penh)", "package_expiry_scheduler")
+        force_log("Package expiry scheduler started. Job will run daily at 10:00 AM Cambodia time (Asia/Phnom_Penh)", "PackageExpiryScheduler")
 
         try:
             while True:
                 schedule.run_pending()
                 await asyncio.sleep(60)  # Check every minute
         except KeyboardInterrupt:
-            force_log("Package expiry scheduler stopped by user", "package_expiry_scheduler")
+            force_log("Package expiry scheduler stopped by user", "PackageExpiryScheduler")
         except Exception as e:
-            force_log(f"Error in scheduler: {str(e)}", "package_expiry_scheduler")
+            force_log(f"Error in scheduler: {str(e)}", "PackageExpiryScheduler", "ERROR")

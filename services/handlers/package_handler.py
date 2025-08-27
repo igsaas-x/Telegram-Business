@@ -74,7 +74,7 @@ class PackageHandler:
             await update.message.reply_text(user_info, reply_markup=reply_markup)  # type: ignore
             return 1005  # USER_CONFIRMATION_CODE
         except Exception as e:
-            force_log(f"Error in show_user_confirmation: {e}", "PackageHandler")
+            force_log(f"Error in show_user_confirmation: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error displaying user information.")  # type: ignore
             return ConversationHandler.END
 
@@ -131,7 +131,7 @@ class PackageHandler:
 
             return 1005  # USER_CONFIRMATION_CODE
         except Exception as e:
-            force_log(f"Error in user_confirmation_handler: {e}", "PackageHandler")
+            force_log(f"Error in user_confirmation_handler: {e}", "PackageHandler", "ERROR")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -223,7 +223,7 @@ class PackageHandler:
 
             return 1003  # PACKAGE_COMMAND_CODE
         except Exception as e:
-            force_log(f"Error in package_button: {e}", "PackageHandler")
+            force_log(f"Error in package_button: {e}", "PackageHandler", "ERROR")
             if query:
                 await query.edit_message_text(f"Error updating user package: {str(e)}")
             return ConversationHandler.END
@@ -261,7 +261,7 @@ class PackageHandler:
                 return PACKAGE_START_DATE_CODE
                 
         except Exception as e:
-            force_log(f"Error in process_package_start_date: {e}", "PackageHandler")
+            force_log(f"Error in process_package_start_date: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error processing start date.")  # type: ignore
             return ConversationHandler.END
 
@@ -302,7 +302,7 @@ class PackageHandler:
                 return PACKAGE_END_DATE_CODE
                 
         except Exception as e:
-            force_log(f"Error in process_package_end_date: {e}", "PackageHandler")
+            force_log(f"Error in process_package_end_date: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error processing end date.")  # type: ignore
             return ConversationHandler.END
 
@@ -346,7 +346,7 @@ class PackageHandler:
                 return AMOUNT_PAID_CODE
                 
         except Exception as e:
-            force_log(f"Error in process_amount_paid: {e}", "PackageHandler")
+            force_log(f"Error in process_amount_paid: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error processing amount paid.")  # type: ignore
             return ConversationHandler.END
 
@@ -373,7 +373,7 @@ class PackageHandler:
 
             return NOTE_CONFIRMATION_CODE
         except Exception as e:
-            force_log(f"Error in handle_note_confirmation: {e}", "PackageHandler")
+            force_log(f"Error in handle_note_confirmation: {e}", "PackageHandler", "ERROR")
             if query:
                 await query.edit_message_text(f"Error: {str(e)}")
             return ConversationHandler.END
@@ -392,7 +392,7 @@ class PackageHandler:
             return await self.finalize_package_update_with_payment(update, context)
             
         except Exception as e:
-            force_log(f"Error in process_note_input: {e}", "PackageHandler")
+            force_log(f"Error in process_note_input: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error processing note.")  # type: ignore
             return ConversationHandler.END
 
@@ -472,7 +472,7 @@ class PackageHandler:
             return ConversationHandler.END
             
         except Exception as e:
-            force_log(f"Error in finalize_package_update_with_payment: {e}", "PackageHandler")
+            force_log(f"Error in finalize_package_update_with_payment: {e}", "PackageHandler", "ERROR")
             # Check if update is from a callback query or regular message
             if hasattr(update, 'callback_query') and update.callback_query:
                 await update.callback_query.edit_message_text("Error finalizing package update.")
@@ -554,6 +554,6 @@ class PackageHandler:
             return ConversationHandler.END
             
         except Exception as e:
-            force_log(f"Error in display_package_details: {e}", "PackageHandler")
+            force_log(f"Error in display_package_details: {e}", "PackageHandler", "ERROR")
             await update.message.reply_text("Error retrieving package details.")  # type: ignore
             return ConversationHandler.END
