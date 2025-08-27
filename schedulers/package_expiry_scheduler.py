@@ -131,19 +131,19 @@ class PackageExpiryScheduler:
             # Create admin alert message
             current_time = DateUtils.now().strftime("%Y-%m-%d %H:%M")
             
-            admin_message = f"🚨 **ADMIN ALERT - Package Expiry Notifications** 🚨\n\n"
-            admin_message += f"📅 **Alert Time:** {current_time} (Cambodia Time)\n"
-            admin_message += f"⚠️ **Packages expiring in 3 days:** {len(expiring_packages)}\n\n"
-            admin_message += "📋 **Details:**\n"
+            admin_message = f" 🚨ADMIN ALERT - Package Expiry Notifications 🚨\n\n"
+            admin_message += f" 📅Alert Time: {current_time} (Cambodia Time)\n"
+            admin_message += f" ⚠️Packages expiring in 3 days: {len(expiring_packages)}\n\n"
+            admin_message += " 📋Details:\n"
             
             for i, group_package in enumerate(expiring_packages, 1):
                 chat_group = group_package.chat_group
                 expiry_date_str = group_package.package_end_date.strftime("%Y-%m-%d %H:%M")
                 group_name = chat_group.group_name if chat_group else "Unknown Group"
                 
-                admin_message += f"{i}. **{group_name}**\n"
+                admin_message += f"{i}. {group_name}\n"
                 admin_message += f"   📊 Package: {group_package.package.value}\n"
-                admin_message += f"   🆔 Chat ID: {group_package.chat_group_id}\n"
+                admin_message += f"   🆔 Chat ID: {chat_group.chat_id}\n"
                 admin_message += f"   ⏰ Expires: {expiry_date_str}\n"
                 admin_message += f"   💰 Amount Paid: ${group_package.amount_paid or 'N/A'}\n\n"
                 
@@ -152,7 +152,7 @@ class PackageExpiryScheduler:
                     admin_message += f"... and {len(expiring_packages) - i} more packages\n\n"
                     break
             
-            admin_message += "🔔 **Action Required:**\n"
+            admin_message += "🔔 Action Required:\n"
             admin_message += "• Follow up with customers for renewals\n"
             admin_message += "• Prepare for potential downgrades if not renewed\n"
             admin_message += "• Monitor payment notifications\n\n"
