@@ -179,12 +179,23 @@ class MenuHandler:
                 [InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text("ជ្រើសរើសរបាយការណ៍វេន:", reply_markup=reply_markup)
+            message_text = "ជ្រើសរើសរបាយការណ៍វេន:"
+            
+            # Try to edit the message first
+            try:
+                await query.edit_message_text(message_text, reply_markup=reply_markup)
+            except Exception as edit_error:
+                # If edit fails (including "Message is not modified"), send a new message
+                await query.message.reply_text(message_text, reply_markup=reply_markup)
             return True
 
         except Exception as e:
             force_log(f"Error in _handle_shift_summary_menu: {e}", "MenuHandler", "ERROR")
-            await query.edit_message_text(f"Error showing shift menu: {str(e)}")
+            try:
+                await query.edit_message_text(f"Error showing shift menu: {str(e)}")
+            except Exception:
+                # If edit fails, send new message
+                await query.message.reply_text(f"Error showing shift menu: {str(e)}")
             return False
 
     async def _handle_report(self, chat_id: int, report_type: str, query):
