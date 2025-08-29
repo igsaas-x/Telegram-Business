@@ -21,6 +21,7 @@ class FeatureFlags(Enum):
     SHIFT_PERMISSIONS = "shift_permissions"
     AUTOMATED_REPORTS = "automated_reports"
     API_ACCESS = "api_access"
+    HIDE_LAST_SHIFT_OF_DAY = "hide_last_shift_of_day"
     
     # Premium features
     PREMIUM_SUPPORT = "premium_support"

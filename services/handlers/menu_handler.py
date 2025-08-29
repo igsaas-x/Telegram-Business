@@ -4,6 +4,7 @@ from datetime import timedelta, datetime
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
+from common.enums import FeatureFlags
 from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report, \
     shift_report
 from helper.logger_utils import force_log
@@ -356,6 +357,18 @@ class MenuHandler:
             
             # Get shifts for the specific date (by start date for admin bot)
             shifts = await shift_service.get_shifts_by_start_date(chat_id, shift_date)
+            
+            # Check if hide last shift feature is enabled
+            group_package_service = GroupPackageService()
+            hide_last_shift = await group_package_service.has_feature(
+                chat_id, FeatureFlags.HIDE_LAST_SHIFT_OF_DAY.value
+            )
+            
+            # Filter out last shift if feature is enabled and there are multiple shifts
+            if hide_last_shift and len(shifts) > 1:
+                # Remove the last shift (highest number/latest created) 
+                shifts = shifts[:-1]
+                force_log(f"Filtered out last shift, showing {len(shifts)} shifts", "MenuHandler", "DEBUG")
             
             if not shifts:
                 await query.edit_message_text(
