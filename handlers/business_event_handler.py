@@ -384,6 +384,17 @@ class BusinessEventHandler:
             shifts = await self.shift_service.get_shifts_by_start_date(chat_id, parsed_date)
             force_log(f"Found {len(shifts)} shifts for date {parsed_date}", "BusinessEventHandler", "DEBUG")
 
+            # Check if hide last shift feature is enabled
+            hide_last_shift = await self.group_package_service.has_feature(
+                chat_id, FeatureFlags.HIDE_LAST_SHIFT_OF_DAY.value
+            )
+            
+            # Filter out last shift if feature is enabled and there are multiple shifts
+            if hide_last_shift and len(shifts) > 1:
+                # Remove the last shift (highest number/latest created) 
+                shifts = shifts[:-1]
+                force_log(f"Filtered out last shift, showing {len(shifts)} shifts", "BusinessEventHandler", "DEBUG")
+
             if not shifts:
                 message = f"""
 📅 វេនសម្រាប់ថ្ងៃ {parsed_date.strftime('%d %b %Y')}
