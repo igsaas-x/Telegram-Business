@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 from common.enums import ServicePackage, FeatureFlags
@@ -78,6 +78,11 @@ class BusinessEventHandler:
         has_weekly_monthly_reports = await self.group_package_service.has_feature(
             chat_id, FeatureFlags.WEEKLY_MONTHLY_REPORTS.value
         )
+        
+        # Check if daily reports feature is enabled
+        has_daily_reports = await self.group_package_service.has_feature(
+            chat_id, FeatureFlags.DAILY_BUSINESS_REPORTS.value
+        )
 
         if current_shift:
             buttons = [
@@ -85,6 +90,10 @@ class BusinessEventHandler:
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
             ]
+
+            # Add daily reports if feature is enabled
+            if has_daily_reports:
+                buttons.append([("📄 របាយការណ៍ប្រចាំថ្ងៃ", "daily_report")])
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
@@ -97,6 +106,10 @@ class BusinessEventHandler:
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
             ]
+
+            # Add daily reports if feature is enabled
+            if has_daily_reports:
+                buttons.append([("📄 របាយការណ៍ប្រចាំថ្ងៃ", "daily_report")])
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
@@ -169,6 +182,8 @@ class BusinessEventHandler:
             await self.show_previous_shift_report(event)
         elif data == "other_days_report":
             await self.show_other_days_report(event)
+        elif data == "daily_report":
+            await self.show_daily_report(event)
         elif data == "close_shift":
             await self.close_current_shift(event)
         elif data == "close_menu":
@@ -187,6 +202,8 @@ class BusinessEventHandler:
             await self.show_weekly_report(event, data)
         elif data.startswith("month_"):
             await self.show_monthly_report(event, data)
+        elif data.startswith("daily_summary_of_"):
+            await self.show_daily_summary_report(event, data)
         else:
             # Fallback to regular command handler
             await self.command_handler.handle_callback_query(event)
@@ -331,6 +348,77 @@ class BusinessEventHandler:
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
 
         await event.edit(message, buttons=buttons, parse_mode="HTML")
+
+    async def show_daily_report(self, event):
+        """Show daily report options - similar to standard bot daily summary"""
+        
+        today = DateUtils.now()
+        buttons = []
+
+        # Show 3 days for all chats
+        for i in range(2, -1, -1):
+            day = today - timedelta(days=i)
+            label = day.strftime("%b %d")
+            callback_value = day.strftime("%Y-%m-%d")
+            buttons.append([("ថ្ងៃទី: " + label, f"daily_summary_of_{callback_value}")])
+
+        buttons.append([("ថ្ងៃផ្សេងទៀត", "other_dates")])
+        buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
+
+        await event.edit("ឆែករបាយការណ៍ថ្ងៃ:", buttons=buttons)
+
+    async def show_daily_summary_report(self, event, data):
+        """Generate daily summary report for a specific date"""
+        chat_id = int(event.chat_id)
+        date_str = data.replace("daily_summary_of_", "")
+
+        try:
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d")
+            income_service = IncomeService()
+            incomes = await income_service.get_income_by_date_and_chat_id(
+                chat_id=chat_id,
+                start_date=selected_date,
+                end_date=selected_date + timedelta(days=1),
+            )
+
+            await event.answer(
+                f"Fetching data for {selected_date.strftime('%d %b %Y')}"
+            )
+            
+            if not incomes:
+                message = f"គ្មានប្រតិបត្តិការសម្រាប់ថ្ងៃទី {selected_date.strftime('%d %b %Y')} ទេ។"
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+                await event.edit(message, buttons=buttons)
+                return
+
+            # Get username from the requesting user
+            telegram_username = "Admin"
+            if event.sender:
+                if hasattr(event.sender, 'username') and event.sender.username:
+                    telegram_username = event.sender.username
+                elif hasattr(event.sender, 'first_name') and event.sender.first_name:
+                    telegram_username = event.sender.first_name
+
+            # Get chat object for group name
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
+
+            # Generate daily report using the helper
+            from helper.daily_report_helper import daily_transaction_report
+            message = daily_transaction_report(incomes, selected_date, telegram_username, group_name)
+            
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons, parse_mode='HTML')
+
+        except ValueError:
+            message = "ទម្រង់កាលបរិច្ឆេទមិនត្រឹមត្រូវ"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+        except Exception as e:
+            force_log(f"Error showing daily summary report: {e}", "BusinessEventHandler", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
 
     async def show_other_days_report(self, event):
         """Show other days with shifts (last 3 days with data)"""
