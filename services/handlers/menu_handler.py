@@ -364,11 +364,22 @@ class MenuHandler:
                 chat_id, FeatureFlags.HIDE_LAST_SHIFT_OF_DAY.value
             )
             
+            # Check if hide first shift feature is enabled
+            hide_first_shift = await group_package_service.has_feature(
+                chat_id, FeatureFlags.HIDE_FIRST_SHIFT_OF_DAY.value
+            )
+            
             # Filter out last shift if feature is enabled and there are multiple shifts
             if hide_last_shift and len(shifts) > 1:
                 # Remove the last shift (highest number/latest created) 
                 shifts = shifts[:-1]
                 force_log(f"Filtered out last shift, showing {len(shifts)} shifts", "MenuHandler", "DEBUG")
+            
+            # Filter out first shift if feature is enabled and there are multiple shifts
+            if hide_first_shift and len(shifts) > 1:
+                # Remove the first shift (lowest number/earliest created)
+                shifts = shifts[1:]
+                force_log(f"Filtered out first shift, showing {len(shifts)} shifts", "MenuHandler", "DEBUG")
             
             if not shifts:
                 await query.edit_message_text(
@@ -384,9 +395,11 @@ class MenuHandler:
             total_usd_amount = 0
             total_usd_count = 0
             
-            for shift in shifts:
+            for i, shift in enumerate(shifts):
                 try:
-                    report = await shift_report(shift.id, shift.number, shift_date_obj)
+                    # Adjust shift number to start from 1 when first shift is hidden
+                    display_shift_number = shift.number - 1 if hide_first_shift else shift.number
+                    report = await shift_report(shift.id, display_shift_number, shift_date_obj)
                     reports.append(report)
                     
                     # Get shift summary for totals calculation

@@ -389,11 +389,22 @@ class BusinessEventHandler:
                 chat_id, FeatureFlags.HIDE_LAST_SHIFT_OF_DAY.value
             )
             
+            # Check if hide first shift feature is enabled
+            hide_first_shift = await self.group_package_service.has_feature(
+                chat_id, FeatureFlags.HIDE_FIRST_SHIFT_OF_DAY.value
+            )
+            
             # Filter out last shift if feature is enabled and there are multiple shifts
             if hide_last_shift and len(shifts) > 1:
                 # Remove the last shift (highest number/latest created) 
                 shifts = shifts[:-1]
                 force_log(f"Filtered out last shift, showing {len(shifts)} shifts", "BusinessEventHandler", "DEBUG")
+            
+            # Filter out first shift if feature is enabled and there are multiple shifts
+            if hide_first_shift and len(shifts) > 1:
+                # Remove the first shift (lowest number/earliest created)
+                shifts = shifts[1:]
+                force_log(f"Filtered out first shift, showing {len(shifts)} shifts", "BusinessEventHandler", "DEBUG")
 
             if not shifts:
                 message = f"""
@@ -404,9 +415,11 @@ class BusinessEventHandler:
             else:
                 # Generate reports for all shifts on that date
                 reports = []
-                for shift in shifts:
+                for i, shift in enumerate(shifts):
                     try:
-                        report = await shift_report(shift.id, shift.number, selected_date)
+                        # Adjust shift number to start from 1 when first shift is hidden
+                        display_shift_number = shift.number - 1 if hide_first_shift else shift.number
+                        report = await shift_report(shift.id, display_shift_number, selected_date)
                         reports.append(report)
                     except Exception as e:
                         force_log(f"Error generating report for shift {shift.id}: {e}", "BusinessEventHandler", "ERROR")
