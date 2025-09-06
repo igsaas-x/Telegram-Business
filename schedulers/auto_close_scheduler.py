@@ -2,6 +2,7 @@ import asyncio
 
 from helper.logger_utils import force_log
 from services import ShiftService
+from services.chat_service import ChatService
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 from services.telegram_business_bot_service import AutosumBusinessBot
 
@@ -11,6 +12,7 @@ class AutoCloseScheduler:
 
     def __init__(self, bot_service: AutosumBusinessBot):
         self.shift_service = ShiftService()
+        self.chat_service = ChatService()
         self.bot_service = bot_service
         self.is_running = False
 
@@ -81,7 +83,9 @@ class AutoCloseScheduler:
             )
 
             # Check if this group uses private bot binding
-            private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat_id)
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            group_id = chat.id if chat else None
+            private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(group_id) if group_id else []
             uses_private_bot = len(private_chats) > 0
             
             # Format the summary message
