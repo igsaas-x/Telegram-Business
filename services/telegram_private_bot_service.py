@@ -361,6 +361,10 @@ class TelegramPrivateBot:
             private_chat_id = update.effective_chat.id
             force_log(f"Menu command called by user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
+            # Clear any existing context to start fresh
+            context.user_data.clear()
+            force_log(f"Cleared existing context for user {private_chat_id}", "TelegramPrivateBot", "INFO")
+            
             bound_groups = self.binding_service.get_bound_groups(private_chat_id)
             force_log(f"Found {len(bound_groups)} bound groups for user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
