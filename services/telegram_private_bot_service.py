@@ -635,10 +635,19 @@ class TelegramPrivateBot:
         menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.menu_command)],
             states={
-                MENU_SELECTION_CODE: [CallbackQueryHandler(self.handle_menu_selection)],
-                REPORT_CALLBACK_CODE: [CallbackQueryHandler(self.handle_report_callback)],
+                MENU_SELECTION_CODE: [
+                    CallbackQueryHandler(self.handle_menu_selection),
+                    CommandHandler("menu", self.menu_command)  # Allow /menu to restart
+                ],
+                REPORT_CALLBACK_CODE: [
+                    CallbackQueryHandler(self.handle_report_callback),
+                    CommandHandler("menu", self.menu_command)  # Allow /menu to restart
+                ],
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
+            fallbacks=[
+                CommandHandler("cancel", self.cancel),
+                CommandHandler("menu", self.menu_command)  # Allow /menu to restart from any state
+            ],
             per_chat=True,
             per_user=True,
         )
