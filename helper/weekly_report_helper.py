@@ -3,7 +3,7 @@ from datetime import datetime
 from .daily_report_helper import get_khmer_month_name
 
 
-def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
+def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime, group_name: str = None) -> str:
     """Generate weekly transaction report in the specified format"""
 
     # Group transactions by date
@@ -40,6 +40,10 @@ def weekly_transaction_report(incomes, start_date: datetime, end_date: datetime)
     
     # Build the report using HTML formatting
     report = f"<b>សរុបប្រតិបត្តិការ ថ្ងៃទី {start_day}-{end_day} {month_khmer} {year}</b>\n"
+    
+    # Add group name if provided
+    if group_name:
+        report += f"<b>Group: {group_name}</b>\n"
     
     # Calculate column widths for proper alignment
     # First pass: collect all formatted amounts to determine max widths

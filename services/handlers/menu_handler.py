@@ -605,8 +605,13 @@ class MenuHandler:
                 period_text = f"សប្តាហ៍ {week_number} ({start_day}-{end_day} {start_date.strftime('%B %Y')})"
                 message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
             else:
-                # Use weekly report format
-                message = weekly_transaction_report(incomes, start_date, end_date)
+                # Get chat object for group name
+                chat_service = ChatService()
+                chat = await chat_service.get_chat_by_chat_id(chat_id)
+                group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
+                
+                # Use weekly report format with group name
+                message = weekly_transaction_report(incomes, start_date, end_date, group_name)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -639,8 +644,13 @@ class MenuHandler:
                 period_text = start_date.strftime("%B %Y")
                 message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
             else:
-                # Use monthly report format
-                message = monthly_transaction_report(incomes, start_date, end_date)
+                # Get chat object for group name
+                chat_service = ChatService()
+                chat = await chat_service.get_chat_by_chat_id(chat_id)
+                group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
+                
+                # Use monthly report format with group name
+                message = monthly_transaction_report(incomes, start_date, end_date, group_name)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -695,6 +705,10 @@ class MenuHandler:
         if not incomes:
             return f"គ្មានប្រតិបត្តិការសម្រាប់ {title} ទេ។"
 
+        # Get chat object for group name (needed for all report types that use group_name)
+        chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+        group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
+
         # For daily reports, use the new format
         if report_type == "daily":
             # Get username from the requesting user (who clicked the button)
@@ -706,17 +720,13 @@ class MenuHandler:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
             
-            # Get chat object for group name
-            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
-            group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
-            
             return daily_transaction_report(incomes, now, telegram_username, group_name)
         elif report_type == "weekly":
-            # Use the new weekly format
-            return weekly_transaction_report(incomes, start_date, end_date)
+            # Use the new weekly format with group name
+            return weekly_transaction_report(incomes, start_date, end_date, group_name)
         elif report_type == "monthly":
-            # Use the new monthly format
-            return monthly_transaction_report(incomes, start_date, end_date)
+            # Use the new monthly format with group name
+            return monthly_transaction_report(incomes, start_date, end_date, group_name)
         
         # For other reports, use the old format
         from helper import total_summary_report
