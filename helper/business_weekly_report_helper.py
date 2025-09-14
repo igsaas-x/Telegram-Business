@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
 
-from services.income_balance_service import IncomeService
-from services.shift_service import ShiftService
 from .daily_report_helper import get_khmer_month_name
 
 
 async def business_weekly_transaction_report(chat_id: int, start_date: datetime, end_date: datetime, group_name: str = None) -> str:
     """Generate shift-based weekly transaction report for business groups"""
+    
+    # Import services here to avoid circular imports
+    from services.income_balance_service import IncomeService
+    from services.shift_service import ShiftService
     
     shift_service = ShiftService()
     income_service = IncomeService()
