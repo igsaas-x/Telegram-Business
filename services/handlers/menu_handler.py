@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from common.enums import FeatureFlags
 from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report, \
-    shift_report, business_weekly_transaction_report
+    shift_report, business_weekly_transaction_report, business_monthly_transaction_report
 from helper.logger_utils import force_log
 from services import ChatService, IncomeService, ShiftService, GroupPackageService
 
@@ -633,7 +633,7 @@ class MenuHandler:
 
     @staticmethod
     async def _handle_month_summary(chat_id: int, callback_data: str, query):
-        """Handle month summary like normal bot"""
+        """Handle month summary - use shift-based reporting for business groups"""
         try:
             
             start_date = datetime.strptime(
@@ -643,24 +643,34 @@ class MenuHandler:
             _, last_day = monthrange(start_date.year, start_date.month)
             end_date = start_date.replace(day=last_day) + timedelta(days=1)
             
-            income_service = IncomeService()
-            incomes = await income_service.get_income_by_date_and_chat_id(
-                chat_id=chat_id,
-                start_date=start_date,
-                end_date=end_date,
-            )
-
-            if not incomes:
-                period_text = start_date.strftime("%B %Y")
-                message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+            # Check if this is a business group
+            group_package_service = GroupPackageService()
+            group_package = await group_package_service.get_package_by_chat_id(chat_id)
+            is_business_group = group_package and group_package.package and group_package.package.value == 'BUSINESS'
+            
+            # Get chat object for group name
+            chat_service = ChatService()
+            chat = await chat_service.get_chat_by_chat_id(chat_id)
+            group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
+            
+            if is_business_group:
+                # Use shift-based reporting for business groups
+                message = await business_monthly_transaction_report(chat_id, start_date, end_date, group_name)
             else:
-                # Get chat object for group name
-                chat_service = ChatService()
-                chat = await chat_service.get_chat_by_chat_id(chat_id)
-                group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
-                
-                # Use monthly report format with group name
-                message = monthly_transaction_report(incomes, start_date, end_date, group_name)
+                # Use regular reporting for other groups
+                income_service = IncomeService()
+                incomes = await income_service.get_income_by_date_and_chat_id(
+                    chat_id=chat_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+
+                if not incomes:
+                    period_text = start_date.strftime("%B %Y")
+                    message = f"គ្មានប្រតិបត្តិការសម្រាប់ {period_text} ទេ។"
+                else:
+                    # Use monthly report format with group name
+                    message = monthly_transaction_report(incomes, start_date, end_date, group_name)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
