@@ -422,13 +422,13 @@ class TelegramPrivateBot:
         # Daily option - different callback based on package
         if package_type and package_type.value in ['TRIAL', 'STANDARD']:
             keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
-            keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
         elif package_type and package_type.value in ['BASIC']:
             # For FREE and BASIC packages, use current_date_summary
             keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="current_date_summary")])
         
         # Package-based options
         if package_type and package_type.value not in ['BASIC']:
+            keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
             keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
 
         keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
