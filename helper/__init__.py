@@ -1,3 +1,4 @@
+from .business_weekly_report_helper import business_weekly_transaction_report
 from .credential_loader import CredentialLoader
 from .daily_report_helper import daily_transaction_report
 from .dateutils import DateUtils
@@ -16,6 +17,7 @@ __all__ = [
     "total_summary_report",
     "daily_transaction_report",
     "weekly_transaction_report",
+    "business_weekly_transaction_report",
     "monthly_transaction_report",
     "shift_report",
     "shift_report_format",
