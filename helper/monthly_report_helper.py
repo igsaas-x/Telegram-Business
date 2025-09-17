@@ -3,7 +3,7 @@ from datetime import datetime
 from .daily_report_helper import get_khmer_month_name
 
 
-def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime) -> str:
+def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime, group_name: str = None) -> str:
     """Generate monthly transaction report in format similar to weekly report"""
     from datetime import date
 
@@ -40,6 +40,10 @@ def monthly_transaction_report(incomes, start_date: datetime, end_date: datetime
     
     # Build the report using HTML formatting
     report = f"<b>សរុបប្រតិបត្តិការ {month_khmer} {year}</b>\n"
+    
+    # Add group name if provided
+    if group_name:
+        report += f"<b>Group: {group_name}</b>\n"
     
     # Determine the actual end date for the report
     # If the month hasn't ended yet, only show up to current date

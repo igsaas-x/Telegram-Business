@@ -361,6 +361,10 @@ class TelegramPrivateBot:
             private_chat_id = update.effective_chat.id
             force_log(f"Menu command called by user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
+            # Clear any existing context to start fresh
+            context.user_data.clear()
+            force_log(f"Cleared existing context for user {private_chat_id}", "TelegramPrivateBot", "INFO")
+            
             bound_groups = self.binding_service.get_bound_groups(private_chat_id)
             force_log(f"Found {len(bound_groups)} bound groups for user {private_chat_id}", "TelegramPrivateBot", "INFO")
             
@@ -418,13 +422,13 @@ class TelegramPrivateBot:
         # Daily option - different callback based on package
         if package_type and package_type.value in ['TRIAL', 'STANDARD']:
             keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
-            keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
         elif package_type and package_type.value in ['BASIC']:
             # For FREE and BASIC packages, use current_date_summary
             keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="current_date_summary")])
         
         # Package-based options
         if package_type and package_type.value not in ['BASIC']:
+            keyboard.append([InlineKeyboardButton("ប្រចាំសប្តាហ៍", callback_data="weekly_summary")])
             keyboard.append([InlineKeyboardButton("ប្រចាំខែ", callback_data="monthly_summary")])
 
         keyboard.append([InlineKeyboardButton("បិទ", callback_data="close_menu")])
@@ -631,10 +635,19 @@ class TelegramPrivateBot:
         menu_handler = ConversationHandler(
             entry_points=[CommandHandler("menu", self.menu_command)],
             states={
-                MENU_SELECTION_CODE: [CallbackQueryHandler(self.handle_menu_selection)],
-                REPORT_CALLBACK_CODE: [CallbackQueryHandler(self.handle_report_callback)],
+                MENU_SELECTION_CODE: [
+                    CallbackQueryHandler(self.handle_menu_selection),
+                    CommandHandler("menu", self.menu_command)  # Allow /menu to restart
+                ],
+                REPORT_CALLBACK_CODE: [
+                    CallbackQueryHandler(self.handle_report_callback),
+                    CommandHandler("menu", self.menu_command)  # Allow /menu to restart
+                ],
             },
-            fallbacks=[CommandHandler("cancel", self.cancel)],
+            fallbacks=[
+                CommandHandler("cancel", self.cancel),
+                CommandHandler("menu", self.menu_command)  # Allow /menu to restart from any state
+            ],
             per_chat=True,
             per_user=True,
         )

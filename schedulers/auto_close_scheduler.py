@@ -2,6 +2,8 @@ import asyncio
 
 from helper.logger_utils import force_log
 from services import ShiftService
+from services.chat_service import ChatService
+from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 from services.telegram_business_bot_service import AutosumBusinessBot
 
 
@@ -10,6 +12,7 @@ class AutoCloseScheduler:
 
     def __init__(self, bot_service: AutosumBusinessBot):
         self.shift_service = ShiftService()
+        self.chat_service = ChatService()
         self.bot_service = bot_service
         self.is_running = False
 
@@ -79,22 +82,41 @@ class AutoCloseScheduler:
                 shift_id, chat_id
             )
 
+            # Check if this group uses private bot binding
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            group_id = chat.id if chat else None
+            private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(group_id) if group_id else []
+            uses_private_bot = len(private_chats) > 0
+            
             # Format the summary message
-            if summary["transaction_count"] > 0:
-                # Format currency breakdown
-                currency_details = []
-                for currency, data in summary['currencies'].items():
-                    if currency == 'USD':
-                        currency_details.append(f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
-                    elif currency == 'KHR':
-                        khr_amount = int(data['amount'])
-                        currency_details.append(f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)")
-                    else:
-                        currency_details.append(f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
-                
-                currency_text = "\n".join(currency_details)
-
+            if uses_private_bot:
+                # For private groups, don't include transaction summary
                 message = f"""
+🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
+
+📝 ព័ត៌មានលម្អិត:
+• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
+• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
+
+⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
+                """.strip()
+            else:
+                # For regular groups, include transaction summary as before
+                if summary["transaction_count"] > 0:
+                    # Format currency breakdown
+                    currency_details = []
+                    for currency, data in summary['currencies'].items():
+                        if currency == 'USD':
+                            currency_details.append(f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
+                        elif currency == 'KHR':
+                            khr_amount = int(data['amount'])
+                            currency_details.append(f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)")
+                        else:
+                            currency_details.append(f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
+                    
+                    currency_text = "\n".join(currency_details)
+
+                    message = f"""
 🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
 
 📊 សរុបចំណូល:
@@ -105,9 +127,9 @@ class AutoCloseScheduler:
 • ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
-                """.strip()
-            else:
-                message = f"""
+                    """.strip()
+                else:
+                    message = f"""
 🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
 
 📊 សរុបចំណូល:
@@ -118,7 +140,7 @@ class AutoCloseScheduler:
 • ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
 
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
-                """.strip()
+                    """.strip()
 
             # Send message
             success = await self.bot_service.send_message(chat_id, message)
