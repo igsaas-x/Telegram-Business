@@ -375,7 +375,7 @@ class AutosumBusinessBot:
 
             # Register the chat
             success, reg_message = await self.chat_service.register_chat_id(
-                chat_id, f"[BUSINESS] {chat_title}", db_user, None
+                chat_id, f"{chat_title}", db_user, None
             )
 
             if success:

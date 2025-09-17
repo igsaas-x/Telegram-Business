@@ -130,7 +130,7 @@ class BusinessEventHandler:
             force_log("Failed to register business chat", "BusinessEventHandler", "ERROR")
 
         success, message = await self.chat_service.register_chat_id(
-            chat_id, f"[BUSINESS] {chat_title}", user, None
+            chat_id, f"{chat_title}", user, None
         )
 
         if success:
@@ -266,6 +266,10 @@ class BusinessEventHandler:
                         hours = int(total_seconds // 3600)
                         minutes = int((total_seconds % 3600) // 60)
 
+                # Get chat info for group name
+                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                group_name = chat.group_name if chat else None
+
                 # Use new shift report format
                 message = current_shift_report_format(
                     current_shift.number,
@@ -273,7 +277,8 @@ class BusinessEventHandler:
                     current_shift.start_time,
                     shift_summary,
                     hours,
-                    minutes
+                    minutes,
+                    group_name=group_name
                 )
 
                 buttons = [
@@ -312,6 +317,10 @@ class BusinessEventHandler:
                     shift.id, chat_id
                 )
 
+                # Get chat info for group name
+                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                group_name = chat.group_name if chat else None
+
                 # Use new shift report format for closed shift
                 message = shift_report_format(
                     shift.number,
@@ -320,7 +329,8 @@ class BusinessEventHandler:
                     shift.end_time,
                     shift_summary,
                     True,
-                    auto_closed=False  # We don't know if it was auto-closed from this context
+                    auto_closed=False,  # We don't know if it was auto-closed from this context
+                    group_name=group_name
                 )
 
                 buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
@@ -402,11 +412,15 @@ class BusinessEventHandler:
 🔴 គ្មានវេនសម្រាប់ថ្ងៃនេះ។
 """
             else:
+                # Get chat info for group name
+                chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                group_name = chat.group_name if chat else None
+
                 # Generate reports for all shifts on that date
                 reports = []
                 for shift in shifts:
                     try:
-                        report = await shift_report(shift.id, shift.number, selected_date)
+                        report = await shift_report(shift.id, shift.number, selected_date, group_name)
                         reports.append(report)
                     except Exception as e:
                         force_log(f"Error generating report for shift {shift.id}: {e}", "BusinessEventHandler", "ERROR")
@@ -582,6 +596,10 @@ class BusinessEventHandler:
                     hours = int(total_seconds // 3600)
                     minutes = int((total_seconds % 3600) // 60)
 
+                    # Get chat info for group name
+                    chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+                    group_name = chat.group_name if chat else None
+
                     # Use new shift report format for closed shift
                     shift_report = shift_report_format(
                         closed_shift.number,
@@ -590,11 +608,11 @@ class BusinessEventHandler:
                         closed_shift.end_time,
                         shift_summary,
                         True,
-                        auto_closed=False  # Manual close
+                        auto_closed=False,  # Manual close
+                        group_name=group_name
                     )
 
                     # Check if this group is bound to private groups
-                    chat = await self.chat_service.get_chat_by_chat_id(chat_id)
                     private_chats = None
                     if chat:
                         private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)

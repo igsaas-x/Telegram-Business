@@ -4,7 +4,7 @@ from helper import DateUtils
 from services import ShiftService
 
 
-async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -> str:
+async def shift_report(shift_id: int, shift_number: int, shift_date: datetime, group_name: str = None) -> str:
     """Generate shift report by ID - wrapper function for compatibility"""
 
     shift_service = ShiftService()
@@ -21,7 +21,7 @@ async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -
     if shift.end_time:  # Closed shift
         return shift_report_format(
             shift_number, shift_date, shift.start_time,
-            shift.end_time, shift_summary, True, auto_closed=False
+            shift.end_time, shift_summary, True, auto_closed=False, group_name=group_name
         )
     else:  # Active shift
         now = DateUtils.now()
@@ -32,7 +32,7 @@ async def shift_report(shift_id: int, shift_number: int, shift_date: datetime) -
 
         return current_shift_report_format(
             shift_number, shift_date, shift.start_time,
-            shift_summary, hours, minutes
+            shift_summary, hours, minutes, group_name=group_name
         )
 
 
@@ -41,7 +41,8 @@ def shift_report_format(shift_number: int, shift_date: datetime,
                         end_time: datetime,
                         shift_summary: dict,
                         is_closed: bool = False,
-                        auto_closed: bool = False) -> str:
+                        auto_closed: bool = False,
+                        group_name: str = None) -> str:
     """Generate shift report in the specified format"""
 
     # Format date as DD-Month-YYYY (e.g., 17-July-2024)
@@ -58,7 +59,10 @@ def shift_report_format(shift_number: int, shift_date: datetime,
     end_time_str = end_time.strftime('%I:%M %p') if end_time else "កំពុងបន្ត"
 
     # Build the report
-    report = f"🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {start_time_str} - {end_time_str}\n"
+    report = ""
+    if group_name:
+        report += f"🏪 <b>ក្រុម:</b> {group_name}\n"
+    report += f"🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {start_time_str} - {end_time_str}\n"
     if is_closed:
         report += f"✅ <b>ស្ថានភាព:</b> បានបិទ\n"
     else:
@@ -105,7 +109,7 @@ def shift_report_format(shift_number: int, shift_date: datetime,
 
 
 def current_shift_report_format(shift_number: int, shift_date: datetime, start_time: datetime,
-                                shift_summary: dict, duration_hours: int = 0, duration_minutes: int = 0) -> str:
+                                shift_summary: dict, duration_hours: int = 0, duration_minutes: int = 0, group_name: str = None) -> str:
     """Generate current (ongoing) shift report format"""
 
     # Format date as DD-Month-YYYY (e.g., 17-July-2024)
@@ -115,7 +119,10 @@ def current_shift_report_format(shift_number: int, shift_date: datetime, start_t
     start_time_str = start_time.strftime('%I:%M %p')
 
     # Build the report for ongoing shift
-    report = (f"🔢 វេនទី{shift_number} ថ្ងៃទី: {formatted_date} | {start_time_str}\n"
+    report = ""
+    if group_name:
+        report += f"🏪 <b>ក្រុម:</b> {group_name}\n"
+    report += (f"🔢 វេនទី{shift_number} ថ្ងៃទី: {formatted_date} | {start_time_str}\n"
               f"🟢 ស្ថានភាព: កំពុងបន្ត\n")
     report += "សរុប:\n"
 

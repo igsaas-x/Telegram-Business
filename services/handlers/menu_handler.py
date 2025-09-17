@@ -295,9 +295,13 @@ class MenuHandler:
                 )
                 return ConversationHandler.END
             
+            # Get chat info for group name
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            group_name = chat.group_name if chat else None
+
             # Get shift report
-            report = await shift_report(shift.id, shift.number, current_date)
-            
+            report = await shift_report(shift.id, shift.number, current_date, group_name)
+
             await query.edit_message_text(report, parse_mode='HTML')
             return True
 
@@ -384,9 +388,13 @@ class MenuHandler:
             total_usd_amount = 0
             total_usd_count = 0
             
+            # Get chat info for group name
+            chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+            group_name = chat.group_name if chat else None
+
             for shift in shifts:
                 try:
-                    report = await shift_report(shift.id, shift.number, shift_date_obj)
+                    report = await shift_report(shift.id, shift.number, shift_date_obj, group_name)
                     reports.append(report)
                     
                     # Get shift summary for totals calculation
