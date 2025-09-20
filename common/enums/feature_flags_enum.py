@@ -22,6 +22,7 @@ class FeatureFlags(Enum):
     AUTOMATED_REPORTS = "automated_reports"
     API_ACCESS = "api_access"
     HIDE_LAST_SHIFT_OF_DAY = "hide_last_shift_of_day"
+    DAILY_SUMMARY_ON_SHIFT_CLOSE = "daily_summary_on_shift_close"
     
     # Premium features
     PREMIUM_SUPPORT = "premium_support"

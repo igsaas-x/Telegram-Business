@@ -81,3 +81,55 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
         report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
     
     return report
+
+
+async def daily_summary_for_shift_close(chat_id: int, close_date: datetime, group_name: str = None) -> str:
+    """Generate daily summary for shift close - shows all transactions for the day when feature is enabled"""
+    from services import IncomeService
+    from datetime import timedelta
+
+    income_service = IncomeService()
+
+    # Get all transactions for the entire day (not just the shift)
+    start_of_day = close_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+
+    incomes = await income_service.get_income_by_date_and_chat_id(
+        chat_id=chat_id,
+        start_date=start_of_day,
+        end_date=end_of_day
+    )
+
+    if not incomes:
+        return "\n\n📊 <b>សរុបថ្ងៃនេះ:</b> គ្មានប្រតិបត្តិការ"
+
+    # Calculate totals for the entire day
+    totals = {"KHR": 0, "USD": 0}
+    transaction_counts = {"KHR": 0, "USD": 0}
+
+    for income in incomes:
+        currency = income.currency
+        if currency in totals:
+            totals[currency] += income.amount
+            transaction_counts[currency] += 1
+
+    # Format the daily summary section
+    summary = "\n\n" + "——----- summary ———----" + "\n"
+    summary += f"📊 <b>សរុបថ្ងៃ {close_date.strftime('%d-%m-%Y')}:</b>\n"
+
+    # Format totals with same alignment as shift reports
+    khr_formatted = f"{totals['KHR']:,.0f}"
+    usd_formatted = f"{totals['USD']:.2f}"
+
+    # Calculate spacing for alignment
+    max_amount_length = max(len(khr_formatted), len(usd_formatted))
+    khr_spaces_needed = max_amount_length - len(khr_formatted) + 4
+    usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
+
+    # Wrap totals in pre tags for proper alignment
+    total_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {transaction_counts['KHR']}\n"
+    total_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {transaction_counts['USD']}"
+
+    summary += f"<pre>{total_data}</pre>"
+
+    return summary

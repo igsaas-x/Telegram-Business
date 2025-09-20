@@ -142,6 +142,22 @@ class AutoCloseScheduler:
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
                     """.strip()
 
+            # Check if daily summary on shift close feature is enabled
+            from services import GroupPackageService
+            from common.enums import FeatureFlags
+
+            group_package_service = GroupPackageService()
+            daily_summary_enabled = await group_package_service.has_feature(
+                chat_id, FeatureFlags.DAILY_SUMMARY_ON_SHIFT_CLOSE.value
+            )
+
+            if daily_summary_enabled:
+                # Add daily summary to the message
+                from helper import daily_summary_for_shift_close
+                group_name = chat.group_name if chat else None
+                daily_summary = await daily_summary_for_shift_close(chat_id, shift.end_time, group_name)
+                message += daily_summary
+
             # Send message
             success = await self.bot_service.send_message(chat_id, message)
             if success:

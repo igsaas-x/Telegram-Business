@@ -1,7 +1,7 @@
 from .business_monthly_report_helper import business_monthly_transaction_report
 from .business_weekly_report_helper import business_weekly_transaction_report
 from .credential_loader import CredentialLoader
-from .daily_report_helper import daily_transaction_report
+from .daily_report_helper import daily_transaction_report, daily_summary_for_shift_close
 from .dateutils import DateUtils
 from .logger_utils import force_log
 from .message_parser import extract_amount_and_currency, extract_trx_id, extract_s7pos_amount_and_currency
@@ -17,6 +17,7 @@ __all__ = [
     "extract_s7pos_amount_and_currency",
     "total_summary_report",
     "daily_transaction_report",
+    "daily_summary_for_shift_close",
     "weekly_transaction_report",
     "business_weekly_transaction_report",
     "monthly_transaction_report",
