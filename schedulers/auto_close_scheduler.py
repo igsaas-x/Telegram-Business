@@ -88,59 +88,68 @@ class AutoCloseScheduler:
             private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(group_id) if group_id else []
             uses_private_bot = len(private_chats) > 0
             
-            # Format the summary message
+            # Ensure shift has end_time (should be closed by auto-close)
+            if not shift.end_time:
+                force_log(f"Shift {shift_id} has no end_time, cannot generate summary", "AutoCloseScheduler", "WARN")
+                return
+
+            # Calculate shift duration
+            duration = shift.end_time - shift.start_time
+            total_seconds = abs(duration.total_seconds())
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+
+            # Format date for the report header
+            report_date = shift.end_time.strftime('%Y-%m-%d')
+
+            # Get group name
+            group_name = chat.group_name if chat and chat.group_name else "ក្រុម"
+
+            # Format currency data
+            currencies = summary.get("currencies", {})
+            khr_data = currencies.get("KHR", {"amount": 0, "count": 0})
+            usd_data = currencies.get("USD", {"amount": 0, "count": 0})
+
+            # Format KHR and USD amounts
+            khr_amount = int(khr_data["amount"])
+            khr_count = khr_data["count"]
+            usd_amount = usd_data["amount"]
+            usd_count = usd_data["count"]
+
+            # Format currency data for alignment
+            khr_formatted = f"{khr_amount:,}"
+            usd_formatted = f"{usd_amount:.2f}"
+
+            # Calculate spacing for alignment
+            max_amount_length = max(len(khr_formatted), len(usd_formatted))
+            khr_spaces_needed = max_amount_length - len(khr_formatted) + 4
+            usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
+
+            # Format the summary message with HTML
             if uses_private_bot:
                 # For private groups, don't include transaction summary
-                message = f"""
-🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
+                message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
 
-📝 ព័ត៌មានលម្អិត:
-• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
-• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
+🏪 <b>ក្រុម:</b> {group_name}
+🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {shift.start_time.strftime('%I:%M %p')} - {shift.end_time.strftime('%I:%M %p')}
+✅ <b>ស្ថានភាព:</b> បានបិទ
 
-⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
-                """.strip()
+⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី
+⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ"""
             else:
-                # For regular groups, include transaction summary as before
-                if summary["transaction_count"] > 0:
-                    # Format currency breakdown
-                    currency_details = []
-                    for currency, data in summary['currencies'].items():
-                        if currency == 'USD':
-                            currency_details.append(f"• {currency}: ${data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
-                        elif currency == 'KHR':
-                            khr_amount = int(data['amount'])
-                            currency_details.append(f"• {currency}: ៛{khr_amount:,} ({data['count']} ប្រតិបត្តិការ)")
-                        else:
-                            currency_details.append(f"• {currency}: {data['amount']:,.2f} ({data['count']} ប្រតិបត្តិការ)")
-                    
-                    currency_text = "\n".join(currency_details)
+                # For regular groups, include transaction summary with HTML formatting
+                tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+                tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
 
-                    message = f"""
-🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
+                message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
 
-📊 សរុបចំណូល:
-{currency_text}
-
-📝 ព័ត៌មានលម្អិត:
-• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
-• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
-
-⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
-                    """.strip()
-                else:
-                    message = f"""
-🔒 វេន #{shift_number} បានបិទដោយស្វ័យប្រវត្តិ
-
-📊 សរុបចំណូល:
-• មិនមានប្រតិបត្តិការ
-
-📝 ព័ត៌មានលម្អិត:
-• ពេលចាប់ផ្តើមវេន: {shift.start_time.strftime('%I:%M:%S %p')}
-• ពេលបញ្ចប់វេន: {shift.end_time.strftime('%I:%M:%S %p')}
-
-⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ
-                    """.strip()
+🏪 <b>ក្រុម:</b> {group_name}
+🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {shift.start_time.strftime('%I:%M %p')} - {shift.end_time.strftime('%I:%M %p')}
+✅ <b>ស្ថានភាព:</b> បានបិទ
+<b>សរុបប្រតិបត្តការណ៍:</b>
+<pre>{tabular_data}</pre>
+⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី
+⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ"""
 
             # Check if daily summary on shift close feature is enabled
             from services import GroupPackageService
@@ -152,14 +161,58 @@ class AutoCloseScheduler:
             )
 
             if daily_summary_enabled:
-                # Add daily summary to the message
-                from helper import daily_summary_for_shift_close
-                group_name = chat.group_name if chat else None
-                daily_summary = await daily_summary_for_shift_close(chat_id, shift.end_time, group_name)
-                message += daily_summary
+                # Add daily summary to the message in the requested format
+                from services import IncomeService
+                from datetime import timedelta
 
-            # Send message
-            success = await self.bot_service.send_message(chat_id, message)
+                income_service = IncomeService()
+
+                # Get all transactions for the entire day (not just the shift)
+                start_of_day = shift.end_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_of_day = start_of_day + timedelta(days=1)
+
+                incomes = await income_service.get_income_by_date_and_chat_id(
+                    chat_id=chat_id,
+                    start_date=start_of_day,
+                    end_date=end_of_day
+                )
+
+                if incomes:
+                    # Calculate totals for the entire day
+                    daily_totals = {"KHR": 0, "USD": 0}
+                    daily_counts = {"KHR": 0, "USD": 0}
+
+                    for income in incomes:
+                        currency = income.currency
+                        if currency in daily_totals:
+                            daily_totals[currency] += income.amount
+                            daily_counts[currency] += 1
+
+                    # Format daily summary in requested format with HTML
+                    daily_khr_amount = int(daily_totals['KHR'])
+                    daily_usd_amount = daily_totals['USD']
+
+                    # Format daily summary data for alignment
+                    daily_khr_formatted = f"{daily_khr_amount:,}"
+                    daily_usd_formatted = f"{daily_usd_amount:.2f}"
+
+                    # Calculate spacing for daily summary alignment
+                    daily_max_length = max(len(daily_khr_formatted), len(daily_usd_formatted))
+                    daily_khr_spaces = daily_max_length - len(daily_khr_formatted) + 4
+                    daily_usd_spaces = daily_max_length - len(daily_usd_formatted) + 4
+
+                    daily_tabular_data = f"KHR: {daily_khr_formatted}{' ' * daily_khr_spaces}| ប្រតិបត្តិការ: {daily_counts['KHR']}\n"
+                    daily_tabular_data += f"USD: {daily_usd_formatted}{' ' * daily_usd_spaces}| ប្រតិបត្តិការ: {daily_counts['USD']}"
+
+                    message += f"""
+
+
+——----- summary ———----
+📊 <b>សរុបថ្ងៃ {report_date}:</b>
+<pre>{daily_tabular_data}</pre>"""
+
+            # Send message with HTML parse mode
+            success = await self.bot_service.send_message(chat_id, message, parse_mode="HTML")
             if success:
                 force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler")
             else:

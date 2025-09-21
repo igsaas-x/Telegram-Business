@@ -671,11 +671,11 @@ class AutosumBusinessBot:
             force_log(f"Error starting AutosumBusinessBot: {e}", "AutosumBusinessBot")
             raise
 
-    async def send_message(self, chat_id: int, message: str) -> bool:
+    async def send_message(self, chat_id: int, message: str, parse_mode: str = None) -> bool:
         """Send a message to a specific chat"""
         try:
             if self.app and self.app.bot:
-                await self.app.bot.send_message(chat_id=chat_id, text=message)
+                await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode=parse_mode)
                 return True
             else:
                 force_log("Bot application not initialized", "AutosumBusinessBot", "WARN")
