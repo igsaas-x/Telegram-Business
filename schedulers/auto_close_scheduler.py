@@ -125,27 +125,11 @@ class AutoCloseScheduler:
             khr_spaces_needed = max_amount_length - len(khr_formatted) + 4
             usd_spaces_needed = max_amount_length - len(usd_formatted) + 4
 
-            # Format the summary message with HTML
-            if uses_private_bot:
-                # For private groups, include transaction summary in the same format
-                tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
-                tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
+            # Build the common message format for both private and regular groups
+            tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+            tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
 
-                message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
-
-🏪 <b>ក្រុម:</b> {group_name}
-🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {shift.start_time.strftime('%I:%M %p')} - {shift.end_time.strftime('%I:%M %p')}
-✅ <b>ស្ថានភាព:</b> បានបិទ
-<b>សរុបប្រតិបត្តការណ៍:</b>
-<pre>{tabular_data}</pre>
-⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី
-⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ"""
-            else:
-                # For regular groups, include transaction summary with HTML formatting
-                tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
-                tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
-
-                message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
+            message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
 
 🏪 <b>ក្រុម:</b> {group_name}
 🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {shift.start_time.strftime('%I:%M %p')} - {shift.end_time.strftime('%I:%M %p')}
@@ -234,14 +218,33 @@ class AutoCloseScheduler:
 📊 <b>សរុបថ្ងៃ {report_date}:</b>
 <pre>{daily_tabular_data}</pre>"""
 
-            # Send message with HTML parse mode
-            success = await self.bot_service.send_message(chat_id, message, parse_mode="HTML")
-            if success:
-                force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler")
+            # Send message using appropriate bot service
+            if uses_private_bot and private_chats:
+                # Send to private chat using private bot from registry
+                from services.bot_registry import BotRegistry
+                bot_registry = BotRegistry()
+                private_bot = bot_registry.get_private_bot()
+
+                if private_bot:
+                    # Send to all private chats bound to this group
+                    success = True
+                    for private_chat_id in private_chats:
+                        private_success = await private_bot.send_message(private_chat_id, message)
+                        if not private_success:
+                            success = False
+                            force_log(f"Failed to send to private chat {private_chat_id}", "AutoCloseScheduler", "WARN")
+
+                    if success:
+                        force_log(f"Sent shift summary for shift {shift_id} to {len(private_chats)} private chats", "AutoCloseScheduler")
+                else:
+                    force_log("Private bot not available, cannot send to private chats", "AutoCloseScheduler", "WARN")
             else:
-                force_log(
-                    f"Failed to send shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler", "WARN"
-                )
+                # Send to regular group using business bot
+                success = await self.bot_service.send_message(chat_id, message, parse_mode="HTML")
+                if success:
+                    force_log(f"Sent shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler")
+                else:
+                    force_log(f"Failed to send shift summary for shift {shift_id} to chat {chat_id}", "AutoCloseScheduler", "WARN")
 
         except Exception as e:
             force_log(
