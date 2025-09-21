@@ -99,8 +99,8 @@ class AutoCloseScheduler:
             hours = int(total_seconds // 3600)
             minutes = int((total_seconds % 3600) // 60)
 
-            # Format date for the report header
-            report_date = shift.end_time.strftime('%Y-%m-%d')
+            # Format date for the report header using shift start date
+            report_date = shift.start_time.strftime('%Y-%m-%d')
 
             # Get group name
             group_name = chat.group_name if chat and chat.group_name else "ក្រុម"
@@ -127,13 +127,17 @@ class AutoCloseScheduler:
 
             # Format the summary message with HTML
             if uses_private_bot:
-                # For private groups, don't include transaction summary
+                # For private groups, include transaction summary in the same format
+                tabular_data = f"KHR: {khr_formatted}{' ' * khr_spaces_needed}| ប្រតិបត្តិការ: {khr_count}\n"
+                tabular_data += f"USD: {usd_formatted}{' ' * usd_spaces_needed}| ប្រតិបត្តិការ: {usd_count}"
+
                 message = f"""របាយការណ៍ថ្ងៃ៖{report_date}
 
 🏪 <b>ក្រុម:</b> {group_name}
 🔢 <b>វេនទី:</b> {shift_number} | ម៉ោង: {shift.start_time.strftime('%I:%M %p')} - {shift.end_time.strftime('%I:%M %p')}
 ✅ <b>ស្ថានភាព:</b> បានបិទ
-
+<b>សរុបប្រតិបត្តការណ៍:</b>
+<pre>{tabular_data}</pre>
 ⏱️ <b>រយ:ពេល:</b> {hours}ម៉ោង:{minutes}នាទី
 ⚡ បិទដោយ: ការកំណត់ពេលវេលាស្វ័យប្រវត្តិ"""
             else:
