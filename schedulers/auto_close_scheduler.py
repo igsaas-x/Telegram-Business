@@ -167,9 +167,28 @@ class AutoCloseScheduler:
 
                 income_service = IncomeService()
 
-                # Get all transactions for the entire day (not just the shift)
-                start_of_day = shift.end_time.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_of_day = start_of_day + timedelta(days=1)
+                # Get all transactions from first shift start time to last shift end time for this date
+                # Use the shift's start date to find all shifts for that date
+                shift_date = shift.start_time.date()
+                shifts_for_date = await self.shift_service.get_shifts_by_date(chat_id, shift_date)
+
+                if shifts_for_date:
+                    # Find the earliest shift start time and latest shift end time for this date
+                    earliest_start = min(s.start_time for s in shifts_for_date)
+                    # Only consider shifts that have end_time (completed shifts)
+                    completed_shifts = [s for s in shifts_for_date if s.end_time]
+                    if completed_shifts:
+                        latest_end = max(s.end_time for s in completed_shifts)
+                        start_of_day = earliest_start
+                        end_of_day = latest_end
+                    else:
+                        # If no completed shifts, use current shift's end time
+                        start_of_day = earliest_start
+                        end_of_day = shift.end_time
+                else:
+                    # Fallback if no shifts found
+                    start_of_day = shift.start_time
+                    end_of_day = shift.end_time
 
                 incomes = await income_service.get_income_by_date_and_chat_id(
                     chat_id=chat_id,
