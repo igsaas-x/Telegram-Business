@@ -6,7 +6,7 @@ After=network.target
 User=root
 Group=root
 WorkingDirectory=/root/telegram-listener
-ExecStart=/root/telegram-listener/myenv/bin/python3 /root/telegram-listener/main_bots_only.py
+ExecStart=/bin/bash -c "NEW_RELIC_CONFIG_FILE=/root/telegram-listener/newrelic/newrelic.ini /root/telegram-listener/myenv/bin/newrelic-admin run-program /root/telegram-listener/myenv/bin/python3 /root/telegram-listener/main_bots_only.py"
 Restart=always
 RestartSec=5
 EnvironmentFile=/root/telegram-listener/.env.bots

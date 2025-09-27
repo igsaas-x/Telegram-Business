@@ -24,3 +24,4 @@ schedule
 qrcode[pil]~=8.0
 Pillow>=10.0.0
 reportlab>=4.0.0
+newrelic
