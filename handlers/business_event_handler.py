@@ -83,7 +83,7 @@ class BusinessEventHandler:
             buttons = [
                 [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("📅 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
@@ -95,7 +95,7 @@ class BusinessEventHandler:
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("📅 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
