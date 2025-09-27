@@ -88,7 +88,7 @@ class MenuHandler:
                 
                 # Use daily report format for current date
                 group_name = chat.group_name or f"Group {chat.chat_id}"
-                message = daily_transaction_report(incomes, current_date, telegram_username, group_name)
+                message = await daily_transaction_report(incomes, current_date, telegram_username, group_name, chat_id)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -267,7 +267,7 @@ class MenuHandler:
                 # Use new daily report format
                 start_date = selected_date
                 end_date = selected_date + timedelta(days=1)
-                message = daily_transaction_report(incomes, selected_date, telegram_username, group_name)
+                message = await daily_transaction_report(incomes, selected_date, telegram_username, group_name, chat_id)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -748,7 +748,7 @@ class MenuHandler:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
             
-            return daily_transaction_report(incomes, now, telegram_username, group_name)
+            return await daily_transaction_report(incomes, now, telegram_username, group_name, chat_id)
         elif report_type == "weekly":
             # Use the new weekly format with group name
             return weekly_transaction_report(incomes, start_date, end_date, group_name)

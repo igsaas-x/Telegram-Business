@@ -18,22 +18,22 @@ def format_time_12hour(dt: datetime) -> str:
     return dt.strftime("%I:%M%p").replace("AM", "AM").replace("PM", "PM")
 
 
-def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin", group_name: str = None) -> str:
+async def daily_transaction_report(incomes, report_date: datetime, telegram_username: str = "Admin", group_name: str = None, chat_id: int = None) -> str:
     """Generate daily transaction report in the new format"""
-    
+
     # Calculate totals and transaction counts
     totals = {"KHR": 0, "USD": 0}
     transaction_counts = {"KHR": 0, "USD": 0}
-    
+
     transaction_times = []
-    
+
     for income in incomes:
         currency = income.currency
         if currency in totals:
             totals[currency] += income.amount
             transaction_counts[currency] += 1
             transaction_times.append(income.income_date)
-    
+
     # Get working hours from actual transaction times (first to last transaction)
     working_hours = ""
     if transaction_times:
@@ -41,11 +41,11 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
         start_time = format_time_12hour(transaction_times[0])
         end_time = format_time_12hour(transaction_times[-1])
         working_hours = f"{start_time} ➝ {end_time}"
-    
+
     # Get current time for total hours display
     current_time = DateUtils.now()
     trigger_time = format_time_12hour(current_time)
-    
+
     # Format date in Khmer
     day = report_date.day
     month_khmer = get_khmer_month_name(report_date.month)
@@ -63,23 +63,38 @@ def daily_transaction_report(incomes, report_date: datetime, telegram_username: 
     khr_amount = totals["KHR"]
     khr_count = transaction_counts["KHR"]
     khr_formatted = f"{khr_amount:,.0f}"
-    
+
     usd_amount = totals["USD"]
     usd_count = transaction_counts["USD"]
     usd_formatted = f"{usd_amount:.2f}"
-    
+
     # Use HTML table for better alignment
     report += "<pre>\n"
     report += f"(៛): {khr_formatted:<10} | ប្រតិបត្តិការ: {khr_count}\n"
     report += f"($): {usd_formatted:<10} | ប្រតិបត្តិការ: {usd_count}\n"
     report += "</pre>"
-    
+
 
     if working_hours:
         report += f"<b>ម៉ោងប្រតិបត្តិការ:</b> <code>{working_hours}</code>"
     else:
         report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
-    
+
+    # Check if daily summary on shift close feature is enabled and add summary section
+    if chat_id:
+        from services import GroupPackageService
+        from common.enums import FeatureFlags
+
+        group_package_service = GroupPackageService()
+        daily_summary_enabled = await group_package_service.has_feature(
+            chat_id, FeatureFlags.DAILY_SUMMARY_ON_SHIFT_CLOSE.value
+        )
+
+        if daily_summary_enabled:
+            # Add the same summary section as used in shift close and private bot
+            summary = await daily_summary_for_shift_close(chat_id, report_date, group_name)
+            report += summary
+
     return report
 
 
