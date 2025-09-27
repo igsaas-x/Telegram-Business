@@ -433,16 +433,10 @@ class BusinessEventHandler:
                 else:
                     message += "".join(reports)
 
-                # Check if daily summary on shift close feature is enabled and add summary section
-                daily_summary_enabled = await self.group_package_service.has_feature(
-                    chat_id, FeatureFlags.DAILY_SUMMARY_ON_SHIFT_CLOSE.value
-                )
-
-                if daily_summary_enabled:
-                    # Add daily summary to the report
-                    from helper import daily_summary_for_shift_close
-                    daily_summary = await daily_summary_for_shift_close(chat_id, selected_date, group_name)
-                    message += daily_summary
+                # Add daily summary to the report
+                from helper import daily_summary_for_shift_close
+                daily_summary = await daily_summary_for_shift_close(chat_id, selected_date, group_name)
+                message += daily_summary
 
             buttons = None
 

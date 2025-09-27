@@ -80,20 +80,10 @@ async def daily_transaction_report(incomes, report_date: datetime, telegram_user
     else:
         report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
 
-    # Check if daily summary on shift close feature is enabled and add summary section
+    # Add the same summary section as used in shift close and private bot
     if chat_id:
-        from services import GroupPackageService
-        from common.enums import FeatureFlags
-
-        group_package_service = GroupPackageService()
-        daily_summary_enabled = await group_package_service.has_feature(
-            chat_id, FeatureFlags.DAILY_SUMMARY_ON_SHIFT_CLOSE.value
-        )
-
-        if daily_summary_enabled:
-            # Add the same summary section as used in shift close and private bot
-            summary = await daily_summary_for_shift_close(chat_id, report_date, group_name)
-            report += summary
+        summary = await daily_summary_for_shift_close(chat_id, report_date, group_name)
+        report += summary
 
     return report
 
