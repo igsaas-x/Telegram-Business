@@ -88,7 +88,7 @@ class BusinessEventHandler:
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("📋 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
                 buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
@@ -100,7 +100,7 @@ class BusinessEventHandler:
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("📋 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
                 buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ បិទ", "close_menu")])
