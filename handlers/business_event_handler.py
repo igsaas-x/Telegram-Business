@@ -81,27 +81,27 @@ class BusinessEventHandler:
 
         if current_shift:
             buttons = [
-                [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
+                [("⌛ របាយការណ៍វេននេះ", "current_shift_report")],
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
+                [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📋 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
+                [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📋 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ បិទ", "close_menu")])
 
