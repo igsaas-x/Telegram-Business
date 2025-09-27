@@ -13,18 +13,10 @@ class FeatureFlags(Enum):
     
     # Transaction features
     TRANSACTION_ANNOTATION = "transaction_annotation"
-    MULTI_CURRENCY = "multi_currency"
     CUSTOM_EXPORT = "custom_export"
     
     # Business features
     SHIFT_MANAGEMENT = "shift_management"
     SHIFT_PERMISSIONS = "shift_permissions"
-    AUTOMATED_REPORTS = "automated_reports"
-    API_ACCESS = "api_access"
     HIDE_LAST_SHIFT_OF_DAY = "hide_last_shift_of_day"
     DAILY_SUMMARY_ON_SHIFT_CLOSE = "daily_summary_on_shift_close"
-    
-    # Premium features
-    PREMIUM_SUPPORT = "premium_support"
-    CUSTOM_BRANDING = "custom_branding"
-    BULK_OPERATIONS = "bulk_operations"
