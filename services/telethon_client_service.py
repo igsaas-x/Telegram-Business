@@ -1,23 +1,14 @@
 import asyncio
 import os
-from datetime import timedelta
 
-import pytz
 from telethon import TelegramClient, events
 from telethon.errors import PersistentTimestampInvalidError
 
 from common.enums import ServicePackage
-# Check if message was sent after chat registration (applies to all messages)
-from helper import DateUtils
-from helper import (
-    extract_amount_and_currency,
-    extract_trx_id,
-    extract_s7pos_amount_and_currency,
-    extract_s7days_amount_and_currency,
-)
 from helper.logger_utils import force_log
 from schedulers import MessageVerificationScheduler
 from services import ChatService, IncomeService, UserService, GroupPackageService
+from services.income_message_processor import IncomeMessageProcessor
 from services.threshold_warning_service import ThresholdWarningService
 
 
@@ -30,6 +21,10 @@ class TelethonClientService:
         self.user_service = UserService()
         self.group_package_service = GroupPackageService()
         self.mobile_number: str | None = None
+        self.message_processor = IncomeMessageProcessor(
+            income_service=self.service,
+            chat_service=self.chat_service
+        )
 
     async def get_username_by_phone(self, phone_number: str) -> str | None:
         """
@@ -162,95 +157,16 @@ class TelethonClientService:
                     f"Processing message from chat {event.chat_id}: {event.message.text}"
                 )
                 
-                # Use specific parser based on sender bot
-                if username == "s7pos_bot":
-                    currency, amount = extract_s7pos_amount_and_currency(event.message.text)
-                elif username == "S7days777":
-                    currency, amount = extract_s7days_amount_and_currency(event.message.text)
-                else:
-                    currency, amount = extract_amount_and_currency(event.message.text)
-                    
                 message_id: int = event.message.id
-                trx_id: str | None = extract_trx_id(event.message.text)
-
-                force_log(
-                    f"Extracted: currency={currency}, amount={amount}, trx_id={trx_id}"
-                )
-
-                # Skip if no valid currency/amount (do this check early)
-                if not (currency and amount):
-                    force_log(
-                        f"No valid currency/amount found in message: {event.message.text}"
-                    )
-                    return
-
-                force_log(f"Valid currency and amount found, checking duplicates...")
-
-                # Use comprehensive duplicate check (chat_id + trx_id + message_id)
-                is_duplicate = await self.service.check_duplicate_transaction(
-                    event.chat_id, trx_id, message_id
-                )
-                if is_duplicate:
-                    force_log(
-                        f"Duplicate transaction found for chat_id={event.chat_id}, trx_id={trx_id}, message_id={message_id}, skipping"
-                    )
-                    return
-
-                force_log(f"No duplicates found - proceeding with income processing...")
-
-                # Get chat info to check registration timestamp
-                force_log(f"Getting chat info for chat_id: {event.chat_id}")
-                chat = await self.chat_service.get_chat_by_chat_id(event.chat_id)
-                if not chat:
-                    force_log(f"Chat {event.chat_id} not found in database!")
-                    return
-
-                force_log(f"Checking message timestamp vs chat registration timestamp")
-                # Get message timestamp (Telethon provides it as UTC datetime)
                 message_time = event.message.date
-                if message_time.tzinfo is None:
-                    message_time = pytz.UTC.localize(message_time)
 
-                # Convert chat created_at to UTC for comparison
-                chat_created = chat.created_at
-                if chat_created.tzinfo is None:
-                    chat_created = DateUtils.localize_datetime(chat_created)
-                chat_created_utc = chat_created.astimezone(pytz.UTC)
-
-                # Add a 1-minute buffer to handle any timestamp precision issues
-                chat_created_with_buffer = chat_created_utc - timedelta(minutes=1)
-                
-                force_log(
-                    f"Message time: {message_time}, Chat created: {chat_created_utc} (with 5min buffer: {chat_created_with_buffer})"
-                )
-                # Ignore messages sent before chat registration (with buffer)
-                if message_time < chat_created_with_buffer:
-                    force_log(
-                        f"Ignoring message from {message_time} (before chat registration buffer at {chat_created_with_buffer})"
-                    )
-                    return
-
-                force_log(f"Message timestamp verified, proceeding to save income...")
-
-                # Let the income service handle shift creation automatically
-                force_log(
-                    f"Attempting to save income: chat_id={event.chat_id}, amount={amount}, currency={currency}"
-                )
                 try:
-                    result = await self.service.insert_income(
-                        event.chat_id,
-                        amount,
-                        currency,
-                        amount,
-                        message_id,
-                        event.message.text,
-                        trx_id,
-                        0,  # shift_id
-                        chat.enable_shift,  # enable_shift
-                        username,  # sent_by
-                    )
-                    force_log(
-                        f"Successfully saved income record with id={result.id} for message {message_id}"
+                    await self.message_processor.store_message(
+                        chat_id=event.chat_id,
+                        message_id=message_id,
+                        message_text=event.message.text,
+                        origin_username=username,
+                        message_time=message_time,
                     )
                 except Exception as income_error:
                     force_log(f"ERROR saving income: {income_error}")

@@ -16,6 +16,7 @@ from common.enums import ServicePackage
 from handlers.business_event_handler import BusinessEventHandler
 from helper import force_log, DateUtils
 from services import ChatService, UserService, GroupPackageService
+from services.handlers.business_forward_handler import BusinessForwardHandler
 from services.private_bot_group_binding_service import PrivateBotGroupBindingService
 from services.shift_service import ShiftService
 
@@ -43,6 +44,25 @@ class AutosumBusinessBot:
         self.shift_service = ShiftService()
         self.event_handler = BusinessEventHandler(bot_service=self)
         self.group_package_service = GroupPackageService()
+        self.forward_handler = BusinessForwardHandler(
+            allowed_forwarders={"Pandacybercafe_admin","chanhengsng","HK_688"},
+            allowed_bots={
+                "ACLEDABankBot",
+                "PayWayByABA_bot",
+                "PLBITBot",
+                "CanadiaMerchant_bot",
+                "HLBCAM_Bot",
+                "vattanac_bank_merchant_prod_bot",
+                "CPBankBot",
+                "SathapanaBank_bot",
+                "chipmongbankpaymentbot",
+                "prasac_merchant_payment_bot",
+                "AMKPlc_bot",
+                "prince_pay_bot",
+                "s7pos_bot",
+                "S7days777",
+            },
+        )
         force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")
 
     async def handle_reply_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -593,6 +613,10 @@ class AutosumBusinessBot:
         
         # Reply message handler for transaction annotations
         self.app.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, self.handle_reply_message))
+
+        # Forwarded bank summaries handler
+        forward_filters = filters.TEXT & ~filters.COMMAND & ~filters.REPLY
+        self.app.add_handler(MessageHandler(forward_filters, self.forward_handler.handle_forwarded_summary))
 
         # Business menu conversation handler
         business_menu_handler = ConversationHandler(
