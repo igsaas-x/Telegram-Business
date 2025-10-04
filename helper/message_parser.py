@@ -178,6 +178,40 @@ def extract_s7days_amount_and_currency(text: str):
 
     return '$', total
 
+
+def extract_s7days_breakdown(text: str) -> dict[str, float]:
+    """
+    Extract revenue breakdown by source from S7days777 messages.
+
+    Example message:
+    -Cash=16.6$
+    -Bank Card =341.2$
+    -Ctrip: 41.8$
+    -Agoda=17.75$
+    -WeChat=0$
+
+    Returns: {"Cash": 16.6, "Bank Card": 341.2, "Ctrip": 41.8, "Agoda": 17.75}
+    """
+    breakdown = {}
+
+    # Pattern to match lines like: -Cash=16.6$ or -Ctrip: 41.8$ or -Bank Card =341.2$
+    # Capture: source name and amount
+    pattern = r'-\s*([A-Za-z\s]+?)\s*[=:]\s*([\d]+(?:\.\d+)?)\s*\$'
+
+    matches = re.findall(pattern, text)
+
+    for source_name, amount_str in matches:
+        source_name = source_name.strip()
+        try:
+            amount = float(amount_str)
+            # Only add non-zero amounts
+            if amount > 0:
+                breakdown[source_name] = amount
+        except ValueError:
+            continue
+
+    return breakdown
+
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"
     match = re.search(r'Trx\. ID:\s*([0-9]+)', message_text)

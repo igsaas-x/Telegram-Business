@@ -9,6 +9,7 @@ from .message_parser import (
     extract_trx_id,
     extract_s7pos_amount_and_currency,
     extract_s7days_amount_and_currency,
+    extract_s7days_breakdown,
 )
 from .monthly_report_helper import monthly_transaction_report
 from .shift_report_helper import shift_report, shift_report_format, current_shift_report_format
@@ -21,6 +22,7 @@ __all__ = [
     "extract_trx_id",
     "extract_s7pos_amount_and_currency",
     "extract_s7days_amount_and_currency",
+    "extract_s7days_breakdown",
     "total_summary_report",
     "daily_transaction_report",
     "daily_summary_for_shift_close",

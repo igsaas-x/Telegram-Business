@@ -2,12 +2,13 @@ import asyncio
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from common.enums import CurrencyEnum
 from config import get_db_session
 from helper import DateUtils
 from helper.logger_utils import force_log
-from models import IncomeBalance
+from models import IncomeBalance, RevenueSource
 from .shift_service import ShiftService
 
 
@@ -101,6 +102,7 @@ class IncomeService:
         shift_id: int = 0,
         enable_shift: bool = False,
         sent_by: str | None = None,
+        revenue_breakdown: dict[str, float] | None = None,
     ) -> IncomeBalance:
         """
         Insert income
@@ -153,7 +155,27 @@ class IncomeService:
                         f"Successfully saved IncomeBalance record with id={new_income.id}",
                         "IncomeService"
                     )
-                    
+
+                    # Store revenue breakdown if provided (for S7days777 messages)
+                    if revenue_breakdown:
+                        force_log(
+                            f"Storing revenue breakdown for income {new_income.id}: {revenue_breakdown}",
+                            "IncomeService"
+                        )
+                        for source_name, source_amount in revenue_breakdown.items():
+                            revenue_source = RevenueSource(
+                                income_id=new_income.id,
+                                source_name=source_name,
+                                amount=source_amount,
+                                currency=currency_code,
+                            )
+                            db.add(revenue_source)
+                        db.commit()
+                        force_log(
+                            f"Stored {len(revenue_breakdown)} revenue sources for income {new_income.id}",
+                            "IncomeService"
+                        )
+
                     # Check thresholds after saving income (fire and forget)
                     if self.threshold_warning_service:
                         asyncio.create_task(self._check_thresholds_async(
@@ -162,7 +184,7 @@ class IncomeService:
                             new_income_amount=amount,
                             new_income_currency=currency_code
                         ))
-                    
+
                     return new_income
 
                 except Exception as e:
@@ -422,6 +444,56 @@ class IncomeService:
         with get_db_session() as db:
             return (
                 db.query(IncomeBalance)
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= month_start,
+                )
+                .all()
+            )
+
+    # Custom methods for revenue breakdown feature (used by custom bot)
+    async def get_today_income_with_sources(self, chat_id: int) -> list[IncomeBalance]:
+        """Get all income records for today with revenue sources loaded"""
+        today = DateUtils.today()
+        tomorrow = today + timedelta(days=1)
+
+        with get_db_session() as db:
+            return (
+                db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= today,
+                    IncomeBalance.income_date < tomorrow,
+                )
+                .all()
+            )
+
+    async def get_weekly_income_with_sources(self, chat_id: int) -> list[IncomeBalance]:
+        """Get all income records for this week with revenue sources loaded"""
+        today = DateUtils.today()
+        week_start = today - timedelta(days=today.weekday())
+
+        with get_db_session() as db:
+            return (
+                db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
+                .filter(
+                    IncomeBalance.chat_id == chat_id,
+                    IncomeBalance.income_date >= week_start,
+                )
+                .all()
+            )
+
+    async def get_monthly_income_with_sources(self, chat_id: int) -> list[IncomeBalance]:
+        """Get all income records for this month with revenue sources loaded"""
+        today = DateUtils.today()
+        month_start = today.replace(day=1)
+
+        with get_db_session() as db:
+            return (
+                db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
                 .filter(
                     IncomeBalance.chat_id == chat_id,
                     IncomeBalance.income_date >= month_start,

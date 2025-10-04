@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 from typing import Set
 
@@ -37,6 +38,7 @@ from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
 from services.bot_registry import BotRegistry
 from services.telegram_admin_bot_service import TelegramAdminBot
 from services.telegram_business_bot_service import AutosumBusinessBot
+from services.telegram_business_custom_bot_service import AutosumBusinessCustomBot
 from services.telegram_private_bot_service import TelegramPrivateBot
 from services.telegram_standard_bot_service import TelegramBotService
 from services.telegram_utils_bot_service import TelegramUtilsBot
@@ -128,6 +130,15 @@ async def main(loader: CredentialLoader) -> None:
             service_tasks.append(asyncio.create_task(utils_bot.start_polling()))
         else:
             logger.warning("Utils bot token not provided, skipping Utils bot")
+
+        # Add Custom Business bot only if token is provided
+        custom_business_bot_token = os.getenv("AUTOSUM_BUSINESS_CUSTOM_BOT_TOKEN")
+        if custom_business_bot_token:
+            logger.info("Starting Custom Business bot...")
+            custom_business_bot = AutosumBusinessCustomBot(custom_business_bot_token)
+            service_tasks.append(asyncio.create_task(custom_business_bot.start_polling()))
+        else:
+            logger.info("Custom Business bot token not provided, skipping Custom Business bot")
 
         tasks.update(service_tasks)
         logger.info(f"All {len(service_tasks)} bot services started successfully")
