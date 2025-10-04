@@ -4,7 +4,12 @@ from .credential_loader import CredentialLoader
 from .daily_report_helper import daily_transaction_report, daily_summary_for_shift_close
 from .dateutils import DateUtils
 from .logger_utils import force_log
-from .message_parser import extract_amount_and_currency, extract_trx_id, extract_s7pos_amount_and_currency
+from .message_parser import (
+    extract_amount_and_currency,
+    extract_trx_id,
+    extract_s7pos_amount_and_currency,
+    extract_s7days_amount_and_currency,
+)
 from .monthly_report_helper import monthly_transaction_report
 from .shift_report_helper import shift_report, shift_report_format, current_shift_report_format
 from .total_summary_report_helper import total_summary_report
@@ -15,6 +20,7 @@ __all__ = [
     "extract_amount_and_currency",
     "extract_trx_id",
     "extract_s7pos_amount_and_currency",
+    "extract_s7days_amount_and_currency",
     "total_summary_report",
     "daily_transaction_report",
     "daily_summary_for_shift_close",

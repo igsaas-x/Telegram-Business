@@ -156,14 +156,27 @@ def extract_s7pos_final_amount(text: str) -> float | None:
 def extract_s7pos_amount_and_currency(text: str):
     """
     Extract amount and currency specifically for s7pos_bot messages.
-    
+
     Returns tuple (currency, amount) or (None, None) if not found.
     """
     amount = extract_s7pos_final_amount(text)
     if amount is not None:
         return '$', amount
-    
+
     return None, None
+
+
+def extract_s7days_amount_and_currency(text: str):
+    """Sum all USD values after '=' or ':' markers in S7days summary messages."""
+    matches = re.findall(r'[=:]\s*([\d]+(?:\.\d+)?)\s*\$', text)
+    if not matches:
+        return None, None
+
+    total = round(sum(float(value) for value in matches), 2)
+    if total.is_integer():
+        total = int(total)
+
+    return '$', total
 
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"

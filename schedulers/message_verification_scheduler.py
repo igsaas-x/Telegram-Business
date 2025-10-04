@@ -9,7 +9,12 @@ from telethon.errors import FloodWaitError, RPCError
 from telethon.tl.types import Message
 
 from common.enums import ServicePackage
-from helper import extract_amount_and_currency, extract_trx_id
+from helper import (
+    extract_amount_and_currency,
+    extract_trx_id,
+    extract_s7pos_amount_and_currency,
+    extract_s7days_amount_and_currency,
+)
 from helper.logger_utils import force_log
 from services import ChatService, IncomeService, ShiftService, GroupPackageService
 
@@ -161,7 +166,8 @@ class MessageVerificationScheduler:
                             "prasac_merchant_payment_bot",
                             "AMKPlc_bot",
                             "prince_pay_bot",
-                            "s7pos_bot"
+                            "s7pos_bot",
+                            "S7days777",
                         }
                         
                         if username not in allowed_bots:
@@ -249,7 +255,15 @@ class MessageVerificationScheduler:
                 return
 
             # Extract currency and amount from message
-            currency, amount = extract_amount_and_currency(message_text)
+            sender = await message.get_sender()
+            username = getattr(sender, "username", "") if sender else ""
+
+            if username == "s7pos_bot":
+                currency, amount = extract_s7pos_amount_and_currency(message_text)
+            elif username == "S7days777":
+                currency, amount = extract_s7days_amount_and_currency(message_text)
+            else:
+                currency, amount = extract_amount_and_currency(message_text)
             if not (currency and amount):
                 force_log(
                     f"No valid currency/amount found in message {message_id}, skipping"
