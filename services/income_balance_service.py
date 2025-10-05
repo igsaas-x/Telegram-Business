@@ -359,6 +359,7 @@ class IncomeService:
         with get_db_session() as db:
             return (
                 db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
                 .filter(
                     IncomeBalance.chat_id == chat_id,
                     IncomeBalance.income_date >= start_date,
