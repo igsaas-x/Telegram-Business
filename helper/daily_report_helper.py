@@ -134,11 +134,6 @@ async def daily_summary_for_shift_close(chat_id: int, close_date: datetime, grou
     summary = "\n\n" + "——----- summary ———----" + "\n"
     summary += f"📊 <b>សរុបថ្ងៃ {close_date.strftime('%d-%m-%Y')}:</b>\n"
 
-    # Show period labels if available (e.g., "Shift A+B+C+D")
-    if period_labels:
-        periods_text = "+".join(sorted(period_labels))
-        summary += f"Shift {periods_text}\n\n"
-
     # Format totals with same alignment as shift reports
     khr_formatted = f"{totals['KHR']:,.0f}"
     usd_formatted = f"{totals['USD']:.2f}"
@@ -156,7 +151,11 @@ async def daily_summary_for_shift_close(chat_id: int, close_date: datetime, grou
 
     # Add revenue breakdown if available
     if source_totals:
-        summary += "\n<b>Breakdown by Source:</b>\n<pre>"
+        summary += "\n\n<b>Breakdown by Source:</b>\n"
+        # Show period labels if available (e.g., "Shift A+B+C+D")
+        periods_text = "+".join(sorted(period_labels))
+        summary += f"Shift {periods_text}\n"
+        summary += "<pre>"
         for source_name, source_amount in sorted(source_totals.items(), key=lambda x: x[1], reverse=True):
             summary += f"- {source_name}: ${source_amount:,.2f}\n"
         summary += "</pre>"
