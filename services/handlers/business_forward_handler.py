@@ -30,16 +30,12 @@ class BusinessForwardHandler:
         if not message or not message.text:
             return
 
+        force_log(message, "BusinessForwardHandler", "DEBUG")
+
         if not self._is_trusted_forwarder(message):
             return
 
-        origin_username = self._get_forward_origin(message)
-        if not origin_username or origin_username not in self.allowed_bots:
-            force_log(
-                f"BusinessForwardHandler: ignored forward from origin '{origin_username}'",
-                "BusinessForwardHandler",
-            )
-            return
+        origin_username = self._get_forward_origin(message) or ""
 
         try:
             await self.message_processor.store_message(
@@ -64,13 +60,6 @@ class BusinessForwardHandler:
 
         sender_username = message.from_user.username.lstrip("@")
         if sender_username not in self.allowed_forwarders:
-            return False
-
-        if not self._get_forward_origin(message):
-            force_log(
-                f"BusinessForwardHandler: message from '{sender_username}' missing forward metadata",
-                "BusinessForwardHandler",
-            )
             return False
 
         return True
