@@ -65,13 +65,25 @@ class BusinessForwardHandler:
         return True
 
     def _get_forward_origin(self, message: Message) -> str:
-        if message.forward_from and message.forward_from.username:
-            return message.forward_from.username.lstrip("@")
+        if not message.forward_origin:
+            return ""
 
-        if message.forward_from_chat and message.forward_from_chat.username:
-            return message.forward_from_chat.username.lstrip("@")
+        from telegram._messageorigin import (
+            MessageOriginUser,
+            MessageOriginHiddenUser,
+            MessageOriginChat,
+            MessageOriginChannel,
+        )
 
-        if message.forward_sender_name:
-            return message.forward_sender_name.lstrip("@")
+        origin = message.forward_origin
+
+        if isinstance(origin, MessageOriginUser):
+            return origin.sender_user.username.lstrip("@") if origin.sender_user.username else ""
+        elif isinstance(origin, MessageOriginHiddenUser):
+            return origin.sender_user_name.lstrip("@") if origin.sender_user_name else ""
+        elif isinstance(origin, MessageOriginChat):
+            return origin.sender_chat.username.lstrip("@") if origin.sender_chat.username else ""
+        elif isinstance(origin, MessageOriginChannel):
+            return origin.chat.username.lstrip("@") if origin.chat.username else ""
 
         return ""
