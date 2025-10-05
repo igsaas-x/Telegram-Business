@@ -37,6 +37,14 @@ class BusinessForwardHandler:
 
         origin_username = self._get_forward_origin(message) or ""
 
+        # If origin username is specified and not in allowed list, ignore
+        if origin_username and origin_username not in self.allowed_bots:
+            force_log(
+                f"BusinessForwardHandler: origin '{origin_username}' not in allowed bots, ignoring",
+                "BusinessForwardHandler",
+            )
+            return
+
         try:
             await self.message_processor.store_message(
                 chat_id=update.effective_chat.id,
