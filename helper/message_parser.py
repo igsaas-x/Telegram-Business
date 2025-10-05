@@ -212,6 +212,67 @@ def extract_s7days_breakdown(text: str) -> dict[str, float]:
 
     return breakdown
 
+
+def extract_shifts_with_breakdown(text: str) -> list[dict]:
+    """
+    Extract multiple shifts with their revenue breakdowns from a single message.
+
+    Example message:
+    04.09.2025
+    •Shift:C
+    -Cash = 0$
+    -Bank Card = 202.6$
+    -Agoda = 47$
+
+    •Shift D
+    -Cash: = 0$
+    -Bank Card = 27.8$
+
+    Returns: [
+        {"shift": "C", "breakdown": {"Bank Card": 202.6, "Agoda": 47}},
+        {"shift": "D", "breakdown": {"Bank Card": 27.8}}
+    ]
+    """
+    shifts = []
+
+    # Split by shift markers (e.g., •Shift:C, •Shift D, etc.)
+    shift_pattern = r'[•\-]\s*Shift\s*[:\s]*([A-Z])'
+    shift_matches = list(re.finditer(shift_pattern, text, re.IGNORECASE))
+
+    if not shift_matches:
+        return []
+
+    for i, match in enumerate(shift_matches):
+        shift_name = match.group(1).upper()
+
+        # Get text from this shift marker to the next one (or end of text)
+        start_pos = match.end()
+        end_pos = shift_matches[i + 1].start() if i + 1 < len(shift_matches) else len(text)
+        shift_text = text[start_pos:end_pos]
+
+        # Extract breakdown for this shift
+        breakdown = {}
+        pattern = r'-\s*([A-Za-z\s]+?)\s*[=:]\s*([\d]+(?:\.\d+)?)\s*\$'
+        matches = re.findall(pattern, shift_text)
+
+        for source_name, amount_str in matches:
+            source_name = source_name.strip()
+            try:
+                amount = float(amount_str)
+                # Only add non-zero amounts
+                if amount > 0:
+                    breakdown[source_name] = amount
+            except ValueError:
+                continue
+
+        if breakdown:  # Only add shifts that have revenue data
+            shifts.append({
+                "shift": shift_name,
+                "breakdown": breakdown
+            })
+
+    return shifts
+
 def extract_trx_id(message_text: str) -> str | None:
     # Pattern 1: Traditional format "Trx. ID: 123456"
     match = re.search(r'Trx\. ID:\s*([0-9]+)', message_text)

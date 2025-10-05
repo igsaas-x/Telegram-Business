@@ -103,6 +103,7 @@ class IncomeService:
         enable_shift: bool = False,
         sent_by: str | None = None,
         revenue_breakdown: dict[str, float] | None = None,
+        shifts_breakdown: list[dict] | None = None,
     ) -> IncomeBalance:
         """
         Insert income
@@ -156,8 +157,31 @@ class IncomeService:
                         "IncomeService"
                     )
 
-                    # Store revenue breakdown if provided (for S7days777 messages)
-                    if revenue_breakdown:
+                    # Store revenue breakdown with shifts if provided
+                    if shifts_breakdown:
+                        force_log(
+                            f"Storing {len(shifts_breakdown)} shifts with breakdown for income {new_income.id}",
+                            "IncomeService"
+                        )
+                        for shift_data in shifts_breakdown:
+                            shift_name = shift_data.get("shift")
+                            breakdown = shift_data.get("breakdown", {})
+                            for source_name, source_amount in breakdown.items():
+                                revenue_source = RevenueSource(
+                                    income_id=new_income.id,
+                                    source_name=source_name,
+                                    amount=source_amount,
+                                    currency=currency_code,
+                                    shift=shift_name,
+                                )
+                                db.add(revenue_source)
+                        db.commit()
+                        force_log(
+                            f"Stored revenue sources with shifts for income {new_income.id}",
+                            "IncomeService"
+                        )
+                    # Store revenue breakdown if provided (for S7days777 messages without shifts)
+                    elif revenue_breakdown:
                         force_log(
                             f"Storing revenue breakdown for income {new_income.id}: {revenue_breakdown}",
                             "IncomeService"

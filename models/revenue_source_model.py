@@ -25,6 +25,7 @@ class RevenueSource(BaseModel):
     source_name: Mapped[str] = mapped_column(String(50), nullable=False)  # Cash, Bank Card, Ctrip, Agoda, etc.
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(16), nullable=False, default="USD")
+    shift: Mapped[str | None] = mapped_column(String(10), nullable=True)  # Internal shift identifier (e.g., "C", "D")
 
     # Relationship back to income
     income: Mapped["IncomeBalance"] = relationship("IncomeBalance", back_populates="revenue_sources")

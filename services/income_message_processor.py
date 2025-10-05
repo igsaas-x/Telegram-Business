@@ -10,7 +10,7 @@ from helper import (
     extract_amount_and_currency,
     extract_s7pos_amount_and_currency,
     extract_s7days_amount_and_currency,
-    extract_s7days_breakdown,
+    extract_shifts_with_breakdown,
     extract_trx_id,
 )
 from helper.logger_utils import force_log
@@ -49,18 +49,19 @@ class IncomeMessageProcessor:
             force_log("Message text empty, skipping", "IncomeMessageProcessor")
             return None
 
+        # Try to extract shifts with breakdown first (for messages with multiple shifts)
+        shifts_breakdown = extract_shifts_with_breakdown(message_text)
+        if shifts_breakdown:
+            force_log(
+                f"Extracted {len(shifts_breakdown)} shifts with breakdown",
+                "IncomeMessageProcessor",
+            )
+
         # Determine amount & currency based on origin bot
-        revenue_breakdown = None
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
         elif origin_username == "S7days777":
             currency, amount = extract_s7days_amount_and_currency(message_text)
-            # Extract revenue breakdown for S7days messages
-            revenue_breakdown = extract_s7days_breakdown(message_text)
-            force_log(
-                f"Extracted S7days breakdown: {revenue_breakdown}",
-                "IncomeMessageProcessor",
-            )
         else:
             currency, amount = extract_amount_and_currency(message_text)
 
@@ -124,7 +125,8 @@ class IncomeMessageProcessor:
             0,
             chat.enable_shift,
             origin_username,
-            revenue_breakdown,
+            None,
+            shifts_breakdown,
         )
 
         force_log(

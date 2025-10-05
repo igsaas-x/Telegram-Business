@@ -30,7 +30,7 @@ class BusinessForwardHandler:
         if not message or not message.text:
             return
 
-        force_log(message, "BusinessForwardHandler", "DEBUG")
+        # force_log(message, "BusinessForwardHandler", "DEBUG")
 
         if not self._is_trusted_forwarder(message):
             return
