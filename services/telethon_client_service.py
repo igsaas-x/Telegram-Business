@@ -142,6 +142,7 @@ class TelethonClientService:
                     "AMKPlc_bot",
                     "prince_pay_bot",
                     "s7pos_bot",
+                    "payment_bk_bot",
                     "S7days777",
                 }
                 if username not in allowed_bots:

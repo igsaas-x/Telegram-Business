@@ -235,8 +235,8 @@ def extract_shifts_with_breakdown(text: str) -> list[dict]:
     """
     shifts = []
 
-    # Split by shift markers (e.g., •Shift:C, •Shift D, etc.)
-    shift_pattern = r'[•\-]\s*Shift\s*[:\s]*([A-Z])'
+    # Split by shift markers (e.g., •Shift:C, •Shift D, Shift: A, etc.)
+    shift_pattern = r'[•\-]?\s*Shift\s*[:\s]*([A-Z])'
     shift_matches = list(re.finditer(shift_pattern, text, re.IGNORECASE))
 
     if not shift_matches:
@@ -252,6 +252,7 @@ def extract_shifts_with_breakdown(text: str) -> list[dict]:
 
         # Extract breakdown for this shift
         breakdown = {}
+        total_revenue = None
         pattern = r'-\s*([A-Za-z\s]+?)\s*[=:]\s*([\d]+(?:\.\d+)?)\s*\$'
         matches = re.findall(pattern, shift_text)
 
@@ -259,17 +260,24 @@ def extract_shifts_with_breakdown(text: str) -> list[dict]:
             source_name = source_name.strip()
             try:
                 amount = float(amount_str)
-                # Only add non-zero amounts
-                if amount > 0:
+                # Check if this is the Total Room Revenue field
+                if source_name in ["Total Room Revenue", "Total Room Revenues"]:
+                    total_revenue = amount
+                # Only add non-zero amounts to breakdown (excluding total revenue)
+                elif amount > 0:
                     breakdown[source_name] = amount
             except ValueError:
                 continue
 
-        if breakdown:  # Only add shifts that have revenue data
-            shifts.append({
+        # Include shift if it has revenue data or total revenue
+        if breakdown or total_revenue:
+            shift_data = {
                 "shift": shift_name,
                 "breakdown": breakdown
-            })
+            }
+            if total_revenue is not None:
+                shift_data["total"] = total_revenue
+            shifts.append(shift_data)
 
     return shifts
 

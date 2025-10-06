@@ -21,22 +21,22 @@ class IncomeMessageProcessor:
     """Shared helper to persist income messages across entrypoints."""
 
     def __init__(
-        self,
-        income_service: Optional[IncomeService] = None,
-        chat_service: Optional[ChatService] = None,
+            self,
+            income_service: Optional[IncomeService] = None,
+            chat_service: Optional[ChatService] = None,
     ) -> None:
         self.income_service = income_service or IncomeService()
         self.chat_service = chat_service or ChatService()
 
     async def store_message(
-        self,
-        *,
-        chat_id: int,
-        message_id: int,
-        message_text: str,
-        origin_username: str,
-        message_time: datetime,
-        trx_id: Optional[str] = None,
+            self,
+            *,
+            chat_id: int,
+            message_id: int,
+            message_text: str,
+            origin_username: str,
+            message_time: datetime,
+            trx_id: Optional[str] = None,
     ):
         """Parse and persist a bank notification message."""
 
@@ -49,19 +49,30 @@ class IncomeMessageProcessor:
             force_log("Message text empty, skipping", "IncomeMessageProcessor")
             return None
 
-        # Try to extract shifts with breakdown first (for messages with multiple shifts)
-        shifts_breakdown = extract_shifts_with_breakdown(message_text)
-        if shifts_breakdown:
-            force_log(
-                f"Extracted {len(shifts_breakdown)} shifts with breakdown",
-                "IncomeMessageProcessor",
-            )
+        shifts_breakdown = None
 
         # Determine amount & currency based on origin bot
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
-        elif origin_username == "S7days777":
-            currency, amount = extract_s7days_amount_and_currency(message_text)
+        elif origin_username == "S7days777" or origin_username == "payment_bk_bot":
+            # Try to extract shifts with breakdown first (for messages with multiple shifts)
+            shifts_breakdown = extract_shifts_with_breakdown(message_text)
+            if shifts_breakdown:
+                force_log(
+                    f"Extracted {len(shifts_breakdown)} shifts with breakdown",
+                    "IncomeMessageProcessor",
+                )
+            # If shifts_breakdown has "total" fields, use sum of those instead
+            if shifts_breakdown and any("total" in shift for shift in shifts_breakdown):
+                total_amount = sum(shift.get("total", 0) for shift in shifts_breakdown)
+                currency = "$"
+                amount = total_amount
+                force_log(
+                    f"Using sum of shift totals: {amount}",
+                    "IncomeMessageProcessor",
+                )
+            else:
+                currency, amount = extract_s7days_amount_and_currency(message_text)
         else:
             currency, amount = extract_amount_and_currency(message_text)
 
