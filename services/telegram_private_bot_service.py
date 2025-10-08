@@ -53,6 +53,7 @@ class TelegramPrivateBot:
             [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
             [InlineKeyboardButton("📋 List Groups", callback_data="start_list")],
             [InlineKeyboardButton("🔓 Unbind Group", callback_data="start_unbind")],
+            [InlineKeyboardButton("🆔 Get Group ID", callback_data="get_chat_id")],
             [InlineKeyboardButton("❌ Cancel", callback_data="close_conversation")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -77,13 +78,15 @@ class TelegramPrivateBot:
             return await self._start_menu_flow(update, context)
         elif query.data == "start_unbind":
             return await self._start_unbind_flow(update, context)
+        elif query.data == "get_chat_id":
+            return await self._show_chat_id(update, context)
         elif query.data == "close_conversation":
             await query.edit_message_text("Goodbye! Use /start anytime to access the bot.")
             return ConversationHandler.END
         elif query.data.startswith("unbind_") or query.data == "cancel":
             # Delegate unbind selections to the unbind handler
             return await self.handle_unbind_selection(update, context)
-        
+
         return ConversationHandler.END
 
     async def _start_bind_flow(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -203,7 +206,7 @@ class TelegramPrivateBot:
         query = update.callback_query
         private_chat_id = update.effective_chat.id
         bound_groups = self.binding_service.get_bound_groups(private_chat_id)
-        
+
         if not bound_groups:
             keyboard = [
                 [InlineKeyboardButton("🔗 Bind Group", callback_data="start_bind")],
@@ -215,20 +218,39 @@ class TelegramPrivateBot:
                 reply_markup=reply_markup
             )
             return START_MENU_CODE
-        
+
         keyboard = []
         for group in bound_groups:
             keyboard.append([InlineKeyboardButton(
                 f"Unbind {group.group_name or 'Unnamed'} (ID: {group.chat_id})",
                 callback_data=f"unbind_{group.id}"
             )])
-        
+
         keyboard.append([InlineKeyboardButton("Cancel", callback_data="cancel")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
+
         await query.edit_message_text(
             "Select a group to unbind:",
             reply_markup=reply_markup
+        )
+        return START_MENU_CODE
+
+    async def _show_chat_id(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show the current chat ID"""
+        query = update.callback_query
+        chat_id = update.effective_chat.id
+
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back to Menu", callback_data="start_menu")],
+            [InlineKeyboardButton("❌ Close", callback_data="close_conversation")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            f"🆔 <b>Current Chat ID:</b>\n\n<code>{chat_id}</code>\n\n"
+            "You can use this ID to bind groups or for configuration.",
+            reply_markup=reply_markup,
+            parse_mode="HTML"
         )
         return START_MENU_CODE
 
