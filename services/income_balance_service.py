@@ -375,6 +375,7 @@ class IncomeService:
         with get_db_session() as db:
             return (
                 db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
                 .filter(
                     IncomeBalance.chat_id == chat_id,
                     func.date(IncomeBalance.income_date) == target_date.date(),
@@ -385,7 +386,10 @@ class IncomeService:
     async def get_income_by_shift_id(self, shift_id: int) -> list[IncomeBalance]:
         with get_db_session() as db:
             return (
-                db.query(IncomeBalance).filter(IncomeBalance.shift_id == shift_id).all()
+                db.query(IncomeBalance)
+                .options(joinedload(IncomeBalance.revenue_sources))
+                .filter(IncomeBalance.shift_id == shift_id)
+                .all()
             )
 
     async def get_income_summary_by_date_range(
