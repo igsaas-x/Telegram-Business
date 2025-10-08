@@ -88,22 +88,36 @@ async def daily_transaction_report(incomes, report_date: datetime, telegram_user
     return report
 
 
-async def daily_summary_for_shift_close(chat_id: int, close_date: datetime, group_name: str = None) -> str:
-    """Generate daily summary for shift close - shows all transactions for the day when feature is enabled"""
+async def daily_summary_for_shift_close(chat_id: int, close_date: datetime, group_name: str = None, shift_id: int = None) -> str:
+    """Generate daily summary for shift close - shows all transactions from all shifts that started on the same day"""
     from services import IncomeService
-    from datetime import timedelta
+    from services.shift_service import ShiftService
 
     income_service = IncomeService()
+    shift_service = ShiftService()
 
-    # Get all transactions for the entire day (not just the shift)
-    start_of_day = close_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_of_day = start_of_day + timedelta(days=1)
+    # Determine the target date
+    if shift_id:
+        # Get the shift to find its start date
+        shift = await shift_service.get_shift_by_id(shift_id)
+        if not shift:
+            return "\n\n📊 <b>សរុបថ្ងៃនេះ:</b> គ្មានប្រតិបត្តិការ"
+        target_date = shift.start_time.date()
+    else:
+        # Use the provided close_date
+        target_date = close_date.date()
 
-    incomes = await income_service.get_income_by_date_and_chat_id(
-        chat_id=chat_id,
-        start_date=start_of_day,
-        end_date=end_of_day
-    )
+    # Get all shifts that started on the same day
+    shifts = await shift_service.get_shifts_by_start_date(chat_id, target_date)
+
+    if not shifts:
+        return "\n\n📊 <b>សរុបថ្ងៃនេះ:</b> គ្មានប្រតិបត្តិការ"
+
+    # Get all incomes for these shifts
+    incomes = []
+    for shift in shifts:
+        shift_incomes = await income_service.get_income_by_shift_id(shift.id)
+        incomes.extend(shift_incomes)
 
     if not incomes:
         return "\n\n📊 <b>សរុបថ្ងៃនេះ:</b> គ្មានប្រតិបត្តិការ"

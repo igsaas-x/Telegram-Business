@@ -632,7 +632,7 @@ class BusinessEventHandler:
                     if daily_summary_enabled:
                         # Add daily summary to the report
                         from helper import daily_summary_for_shift_close
-                        daily_summary = await daily_summary_for_shift_close(chat_id, closed_shift.end_time, group_name)
+                        daily_summary = await daily_summary_for_shift_close(chat_id, closed_shift.end_time, group_name, shift_id=closed_shift.id)
                         full_report += daily_summary
                     
                     if private_chats:
