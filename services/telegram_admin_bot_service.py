@@ -712,20 +712,21 @@ class TelegramAdminBot:
         await self.app.updater.start_polling()  # type: ignore
         force_log("TelegramAdminBot started polling", "TelegramAdminBot")
 
-    async def send_message(self, chat_id: int, message: str) -> bool:
+    async def send_message(self, chat_id: int, message: str, parse_mode: str = None) -> bool:
         """
         Send a message to a specific chat using the admin bot
-        
+
         Args:
             chat_id: The chat ID to send the message to
             message: The message text to send
-            
+            parse_mode: Parse mode for message formatting (HTML, Markdown, etc.)
+
         Returns:
             bool: True if message was sent successfully, False otherwise
         """
         try:
             if self.app and self.app.bot:
-                await self.app.bot.send_message(chat_id=chat_id, text=message)
+                await self.app.bot.send_message(chat_id=chat_id, text=message, parse_mode=parse_mode)
                 force_log(f"Admin bot sent message to chat {chat_id}: {message[:50]}...", "TelegramAdminBot")
                 return True
             else:

@@ -22,7 +22,7 @@ class CommandHandler:
 
     async def format_totals_message(self, incomes, report_date: datetime = None, requesting_user=None,
                                     start_date: datetime = None, end_date: datetime = None,
-                                    is_daily: bool = False, is_weekly: bool = False, is_monthly: bool = False):
+                                    is_daily: bool = False, is_weekly: bool = False, is_monthly: bool = False, chat_id: int = None):
         # Check if this is a daily report (contains "ថ្ងៃទី")
         if is_daily:
             # This is a daily report, use the new format
@@ -39,7 +39,7 @@ class CommandHandler:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
 
-            return daily_transaction_report(incomes, report_date, telegram_username)
+            return await daily_transaction_report(incomes, report_date, telegram_username, None, chat_id)
         elif is_weekly and start_date and end_date:
             # This is a weekly report, use the new weekly format
             return weekly_transaction_report(incomes, start_date, end_date)
@@ -129,7 +129,8 @@ class CommandHandler:
                         requesting_user=event.sender,
                         start_date=start_date,
                         end_date=end_date_original,
-                        is_weekly=True
+                        is_weekly=True,
+                        chat_id=event.chat_id
                     )
                     force_log(
                         f"Sending message for date range {start_day}-{end_day}, found {len(incomes)} transactions",
@@ -173,7 +174,8 @@ class CommandHandler:
                         incomes=incomes,
                         report_date=selected_date,
                         requesting_user=event.sender,
-                        is_daily=True
+                        is_daily=True,
+                        chat_id=event.chat_id
                     )
                     await event.client.send_message(event.chat_id, message, parse_mode='html')
 
@@ -221,7 +223,8 @@ class CommandHandler:
                 incomes=incomes,
                 report_date=today,
                 requesting_user=event.sender,
-                is_daily=True
+                is_daily=True,
+                chat_id=chat_id
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -365,7 +368,8 @@ class CommandHandler:
                 incomes=incomes,
                 report_date=selected_date,
                 requesting_user=event.sender,
-                is_daily=True
+                is_daily=True,
+                chat_id=chat_id
             )
             await event.client.send_message(chat_id, message, parse_mode='html')
 
@@ -443,7 +447,8 @@ class CommandHandler:
                 start_date=start_date,
                 end_date=end_date,
                 is_weekly=is_weekly,
-                is_monthly=is_monthly)
+                is_monthly=is_monthly,
+                chat_id=chat_id)
             await event.client.send_message(chat_id, message, parse_mode='html')
 
         except ValueError:

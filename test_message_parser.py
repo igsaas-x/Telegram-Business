@@ -1,6 +1,10 @@
 import unittest
 
-from helper.message_parser import extract_amount_and_currency, extract_trx_id
+from helper.message_parser import (
+    extract_amount_and_currency,
+    extract_trx_id,
+    extract_s7days_amount_and_currency,
+)
 
 
 class TestMessageParser(unittest.TestCase):
@@ -197,6 +201,50 @@ Hash: 2e720fc0"""
                 currency, amount = extract_amount_and_currency(message)
                 self.assertIsNone(currency)
                 self.assertIsNone(amount)
+
+    def test_s7days_summary_parser(self):
+        """Sum USD values from S7days daily summary message."""
+        message = (
+            "28.09.2025\n"
+            "Shift: A\n"
+            "-Time:7:00am-3:00pm \n"
+            "-Total available room=51\n"
+            "-Room Sold: 26\n"
+            "-Booking: 0\n"
+            "-Total Remain room 25\n"
+            "-Selected Premium Double =3\n"
+            "-Deluxe Double=12\n"
+            "-Premium Double=3\n"
+            "-Deluxe Twin =1\n"
+            "-Premium Twin =6\n"
+            "-Room block\u00a0=0\n"
+            "-Short Time:0\n"
+            "-Other Income =0$\n"
+            "-Total Room Revenue=305$\n"
+            "-Cash=95.2$\n"
+            "-Cash Outlay:0$\n"
+            "-Expenses=0$\n"
+            "-Bank\u00a0Card =107.4$\n"
+            "-WeChat=0$\n"
+            "-Alipay = 0$\n"
+            "-expedia=0$\n"
+            "-Pipay=0$\n"
+            "-Ctrip: 102.4$\n"
+            "-Agoda=107.4$\n"
+            "-Name= Seanghay David"
+        )
+
+        currency, amount, income_date = extract_s7days_amount_and_currency(message)
+        self.assertEqual(currency, '$')
+        self.assertAlmostEqual(amount, 717.4)
+
+        # Verify income_date is parsed correctly (September 28, 2025 at 3:00 PM)
+        self.assertIsNotNone(income_date)
+        self.assertEqual(income_date.year, 2025)
+        self.assertEqual(income_date.month, 9)
+        self.assertEqual(income_date.day, 28)
+        self.assertEqual(income_date.hour, 15)  # 3:00 PM in 24-hour format
+        self.assertEqual(income_date.minute, 0)
 
         no_trx_messages = [
             "Payment completed successfully",

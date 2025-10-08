@@ -6,7 +6,8 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from common.enums import FeatureFlags
 from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report, \
-    shift_report, business_weekly_transaction_report, business_monthly_transaction_report
+    shift_report, business_weekly_transaction_report, business_monthly_transaction_report, \
+    custom_business_weekly_report, custom_business_monthly_report
 from helper.logger_utils import force_log
 from services import ChatService, IncomeService, ShiftService, GroupPackageService
 
@@ -88,7 +89,7 @@ class MenuHandler:
                 
                 # Use daily report format for current date
                 group_name = chat.group_name or f"Group {chat.chat_id}"
-                message = daily_transaction_report(incomes, current_date, telegram_username, group_name)
+                message = await daily_transaction_report(incomes, current_date, telegram_username, group_name, chat_id)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -267,7 +268,7 @@ class MenuHandler:
                 # Use new daily report format
                 start_date = selected_date
                 end_date = selected_date + timedelta(days=1)
-                message = daily_transaction_report(incomes, selected_date, telegram_username, group_name)
+                message = await daily_transaction_report(incomes, selected_date, telegram_username, group_name, chat_id)
 
             await query.edit_message_text(message, parse_mode='HTML')
             return True
@@ -613,8 +614,17 @@ class MenuHandler:
             group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
             
             if is_business_group:
-                # Use shift-based reporting for business groups
-                message = await business_weekly_transaction_report(chat_id, start_date, end_date, group_name)
+                # Check for custom weekly report feature flag
+                custom_weekly_enabled = await group_package_service.has_feature(
+                    chat_id, FeatureFlags.CUSTOM_WEEKLY_REPORT.value
+                )
+
+                if custom_weekly_enabled:
+                    # Use custom weekly report with Shift 1 and Shift 2 columns
+                    message = await custom_business_weekly_report(chat_id, start_date, end_date, group_name)
+                else:
+                    # Use shift-based reporting for business groups
+                    message = await business_weekly_transaction_report(chat_id, start_date, end_date, group_name)
             else:
                 # Use regular reporting for other groups
                 income_service = IncomeService()
@@ -662,8 +672,17 @@ class MenuHandler:
             group_name = chat.group_name or f"Group {chat.chat_id}" if chat else None
             
             if is_business_group:
-                # Use shift-based reporting for business groups
-                message = await business_monthly_transaction_report(chat_id, start_date, end_date, group_name)
+                # Check for custom monthly report feature flag
+                custom_monthly_enabled = await group_package_service.has_feature(
+                    chat_id, FeatureFlags.CUSTOM_MONTHLY_REPORT.value
+                )
+
+                if custom_monthly_enabled:
+                    # Use custom monthly report with Shift 1 and Shift 2 columns
+                    message = await custom_business_monthly_report(chat_id, start_date, end_date, group_name)
+                else:
+                    # Use shift-based reporting for business groups
+                    message = await business_monthly_transaction_report(chat_id, start_date, end_date, group_name)
             else:
                 # Use regular reporting for other groups
                 income_service = IncomeService()
@@ -748,7 +767,7 @@ class MenuHandler:
                     telegram_username = requesting_user.first_name
                 # If user is anonymous, username will remain "Admin"
             
-            return daily_transaction_report(incomes, now, telegram_username, group_name)
+            return await daily_transaction_report(incomes, now, telegram_username, group_name, chat_id)
         elif report_type == "weekly":
             # Use the new weekly format with group name
             return weekly_transaction_report(incomes, start_date, end_date, group_name)

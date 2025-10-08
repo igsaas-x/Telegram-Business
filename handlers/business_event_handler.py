@@ -81,27 +81,27 @@ class BusinessEventHandler:
 
         if current_shift:
             buttons = [
-                [("📊 របាយការណ៍វេននេះ", "current_shift_report")],
+                [("⌛ របាយការណ៍វេននេះ", "current_shift_report")],
                 # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
-                [("📅 របាយការណ៍ថ្ងៃផ្សេង", "other_days_report")],
+                [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
             # Add weekly/monthly reports if feature is enabled
             if has_weekly_monthly_reports:
-                buttons.append([("📆 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("📊 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
             buttons.append([("❌ បិទ", "close_menu")])
 
@@ -433,6 +433,11 @@ class BusinessEventHandler:
                 else:
                     message += "".join(reports)
 
+                # Add daily summary to the report
+                from helper import daily_summary_for_shift_close
+                daily_summary = await daily_summary_for_shift_close(chat_id, selected_date, group_name)
+                message += daily_summary
+
             buttons = None
 
         except Exception as e:
@@ -618,6 +623,17 @@ class BusinessEventHandler:
                         private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
                     
                     full_report = f"របាយការណ៍ថ្ងៃ៖{closed_shift.end_time.strftime('%Y-%m-%d')}\n\n{shift_report}"
+
+                    # Check if daily summary on shift close feature is enabled
+                    daily_summary_enabled = await self.group_package_service.has_feature(
+                        chat_id, FeatureFlags.DAILY_SUMMARY_ON_SHIFT_CLOSE.value
+                    )
+
+                    if daily_summary_enabled:
+                        # Add daily summary to the report
+                        from helper import daily_summary_for_shift_close
+                        daily_summary = await daily_summary_for_shift_close(chat_id, closed_shift.end_time, group_name, shift_id=closed_shift.id)
+                        full_report += daily_summary
                     
                     if private_chats:
                         # Group is bound to private groups - send report only to private groups

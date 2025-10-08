@@ -3,6 +3,7 @@ from datetime import datetime
 
 if typing.TYPE_CHECKING:
     from models.shift_model import Shift
+    from models.revenue_source_model import RevenueSource
 
 from sqlalchemy import (
     Float,
@@ -39,3 +40,8 @@ class IncomeBalance(BaseModel):
     trx_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     sent_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationship to revenue sources
+    revenue_sources: Mapped[list["RevenueSource"]] = relationship(
+        "RevenueSource", back_populates="income", cascade="all, delete-orphan"
+    )
