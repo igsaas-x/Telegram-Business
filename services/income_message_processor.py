@@ -50,6 +50,7 @@ class IncomeMessageProcessor:
             return None
 
         shifts_breakdown = None
+        parsed_income_date = None
 
         # Determine amount & currency based on origin bot
         if origin_username == "s7pos_bot":
@@ -72,7 +73,7 @@ class IncomeMessageProcessor:
                     "IncomeMessageProcessor",
                 )
             else:
-                currency, amount = extract_s7days_amount_and_currency(message_text)
+                currency, amount, parsed_income_date = extract_s7days_amount_and_currency(message_text)
         else:
             currency, amount = extract_amount_and_currency(message_text)
 
@@ -138,6 +139,7 @@ class IncomeMessageProcessor:
             origin_username,
             None,
             shifts_breakdown,
+            parsed_income_date,
         )
 
         force_log(

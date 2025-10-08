@@ -258,10 +258,11 @@ class MessageVerificationScheduler:
             sender = await message.get_sender()
             username = getattr(sender, "username", "") if sender else ""
 
+            parsed_income_date = None
             if username == "s7pos_bot":
                 currency, amount = extract_s7pos_amount_and_currency(message_text)
             elif username == "S7days777":
-                currency, amount = extract_s7days_amount_and_currency(message_text)
+                currency, amount, parsed_income_date = extract_s7days_amount_and_currency(message_text)
             else:
                 currency, amount = extract_amount_and_currency(message_text)
             if not (currency and amount):
@@ -322,6 +323,9 @@ class MessageVerificationScheduler:
                 shift_id_for_income,  # actual shift ID
                 enable_shift_for_income,  # enable_shift
                 username,  # sent_by
+                None,  # revenue_breakdown
+                None,  # shifts_breakdown
+                parsed_income_date,  # income_date
             )
 
             force_log(

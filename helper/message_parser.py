@@ -167,16 +167,50 @@ def extract_s7pos_amount_and_currency(text: str):
 
 
 def extract_s7days_amount_and_currency(text: str):
-    """Sum all USD values after '=' or ':' markers in S7days summary messages."""
+    """
+    Sum all USD values after '=' or ':' markers in S7days summary messages.
+    Also extracts date and end time from the message.
+
+    Returns: (currency, total, income_date) or (None, None, None)
+    """
+    from datetime import datetime
+    from helper.dateutils import DateUtils
+
     matches = re.findall(r'[=:]\s*([\d]+(?:\.\d+)?)\s*\$', text)
     if not matches:
-        return None, None
+        return None, None, None
 
     total = round(sum(float(value) for value in matches), 2)
     if total.is_integer():
         total = int(total)
 
-    return '$', total
+    # Extract date from first line (format: dd.mm.yyyy)
+    date_match = re.search(r'^(\d{2})\.(\d{2})\.(\d{4})', text, re.MULTILINE)
+
+    # Extract end time from Time line (format: -Time:7:00am-3:00pm)
+    time_match = re.search(r'-Time:\s*\d{1,2}:\d{2}(?:am|pm)\s*-\s*(\d{1,2}):(\d{2})(am|pm)', text, re.IGNORECASE)
+
+    income_date = None
+    if date_match and time_match:
+        day = int(date_match.group(1))
+        month = int(date_match.group(2))
+        year = int(date_match.group(3))
+
+        hour = int(time_match.group(1))
+        minute = int(time_match.group(2))
+        am_pm = time_match.group(3).lower()
+
+        # Convert 12-hour to 24-hour format
+        if am_pm == 'pm' and hour != 12:
+            hour += 12
+        elif am_pm == 'am' and hour == 12:
+            hour = 0
+
+        # Create datetime and localize to configured timezone
+        naive_dt = datetime(year, month, day, hour, minute)
+        income_date = DateUtils.localize_datetime(naive_dt)
+
+    return '$', total, income_date
 
 
 def extract_s7days_breakdown(text: str) -> dict[str, float]:

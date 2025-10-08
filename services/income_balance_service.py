@@ -104,6 +104,7 @@ class IncomeService:
         sent_by: str | None = None,
         revenue_breakdown: dict[str, float] | None = None,
         shifts_breakdown: list[dict] | None = None,
+        income_date: datetime | None = None,
     ) -> IncomeBalance:
         """
         Insert income
@@ -115,7 +116,7 @@ class IncomeService:
         try:
             from_symbol = CurrencyEnum.from_symbol(currency)
             currency_code = from_symbol if from_symbol else currency
-            current_date = DateUtils.now()
+            current_date = income_date if income_date is not None else DateUtils.now()
 
             # Ensure shift exists - auto-create if needed
             if shift_id is 0:

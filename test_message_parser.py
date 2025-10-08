@@ -234,9 +234,17 @@ Hash: 2e720fc0"""
             "-Name= Seanghay David"
         )
 
-        currency, amount = extract_s7days_amount_and_currency(message)
+        currency, amount, income_date = extract_s7days_amount_and_currency(message)
         self.assertEqual(currency, '$')
         self.assertAlmostEqual(amount, 717.4)
+
+        # Verify income_date is parsed correctly (September 28, 2025 at 3:00 PM)
+        self.assertIsNotNone(income_date)
+        self.assertEqual(income_date.year, 2025)
+        self.assertEqual(income_date.month, 9)
+        self.assertEqual(income_date.day, 28)
+        self.assertEqual(income_date.hour, 15)  # 3:00 PM in 24-hour format
+        self.assertEqual(income_date.minute, 0)
 
         no_trx_messages = [
             "Payment completed successfully",
