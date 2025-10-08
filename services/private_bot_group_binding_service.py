@@ -76,5 +76,18 @@ class PrivateBotGroupBindingService:
                 PrivateBotGroupBinding.private_chat_id == private_chat_id,
                 PrivateBotGroupBinding.bound_group_id == group_id
             ).first()
-            
+
             return binding is not None
+
+    @staticmethod
+    def get_all_with_daily_summary_time() -> List[tuple[int, str]]:
+        """Get all private chat IDs with their configured daily summary times"""
+        with get_db_session() as session:
+            results = session.query(
+                PrivateBotGroupBinding.private_chat_id,
+                PrivateBotGroupBinding.daily_summary_time
+            ).filter(
+                PrivateBotGroupBinding.daily_summary_time.isnot(None)
+            ).distinct().all()
+
+            return [(r[0], r[1]) for r in results]
