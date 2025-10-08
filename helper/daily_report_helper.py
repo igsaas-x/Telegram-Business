@@ -81,9 +81,18 @@ async def daily_transaction_report(incomes, report_date: datetime, telegram_user
         report += "<b>ម៉ោងប្រតិបត្តិការ:</b> គ្មាន"
 
     # Add the same summary section as used in shift close and private bot
+    # Only show summary for BUSINESS packages (shift feature)
     if chat_id:
-        summary = await daily_summary_for_shift_close(chat_id, report_date, group_name)
-        report += summary
+        from services.group_package_service import GroupPackageService
+        from common.enums import ServicePackage
+
+        group_package_service = GroupPackageService()
+        package = await group_package_service.get_package_by_chat_id(chat_id)
+
+        # Only show summary for BUSINESS package (which has shift functionality)
+        if package and package.package == ServicePackage.BUSINESS:
+            summary = await daily_summary_for_shift_close(chat_id, report_date, group_name)
+            report += summary
 
     return report
 
