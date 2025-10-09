@@ -1,7 +1,6 @@
 import asyncio
 from datetime import timedelta
 
-import pytz
 import schedule
 from sqlalchemy import and_
 
@@ -179,19 +178,20 @@ class PackageExpiryScheduler:
         Start the scheduler to run the package expiry notification job.
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
-        cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
-        schedule.every().day.at("13:10", tz=cambodia_tz).do(
+        job1 = schedule.every().day.at("13:25", tz="Asia/Phnom_Penh").do(
             lambda: asyncio.create_task(self.notify_expiring_packages())
         )
 
         # Schedule the expired package update job to run daily at 11:00 AM Cambodia time
-        schedule.every().day.at("13:20", tz=cambodia_tz).do(
+        job2 = schedule.every().day.at("13:30", tz="Asia/Phnom_Penh").do(
             lambda: asyncio.create_task(self.update_expired_packages_to_free())
         )
 
         force_log("Package expiry scheduler started. Jobs will run daily:", "PackageExpiryScheduler")
-        force_log("  - 10:00 AM: Notify packages expiring in 3 days", "PackageExpiryScheduler")
-        force_log("  - 01:00 PM: Update expired packages to FREE", "PackageExpiryScheduler")
+        force_log("  - 13:10 PM: Notify packages expiring in 3 days", "PackageExpiryScheduler")
+        force_log("  - 13:20 PM: Update expired packages to FREE", "PackageExpiryScheduler")
+        force_log(f"Job 1 next run: {job1.next_run}", "PackageExpiryScheduler")
+        force_log(f"Job 2 next run: {job2.next_run}", "PackageExpiryScheduler")
 
         try:
             while True:
