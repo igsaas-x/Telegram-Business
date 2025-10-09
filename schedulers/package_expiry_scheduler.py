@@ -30,14 +30,14 @@ class PackageExpiryScheduler:
                 # Calculate the date 3 days from now in Cambodia timezone
                 three_days_from_now = DateUtils.now() + timedelta(days=3)
                 # Get start and end of that day for comparison
-                expiry_date_start = three_days_from_now.replace(hour=0, minute=0, second=0, microsecond=0)
+                # expiry_date_start = three_days_from_now.replace(hour=0, minute=0, second=0, microsecond=0)
                 expiry_date_end = three_days_from_now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
                 # Find packages that expire in exactly 3 days (paid packages only)
                 expiring_packages = session.query(GroupPackage).join(Chat).filter(
                     and_(
-                        GroupPackage.is_paid == True,
-                        GroupPackage.package_end_date >= expiry_date_start,
+                        # GroupPackage.is_paid == True,
+                        # GroupPackage.package_end_date >= expiry_date_start,
                         GroupPackage.package_end_date <= expiry_date_end,
                         GroupPackage.package.in_([
                             ServicePackage.BASIC,
@@ -46,66 +46,6 @@ class PackageExpiryScheduler:
                         ])
                     )
                 ).all()
-
-                # Temporarily disable user group notifications
-                # notification_count = 0
-                # for group_package in expiring_packages:
-                #     try:
-                #         chat_group = group_package.chat_group
-                #         if not chat_group:
-                #             force_log(f"No chat group found for package ID {group_package.id}")
-                #             continue
-                #
-                #         # Format the expiry date for display
-                #         expiry_date_str = group_package.package_end_date.strftime("%Y-%m-%d %H:%M")
-                #
-                #         # Create notification message
-                #         message = (
-                #             f"⚠️ **Package Expiry Notice** ⚠️\n\n"
-                #             f"Dear members,\n\n"
-                #             f"Your {group_package.package.value} package is about to expire!\n"
-                #             f"📅 **Expiry Date:** {expiry_date_str} (Cambodia Time)\n"
-                #             f"⏰ **Time Remaining:** 3 days\n\n"
-                #             f"Please renew your package to continue enjoying our services without interruption.\n\n"
-                #             f"Contact support for renewal assistance."
-                #         )
-                #
-                #         # Choose the appropriate bot service based on package type
-                #         if group_package.package == ServicePackage.BUSINESS:
-                #             # Use business bot for BUSINESS packages
-                #             if self.business_bot_service:
-                #                 success = await self.business_bot_service.send_message(chat_group.chat_id, message)
-                #                 if success:
-                #                     notification_count += 1
-                #                     force_log(
-                #                         f"Sent expiry notification via business bot to group {chat_group.chat_id} "
-                #                         f"(Package: {group_package.package.value}, "
-                #                         f"Expires: {expiry_date_str})",
-                #                         "package_expiry_scheduler"
-                #                     )
-                #                 else:
-                #                     force_log(
-                #                         f"Failed to send notification via business bot to group {chat_group.chat_id}",
-                #                         "package_expiry_scheduler"
-                #                     )
-                #             else:
-                #                 force_log("Business bot service not available for BUSINESS package notification", "package_expiry_scheduler")
-                #         else:
-                #             # Use standard bot for BASIC and STANDARD packages
-                #             await self.standard_bot_service.send_message_to_chat(chat_group.chat_id, message)
-                #             notification_count += 1
-                #             force_log(
-                #                 f"Sent expiry notification via standard bot to group {chat_group.chat_id} "
-                #                 f"(Package: {group_package.package.value}, "
-                #                 f"Expires: {expiry_date_str})",
-                #                 "package_expiry_scheduler"
-                #             )
-                #
-                #     except Exception as e:
-                #         force_log(
-                #             f"Failed to send expiry notification to group {group_package.chat_group_id}: {str(e)}",
-                #             "package_expiry_scheduler"
-                #         )
 
                 if expiring_packages:
                     force_log(f"Found {len(expiring_packages)} packages expiring in 3 days", "PackageExpiryScheduler")
@@ -138,6 +78,8 @@ class PackageExpiryScheduler:
             
             for i, group_package in enumerate(expiring_packages, 1):
                 chat_group = group_package.chat_group
+                if not chat_group.is_active:
+                    continue
                 expiry_date_str = group_package.package_end_date.strftime("%Y-%m-%d %H:%M")
                 group_name = chat_group.group_name if chat_group else "Unknown Group"
                 
@@ -169,17 +111,87 @@ class PackageExpiryScheduler:
         except Exception as e:
             force_log(f"Error sending admin alert: {str(e)}", "PackageExpiryScheduler", "ERROR")
 
+    async def update_expired_packages_to_free(self):
+        """
+        Find packages that have expired (end date < today) and update them to FREE package.
+        """
+        force_log("Package Expiry Scheduler - Checking for expired packages to update to FREE", "PackageExpiryScheduler")
+        try:
+            with get_db_session() as session:
+                # Get current time in Cambodia timezone
+                current_time = DateUtils.now()
+
+                # Find packages that have expired (not FREE packages)
+                expired_packages = session.query(GroupPackage).join(Chat).filter(
+                    and_(
+                        GroupPackage.package_end_date < current_time,
+                        GroupPackage.package.in_([
+                            ServicePackage.BASIC,
+                            ServicePackage.STANDARD,
+                            ServicePackage.BUSINESS
+                        ])
+                    )
+                ).all()
+
+                if not expired_packages:
+                    force_log("No expired packages found to update", "PackageExpiryScheduler")
+                    return
+
+                updated_count = 0
+                for group_package in expired_packages:
+                    try:
+                        old_package = group_package.package.value
+                        chat_group = group_package.chat_group
+
+                        # Update package to FREE
+                        group_package.package = ServicePackage.FREE
+                        group_package.is_paid = False
+
+                        session.commit()
+                        updated_count += 1
+
+                        group_name = chat_group.group_name if chat_group else "Unknown Group"
+                        force_log(
+                            f"Updated expired package to FREE - Group: {group_name} (ID: {chat_group.chat_id}), "
+                            f"Old Package: {old_package}, "
+                            f"Expired: {group_package.package_end_date.strftime('%Y-%m-%d %H:%M')}",
+                            "PackageExpiryScheduler"
+                        )
+
+                    except Exception as e:
+                        session.rollback()
+                        force_log(
+                            f"Failed to update package {group_package.id} to FREE: {str(e)}",
+                            "PackageExpiryScheduler",
+                            "ERROR"
+                        )
+
+                force_log(
+                    f"Updated {updated_count} out of {len(expired_packages)} expired packages to FREE",
+                    "PackageExpiryScheduler"
+                )
+
+        except Exception as e:
+            force_log(f"Error in update_expired_packages_to_free: {str(e)}", "PackageExpiryScheduler", "ERROR")
+
     async def start_scheduler(self):
         """
         Start the scheduler to run the package expiry notification job.
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
         cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
-        schedule.every().day.at("10:00", cambodia_tz).do(
+        schedule.every().day.at("12:50", cambodia_tz).do(
             lambda: asyncio.create_task(self.notify_expiring_packages())
         )
 
-        force_log("Package expiry scheduler started. Job will run daily at 10:00 AM Cambodia time (Asia/Phnom_Penh)", "PackageExpiryScheduler")
+        # Schedule the expired package update job to run daily at 11:00 AM Cambodia time
+        schedule.every().day.at("13:00", cambodia_tz).do(
+            lambda: asyncio.create_task(self.update_expired_packages_to_free())
+        )
+
+        force_log("Package expiry scheduler started. Jobs will run daily:", "PackageExpiryScheduler")
+        force_log("  - 10:00 AM: Notify packages expiring in 3 days", "PackageExpiryScheduler")
+        force_log("  - 01:00 PM: Update expired packages to FREE", "PackageExpiryScheduler")
 
         try:
             while True:
