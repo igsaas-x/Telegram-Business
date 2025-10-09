@@ -180,12 +180,12 @@ class PackageExpiryScheduler:
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
         cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
-        schedule.every().day.at("12:50", cambodia_tz).do(
+        schedule.every().day.at("13:10", tz=cambodia_tz).do(
             lambda: asyncio.create_task(self.notify_expiring_packages())
         )
 
         # Schedule the expired package update job to run daily at 11:00 AM Cambodia time
-        schedule.every().day.at("13:00", cambodia_tz).do(
+        schedule.every().day.at("13:20", tz=cambodia_tz).do(
             lambda: asyncio.create_task(self.update_expired_packages_to_free())
         )
 
