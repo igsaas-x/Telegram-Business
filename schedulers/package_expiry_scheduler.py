@@ -185,7 +185,7 @@ class PackageExpiryScheduler:
         Start the scheduler to run the package expiry notification job.
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
-        job1 = schedule.every().day.at("13:50", tz="Asia/Phnom_Penh").do(
+        job1 = schedule.every().day.at("10:00", tz="Asia/Phnom_Penh").do(
             self._run_async,
             self.notify_expiring_packages,
             is_refresh_job=True,
