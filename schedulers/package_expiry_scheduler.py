@@ -19,6 +19,13 @@ class PackageExpiryScheduler:
         self.admin_bot_service = admin_bot_service
         self.admin_group_id = -4907090942  # Admin group chat ID
 
+    @staticmethod
+    def _run_async(coro_func, *args, **kwargs):
+        """Helper to run coroutine functions via schedule while keeping job keywords intact."""
+        # Remove marker used to prevent other schedulers from cancelling this job
+        kwargs.pop("is_refresh_job", None)
+        asyncio.create_task(coro_func(*args, **kwargs))
+
     async def notify_expiring_packages(self):
         """
         Find groups with packages expiring in 3 days and send notifications to the groups.
@@ -178,13 +185,17 @@ class PackageExpiryScheduler:
         Start the scheduler to run the package expiry notification job.
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
-        job1 = schedule.every().day.at("13:25", tz="Asia/Phnom_Penh").do(
-            lambda: asyncio.create_task(self.notify_expiring_packages())
+        job1 = schedule.every().day.at("13:50", tz="Asia/Phnom_Penh").do(
+            self._run_async,
+            self.notify_expiring_packages,
+            is_refresh_job=True,
         )
 
         # Schedule the expired package update job to run daily at 11:00 AM Cambodia time
-        job2 = schedule.every().day.at("13:30", tz="Asia/Phnom_Penh").do(
-            lambda: asyncio.create_task(self.update_expired_packages_to_free())
+        job2 = schedule.every().day.at("13:55", tz="Asia/Phnom_Penh").do(
+            self._run_async,
+            self.update_expired_packages_to_free,
+            is_refresh_job=True,
         )
 
         force_log("Package expiry scheduler started. Jobs will run daily:", "PackageExpiryScheduler")
