@@ -3,6 +3,7 @@ from datetime import datetime
 
 import schedule
 
+from helper.dateutils import DateUtils
 from helper.logger_utils import force_log
 from services.chat_service import ChatService
 from services.income_balance_service import IncomeService
@@ -73,8 +74,11 @@ class DailySummaryScheduler:
                     # Validate time format
                     datetime.strptime(time_str, "%H:%M")
 
+                    # Convert ICT time to server's local time for scheduling
+                    local_time_str = DateUtils.convert_ict_time_to_local(time_str)
+
                     # Create a job for this private chat at the specified time
-                    job = schedule.every().day.at(time_str).do(
+                    job = schedule.every().day.at(local_time_str).do(
                         lambda pc_id=private_chat_id: asyncio.create_task(
                             self._send_summary_to_private_chat(pc_id)
                         )
@@ -82,7 +86,7 @@ class DailySummaryScheduler:
 
                     self.scheduled_jobs[private_chat_id] = job
                     force_log(
-                        f"Scheduled daily summary for private chat {private_chat_id} at {time_str}",
+                        f"Scheduled daily summary for private chat {private_chat_id} at {time_str} ICT ({local_time_str} local)",
                         "DailySummaryScheduler"
                     )
 
