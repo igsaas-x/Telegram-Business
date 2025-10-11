@@ -49,6 +49,31 @@ class IncomeMessageProcessor:
             force_log("Message text empty, skipping", "IncomeMessageProcessor")
             return None
 
+        chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+        if not chat:
+            force_log(f"Chat {chat_id} not registered, skipping", "IncomeMessageProcessor")
+            return None
+
+        # Normalise timestamps and enforce registration buffer
+        msg_time = message_time
+        if msg_time.tzinfo is None:
+            msg_time = pytz.UTC.localize(msg_time)
+        else:
+            msg_time = msg_time.astimezone(pytz.UTC)
+
+        chat_created = chat.created_at
+        if chat_created.tzinfo is None:
+            chat_created = DateUtils.localize_datetime(chat_created)
+        chat_created_utc = chat_created.astimezone(pytz.UTC)
+
+        buffer_time = chat_created_utc - timedelta(minutes=1)
+        if msg_time < buffer_time:
+            force_log(
+                f"Message timestamp {msg_time} before registration buffer {buffer_time}, skipping",
+                "IncomeMessageProcessor",
+            )
+            return None
+
         shifts_breakdown = None
         parsed_income_date = None
 
@@ -92,31 +117,6 @@ class IncomeMessageProcessor:
         if is_duplicate:
             force_log(
                 f"Duplicate detected for chat_id={chat_id}, trx_id={trx_id}, message_id={message_id}",
-                "IncomeMessageProcessor",
-            )
-            return None
-
-        chat = await self.chat_service.get_chat_by_chat_id(chat_id)
-        if not chat:
-            force_log(f"Chat {chat_id} not registered, skipping", "IncomeMessageProcessor")
-            return None
-
-        # Normalise timestamps and enforce registration buffer
-        msg_time = message_time
-        if msg_time.tzinfo is None:
-            msg_time = pytz.UTC.localize(msg_time)
-        else:
-            msg_time = msg_time.astimezone(pytz.UTC)
-
-        chat_created = chat.created_at
-        if chat_created.tzinfo is None:
-            chat_created = DateUtils.localize_datetime(chat_created)
-        chat_created_utc = chat_created.astimezone(pytz.UTC)
-
-        buffer_time = chat_created_utc - timedelta(minutes=1)
-        if msg_time < buffer_time:
-            force_log(
-                f"Message timestamp {msg_time} before registration buffer {buffer_time}, skipping",
                 "IncomeMessageProcessor",
             )
             return None

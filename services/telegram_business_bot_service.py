@@ -156,10 +156,27 @@ class AutosumBusinessBot:
         force_log(
             f"CRITICAL DEBUG: business_menu called for chat_id: {update.effective_chat.id}", "AutosumBusinessBot"
         )
-        
+
         # Check if this group is bound to a private chat
         chat_id = int(update.effective_chat.id)
         chat = await self.chat_service.get_chat_by_chat_id(chat_id)
+
+        # Validate that chat has Business package
+        if not chat:
+            await update.message.reply_text(
+                "❌ មិនទាន់ចុះឈ្មោះ\n\n"
+                "សូមប្រើ /register ដើម្បីចុះឈ្មោះជជែករបស់អ្នកសម្រាប់សេវាអាជីវកម្ម។"
+            )
+            return ConversationHandler.END
+
+        group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
+        if not group_package or group_package.package == ServicePackage.FREE:
+            await update.message.reply_text(
+                "❌ សេវាកម្មនេះត្រូវការ Business Package\n\n"
+                "សូមទំនាក់ទំនងក្រុមគាំទ្រដើម្បីដំឡើង Business Package"
+            )
+            return ConversationHandler.END
+
         if chat:
             private_chats = PrivateBotGroupBindingService.get_private_chats_for_group(chat.id)
         else:

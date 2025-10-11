@@ -76,3 +76,32 @@ class DateUtils:
     def add_days(date, days):
         """Add N days to the given date"""
         return date + timedelta(days=days)
+
+    @staticmethod
+    def convert_ict_time_to_local(ict_time_str: str) -> str:
+        """
+        Convert a time string in ICT (Asia/Phnom_Penh) to the server's local timezone.
+
+        Args:
+            ict_time_str: Time string in HH:MM format (ICT timezone)
+
+        Returns:
+            Time string in HH:MM format (server's local timezone)
+
+        Example:
+            If server is in UTC and ict_time_str is "09:00" (9 AM ICT),
+            returns "02:00" (2 AM UTC, which is 9 AM ICT)
+        """
+        # Parse the time string
+        hour, minute = map(int, ict_time_str.split(':'))
+
+        # Create a datetime for today at the specified ICT time
+        ict_tz = pytz.timezone('Asia/Phnom_Penh')
+        today = datetime.now(ict_tz).date()
+        ict_dt = ict_tz.localize(datetime.combine(today, time(hour, minute)))
+
+        # Convert to server's local timezone
+        local_dt = ict_dt.astimezone()
+
+        # Return formatted time string
+        return local_dt.strftime('%H:%M')

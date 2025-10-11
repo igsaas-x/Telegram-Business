@@ -30,15 +30,15 @@ class MessageVerificationScheduler:
         self.is_running = False
 
     async def start_scheduler(self):
-        """Start the scheduler to run every 20 minutes"""
+        """Start the scheduler to run every 1 hour"""
         self.is_running = True
-        force_log("Message verification scheduler started - will run every 20 minutes", "MessageVerificationScheduler")
+        force_log("Message verification scheduler started - will run every 1 hour", "MessageVerificationScheduler")
 
         while self.is_running:
             try:
                 await self.verify_messages()
-                # Wait 20 minutes (1200 seconds) before next run
-                await asyncio.sleep(1200)
+                # Wait 1 hour (3600 seconds) before next run
+                await asyncio.sleep(3600)
             except Exception as e:
                 force_log(f"Error in scheduler loop: {e}", "MessageVerificationScheduler", "ERROR")
                 # Wait 1 minute before retrying if there's an error
@@ -50,7 +50,7 @@ class MessageVerificationScheduler:
         force_log("Message verification scheduler stopped", "MessageVerificationScheduler")
 
     async def verify_messages(self):
-        """Main verification method that reads messages from last 20 minutes"""
+        """Main verification method that reads messages from last 60 minutes"""
         force_log("Starting message verification job...", "MessageVerificationScheduler")
 
         try:
@@ -64,10 +64,10 @@ class MessageVerificationScheduler:
                 chat_ids = await self.chat_service.get_active_chat_ids_by_registered_by(self.mobile_number)
                 force_log(f"Additional client ({self.mobile_number}): Found {len(chat_ids)} chats registered by this number to verify")
 
-            # Calculate time range (last 30 minutes)
+            # Calculate time range (last 60 minutes)
             now = datetime.datetime.now(pytz.UTC)
-            thirty_minutes_ago = now - datetime.timedelta(minutes=30)
-            force_log(f"Checking messages from {thirty_minutes_ago} to {now}")
+            sixty_minutes_ago = now - datetime.timedelta(minutes=60)
+            force_log(f"Checking messages from {sixty_minutes_ago} to {now}")
 
             verification_count = 0
             new_messages_found = 0
@@ -86,7 +86,7 @@ class MessageVerificationScheduler:
 
                     # Read messages from the chat within the time range
                     messages = await self._get_bot_messages_in_timeframe(
-                        chat_id, thirty_minutes_ago, now
+                        chat_id, sixty_minutes_ago, now
                     )
 
                     verification_count += len(messages)
@@ -96,15 +96,15 @@ class MessageVerificationScheduler:
                         new_messages_found += 1
 
                     # Rate limiting: Add delay between chats to prevent Telegram API rate limits
-                    # 200ms delay between chats, longer delay every 20 chats
+                    # 1.5 second delay between chats, longer delay every 20 chats
                     if i < len(chat_ids) - 1:  # Don't delay after the last chat
                         if (i + 1) % 20 == 0:
                             force_log(
                                 f"Processed {i + 1} chats, taking longer break to prevent rate limits..."
                             )
-                            await asyncio.sleep(2)  # 2 seconds break every 20 chats
+                            await asyncio.sleep(5)  # 5 seconds break every 20 chats
                         else:
-                            await asyncio.sleep(0.2)  # 200ms between each chat
+                            await asyncio.sleep(1.5)  # 1.5 seconds between each chat
 
                 except Exception as chat_error:
                     force_log(f"Error processing chat {chat_id}: {chat_error}")
@@ -127,9 +127,9 @@ class MessageVerificationScheduler:
         messages = []
 
         try:
-            # Get messages from the chat starting from 30 minutes ago
+            # Get messages from the chat starting from the specified start time
             all_messages = await self.client.get_messages(
-                chat_id, offset_date=start_time, reverse=True, limit=100, wait_time=0.5
+                chat_id, offset_date=start_time, reverse=True, limit=100, wait_time=2.0
             )
             force_log(f"Found {len(all_messages)} messages from {chat_id}")
 

@@ -3,8 +3,8 @@ from contextlib import contextmanager
 from typing import Any, Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 from config import load_environment
@@ -16,7 +16,7 @@ DATABASE_URL = (
 )
 
 engine = create_engine(
-    DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
+    DATABASE_URL, pool_size=20, max_overflow=30, pool_timeout=60, pool_recycle=1800
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

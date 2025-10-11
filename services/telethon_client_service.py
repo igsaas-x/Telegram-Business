@@ -113,9 +113,9 @@ class TelethonClientService:
         # For scheduler purposes, primary client gets None to handle NULL registered_by chats
         scheduler_mobile = None if is_primary else mobile
 
-        # Initialize and start the message verification scheduler
+        # Initialize the message verification scheduler
         self.scheduler = MessageVerificationScheduler(self.client, scheduler_mobile)  # type: ignore
-        force_log("Starting message verification scheduler...")
+        force_log("Message verification scheduler initialized for one-time startup check")
 
         @self.client.on(events.NewMessage)  # type: ignore
         async def _new_message_listener(event):
@@ -253,8 +253,19 @@ You can now receive transaction notifications from bank bots in this private cha
                 force_log(f"Error in start_handler: {e}")
                 await event.respond("❌ An error occurred during registration. Please try again.")
 
-        # Start both the client and scheduler concurrently
-        await asyncio.gather(
-            self.client.run_until_disconnected(),  # type: ignore
-            self.scheduler.start_scheduler(),
-        )
+        # Run one-time message verification on startup asynchronously (non-blocking)
+        async def run_startup_verification():
+            force_log("Running one-time startup message verification to catch any missed messages...")
+            try:
+                await self.scheduler.verify_messages()
+                force_log("Startup message verification completed successfully")
+            except Exception as e:
+                force_log(f"Error during startup message verification: {e}", "TelethonClientService", "ERROR")
+
+        # Start verification in background without blocking client startup
+        asyncio.create_task(run_startup_verification())
+        force_log("Startup verification queued to run in background")
+
+        # Start the client (periodic scheduler disabled to prevent rate limits)
+        force_log("Starting client event listener (periodic verification disabled)")
+        await self.client.run_until_disconnected()  # type: ignore

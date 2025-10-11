@@ -426,7 +426,7 @@ class PackageHandler:
             await self.group_package_service.get_or_create_group_package(chat_id)
 
             updated_package = await self.group_package_service.update_package(
-                chat_id, 
+                chat_id,
                 ServicePackage(selected_package),
                 package_start_date=start_date,
                 package_end_date=end_date,
@@ -441,6 +441,10 @@ class PackageHandler:
                 else:
                     await update.message.reply_text("Failed to update group package.")  # type: ignore
                 return ConversationHandler.END
+
+            # Activate the chat when updating package (regardless of package type)
+            await self.chat_service.update_chat_status(chat_id, True)
+            force_log(f"Activated chat_id {chat_id} during package update to {selected_package}", "PackageHandler")
 
             # Update shift settings based on package change
             if ServicePackage(selected_package) == ServicePackage.BUSINESS:
