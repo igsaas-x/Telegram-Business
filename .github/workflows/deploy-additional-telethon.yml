@@ -41,26 +41,28 @@ jobs:
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_HOST=${{ secrets.DB_HOST }}
-          
+
           ADDITIONAL_API_ID_1=${{ secrets.ADDITIONAL_API_ID_1 }}
           ADDITIONAL_API_HASH_1=${{ secrets.ADDITIONAL_API_HASH_1 }}
           ADDITIONAL_PHONE_NUMBER_1=${{ secrets.ADDITIONAL_PHONE_NUMBER_1 }}
-          
+
           ADDITIONAL_API_ID_2=${{ secrets.ADDITIONAL_API_ID_2 }}
           ADDITIONAL_API_HASH_2=${{ secrets.ADDITIONAL_API_HASH_2 }}
           ADDITIONAL_PHONE_NUMBER_2=${{ secrets.ADDITIONAL_PHONE_NUMBER_2 }}
-          
+
           ADDITIONAL_API_ID_3=${{ secrets.ADDITIONAL_API_ID_3 }}
           ADDITIONAL_API_HASH_3=${{ secrets.ADDITIONAL_API_HASH_3 }}
           ADDITIONAL_PHONE_NUMBER_3=${{ secrets.ADDITIONAL_PHONE_NUMBER_3 }}
-          
+
           ADDITIONAL_API_ID_4=${{ secrets.ADDITIONAL_API_ID_4 }}
           ADDITIONAL_API_HASH_4=${{ secrets.ADDITIONAL_API_HASH_4 }}
           ADDITIONAL_PHONE_NUMBER_4=${{ secrets.ADDITIONAL_PHONE_NUMBER_4 }}
-          
+
           ADDITIONAL_API_ID_5=${{ secrets.ADDITIONAL_API_ID_5 }}
           ADDITIONAL_API_HASH_5=${{ secrets.ADDITIONAL_API_HASH_5 }}
           ADDITIONAL_PHONE_NUMBER_5=${{ secrets.ADDITIONAL_PHONE_NUMBER_5 }}
+
+          PASSIVE_MODE=false
           EOF
           
           pip install -r requirements.txt

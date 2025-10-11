@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
@@ -202,7 +203,9 @@ class IncomeService:
                         )
 
                     # Check thresholds after saving income (fire and forget)
-                    if self.threshold_warning_service:
+                    # Skip in passive mode to avoid sending messages
+                    is_passive_mode = os.getenv("PASSIVE_MODE", "false").lower() in ["true", "1", "yes"]
+                    if self.threshold_warning_service and not is_passive_mode:
                         asyncio.create_task(self._check_thresholds_async(
                             chat_id=chat_id,
                             shift_id=shift_id,

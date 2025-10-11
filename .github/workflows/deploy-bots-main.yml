@@ -43,10 +43,10 @@ jobs:
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_HOST=${{ secrets.DB_HOST }}
-          
+
           API_ID1=${{ secrets.API_ID1 }}
           API_HASH1=${{ secrets.API_HASH1 }}
-          
+
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           BOT_NAME=${{ secrets.BOT_NAME }}
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
@@ -54,6 +54,8 @@ jobs:
           AUTOSUM_BUSINESS_CUSTOM_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_CUSTOM_BOT_TOKEN }}
           PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
           UTILS_BOT_TOKEN=${{ secrets.UTILS_BOT_TOKEN }}
+
+          PASSIVE_MODE=${{ secrets.PASSIVE_MODE }}
           EOF
           
           pip install -r requirements.txt
