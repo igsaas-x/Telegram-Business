@@ -517,7 +517,7 @@ class PackageHandler:
                     f"• Group Name: {chat_name or 'N/A'}\n"
                     f"• Package: No package assigned\n"
                     f"• Status: No active package\n"
-                    f"• Uses Private Bot: {'✅ Yes' if has_private_bot else '❌ No'}"
+                    f"• Uses Private Group: {'✅ Yes' if has_private_bot else '❌ No'}"
                 )
             else:
                 # Format dates
@@ -569,7 +569,7 @@ class PackageHandler:
                     for flag_key, flag_value in group_package.feature_flags.items():
                         # Format the flag value
                         if isinstance(flag_value, bool):
-                            flag_display = "✅ Enabled" if flag_value else "❌ Disabled"
+                            flag_display = "✅" if flag_value else "❌"
                         else:
                             flag_display = str(flag_value)
                         message += f"\n  • {flag_key}: {flag_display}"
