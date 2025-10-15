@@ -13,7 +13,7 @@ class FeatureFlags(Enum):
     
     # Transaction features
     TRANSACTION_ANNOTATION = "transaction_annotation"
-    CUSTOM_EXPORT = "custom_export"
+    CUSTOM_REPORT = "custom_report"
     
     # Business features
     SHIFT_MANAGEMENT = "shift_management"
