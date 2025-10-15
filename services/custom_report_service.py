@@ -3,6 +3,7 @@ from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.orm import joinedload
 
 from config import get_db_session
 from helper import DateUtils
@@ -49,9 +50,16 @@ class CustomReportService:
             return reports
 
     async def get_report_by_id(self, report_id: int) -> CustomReport | None:
-        """Get a report by ID"""
+        """Get a report by ID with eagerly loaded chat_group relationship"""
         with get_db_session() as db:
-            report = db.query(CustomReport).filter(CustomReport.id == report_id).first()
+            report = (
+                db.query(CustomReport)
+                .options(joinedload(CustomReport.chat_group))  # Eagerly load the relationship
+                .filter(CustomReport.id == report_id)
+                .first()
+            )
+            if report:
+                db.expunge(report)  # Detach from session but keep loaded data
             return report
 
     async def get_scheduled_reports(self) -> list[CustomReport]:
@@ -59,6 +67,7 @@ class CustomReportService:
         with get_db_session() as db:
             reports = (
                 db.query(CustomReport)
+                .options(joinedload(CustomReport.chat_group))  # Eagerly load the relationship
                 .filter(
                     CustomReport.is_active == True,
                     CustomReport.schedule_enabled == True,
@@ -66,6 +75,9 @@ class CustomReportService:
                 )
                 .all()
             )
+            # Expunge objects from session to make them detached but with loaded relationships
+            for report in reports:
+                db.expunge(report)
             return reports
 
     async def create_report(

@@ -140,7 +140,7 @@ class CustomReportScheduler:
                     )
                 else:
                     force_log(
-                        f"Failed to send scheduled report '{report.report_name}' to chat {chat_id}",
+                        f"Failed to send scheduled report '{report.report_name}' to chat {chat_id}, message: {message}",
                         "CustomReportScheduler",
                         "WARN"
                     )
