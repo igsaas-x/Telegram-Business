@@ -134,7 +134,7 @@ class CustomReportScheduler:
             business_bot = bot_registry.get_business_bot()
 
             if business_bot:
-                success = await business_bot.send_message(chat_id, message)
+                success = await business_bot.send_message(chat_id, message, parse_mode='HTML')
                 if success:
                     force_log(
                         f"Sent scheduled report '{report.report_name}' to chat {chat_id}",
