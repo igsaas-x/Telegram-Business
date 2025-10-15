@@ -25,7 +25,7 @@ class CustomReportScheduler:
         await self._setup_schedules()
 
         # Periodically refresh schedules (every 10 minutes) to pick up new/changed reports
-        schedule.every(10).minutes.do(lambda: asyncio.create_task(self._setup_schedules()))
+        schedule.every(10).minutes.do(self._refresh_schedules_sync)
 
         while self.is_running:
             try:
@@ -46,6 +46,22 @@ class CustomReportScheduler:
         self.is_running = False
         schedule.clear()
         force_log("Custom report scheduler stopped", "CustomReportScheduler")
+
+    def _refresh_schedules_sync(self):
+        """Synchronous wrapper to schedule async _setup_schedules"""
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._setup_schedules())
+        except Exception as e:
+            force_log(f"Error in _refresh_schedules_sync: {e}", "CustomReportScheduler", "ERROR")
+
+    def _execute_scheduled_report_sync(self, report_id: int):
+        """Synchronous wrapper to schedule async _execute_scheduled_report"""
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._execute_scheduled_report(report_id))
+        except Exception as e:
+            force_log(f"Error in _execute_scheduled_report_sync: {e}", "CustomReportScheduler", "ERROR")
 
     async def _setup_schedules(self):
         """Setup scheduled jobs for all reports with scheduling enabled"""
@@ -74,9 +90,7 @@ class CustomReportScheduler:
 
                     # Create a job for this report at the specified time
                     job = schedule.every().day.at(local_time_str).do(
-                        lambda r_id=report.id: asyncio.create_task(
-                            self._execute_scheduled_report(r_id)
-                        )
+                        self._execute_scheduled_report_sync, report_id=report.id
                     )
 
                     self.scheduled_jobs[report.id] = job
