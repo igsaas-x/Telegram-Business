@@ -43,22 +43,17 @@ def format_custom_report_result(
     # Format date as DD-MM-YYYY
     date_str = execution_date.strftime("%d-%m-%Y")
 
-    # Header section
-    message = f"<b>━━━━━━━━━━━━━━━━━━━━━━</b>\n"
-    message += f"📊 <b>{report_name}</b> {trigger_icon}\n"
+    # Header
+    message = f"<b>របាយការណ៍:</b> {report_name}\n {trigger_icon} ({trigger_text})\n\n"
 
     if description:
-        message += f"<i>{description}</i>\n"
+        message += f"<i>{description}</i>\n\n"
 
-    message += f"<b>━━━━━━━━━━━━━━━━━━━━━━</b>\n\n"
-    message += f"📅 <b>កាលបរិច្ឆេទ:</b> {date_str}\n"
-    message += f"⚡ <b>ប្រភេទ:</b> {trigger_text}\n\n"
-
-    # Summary section
-    message += f"<b>📈 សង្ខេបសរុប</b>\n"
-    message += f"<b>{'─' * 30}</b>\n\n"
+    message += "——----- summary ———----\n"
+    message += f"📊 <b>{report_name} {date_str}:</b>\n"
 
     # Format currency data
+    currency_lines = []
     for currency_code in sorted(currencies.keys()):
         currency_data = currencies[currency_code]
         amount = currency_data["amount"]
@@ -70,14 +65,18 @@ def format_custom_report_result(
         else:
             amount_formatted = f"{amount:,.2f}"
 
-        # Currency symbol
-        symbol = "៛" if currency_code == "KHR" else "$"
+        currency_lines.append((currency_code, amount_formatted, count))
 
-        message += f"💰 <b>{currency_code}</b>\n"
-        message += f"   • ចំនួនទឹកប្រាក់: <code>{amount_formatted} {symbol}</code>\n"
-        message += f"   • ប្រតិបត្តិការ: <b>{count}</b> លើក\n\n"
+    # Calculate spacing for alignment
+    max_amount_length = max(len(line[1]) for line in currency_lines) if currency_lines else 0
 
-    message += f"<b>━━━━━━━━━━━━━━━━━━━━━━</b>\n"
-    message += f"📊 <b>សរុប:</b> {total_count} ប្រតិបត្តិការ"
+    # Build aligned output
+    aligned_data = ""
+    for currency_code, amount_formatted, count in currency_lines:
+        spaces_needed = max_amount_length - len(amount_formatted) + 4
+        aligned_data += f"{currency_code}: {amount_formatted}{' ' * spaces_needed}| ប្រតិបត្តិការ: {count}\n"
+
+    # Wrap in pre tags for monospace alignment
+    message += f"<pre>{aligned_data.rstrip()}</pre>"
 
     return message
