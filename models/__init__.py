@@ -2,6 +2,7 @@
 from models.base_model import BaseModel
 from models.chat_model import Chat
 from models.conversation_tracker_model import BotQuestion
+from models.custom_report_model import CustomReport
 from models.group_package_model import GroupPackage
 from models.income_balance_model import IncomeBalance
 from models.revenue_source_model import RevenueSource
@@ -21,4 +22,5 @@ __all__ = [
     "GroupPackage",
     "IncomeBalance",
     "RevenueSource",
+    "CustomReport",
 ]
