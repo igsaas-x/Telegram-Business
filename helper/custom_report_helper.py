@@ -39,18 +39,18 @@ def format_custom_report_result(
     # Build the message
     trigger_icon = "🔄" if trigger_type == "auto" else "👤"
     trigger_text = "Auto" if trigger_type == "auto" else "Manual"
-    message = f"<b>របាយការណ៍:</b> {report_name} {trigger_icon} ({trigger_text})\n\n"
-    message += "——----- summary ———----\n"
 
     # Format date as DD-MM-YYYY
     date_str = execution_date.strftime("%d-%m-%Y")
 
-    # Show report name and description (if provided)
-    report_header = f"📊 <b>{report_name}</b>"
+    # Header
+    message = f"<b>របាយការណ៍:</b> {report_name}\n {trigger_icon} ({trigger_text})\n\n"
+
     if description:
-        report_header += f" - {description}"
-    report_header += f" ({date_str})"
-    message += f"{report_header}\n"
+        message += f"<i>{description}</i>\n\n"
+
+    message += "——----- summary ———----\n"
+    message += f"📊 <b>{report_name} {date_str}:</b>\n"
 
     # Format currency data
     currency_lines = []
@@ -63,7 +63,7 @@ def format_custom_report_result(
         if currency_code == "KHR":
             amount_formatted = f"{int(amount):,.0f}"
         else:
-            amount_formatted = f"{amount:.2f}"
+            amount_formatted = f"{amount:,.2f}"
 
         currency_lines.append((currency_code, amount_formatted, count))
 
