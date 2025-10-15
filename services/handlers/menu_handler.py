@@ -7,9 +7,9 @@ from telegram.ext import ContextTypes, ConversationHandler
 from common.enums import FeatureFlags
 from helper import DateUtils, daily_transaction_report, weekly_transaction_report, monthly_transaction_report, \
     shift_report, business_weekly_transaction_report, business_monthly_transaction_report, \
-    custom_business_weekly_report, custom_business_monthly_report
+    custom_business_weekly_report, custom_business_monthly_report, format_custom_report_result
 from helper.logger_utils import force_log
-from services import ChatService, IncomeService, ShiftService, GroupPackageService
+from services import ChatService, IncomeService, ShiftService, GroupPackageService, CustomReportService
 
 
 class MenuHandler:
@@ -781,6 +781,73 @@ class MenuHandler:
         formatted_title = f"សរុបប្រតិបត្តិការ {period_text}"
         return total_summary_report(incomes, formatted_title)
 
+    async def _handle_custom_reports_menu(self, chat_id: int, query):
+        """Handle custom reports menu - show list of active reports"""
+        try:
+            custom_report_service = CustomReportService()
+            reports = await custom_report_service.get_active_reports_by_chat_id(chat_id)
+
+            if not reports:
+                keyboard = [[InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.edit_message_text(
+                    "គ្មានរបាយការណ៍ផ្ទាល់ខ្លួនទេ។",
+                    reply_markup=reply_markup
+                )
+                return 1008
+
+            keyboard = []
+            for report in reports:
+                keyboard.append([
+                    InlineKeyboardButton(
+                        report.report_name,
+                        callback_data=f"execute_custom_report_{report.id}"
+                    )
+                ])
+
+            keyboard.append([InlineKeyboardButton("ត្រឡប់ក្រោយ", callback_data="menu")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(
+                "📋 របាយការណ៍ផ្ទាល់ខ្លួន\n\nជ្រើសរើសរបាយការណ៍:",
+                reply_markup=reply_markup
+            )
+            return True
+
+        except Exception as e:
+            force_log(f"Error in _handle_custom_reports_menu: {e}", "MenuHandler", "ERROR")
+            await query.edit_message_text(f"Error showing custom reports: {str(e)}")
+            return False
+
+    async def _handle_execute_custom_report(self, report_id: int, query):
+        """Execute a custom report and display results"""
+        try:
+            custom_report_service = CustomReportService()
+
+            # Execute the report
+            results = await custom_report_service.execute_report(report_id)
+
+            # Format the results
+            execution_date = DateUtils.now()
+            message = format_custom_report_result(
+                results.get("report_name", "របាយការណ៍"),
+                results,
+                execution_date
+            )
+
+            # Send the report
+            await query.edit_message_text(message, parse_mode='HTML')
+            return True
+
+        except ValueError as e:
+            force_log(f"Validation error executing report {report_id}: {e}", "MenuHandler", "WARN")
+            await query.edit_message_text(f"កំហុស: {str(e)}")
+            return False
+        except Exception as e:
+            force_log(f"Error in _handle_execute_custom_report: {e}", "MenuHandler", "ERROR")
+            await query.edit_message_text(f"Error executing report: {str(e)}")
+            return False
+
     async def menu_callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle callback queries from menu inline buttons"""
         query = update.callback_query
@@ -843,6 +910,13 @@ class MenuHandler:
                 if package_type and package_type.value == 'BUSINESS':
                     keyboard.append([InlineKeyboardButton("តាមវេន", callback_data="shift_summary")])
 
+                    # Check if custom reports feature is enabled
+                    custom_report_enabled = await group_package_service.has_feature(
+                        chat.chat_id, FeatureFlags.CUSTOM_REPORT.value
+                    )
+                    if custom_report_enabled:
+                        keyboard.append([InlineKeyboardButton("របាយការណ៍ផ្ទាល់ខ្លួន", callback_data="custom_reports")])
+
                 # Daily option - different callback based on package
                 if package_type and package_type.value in ['TRIAL', 'STANDARD']:
                     keyboard.append([InlineKeyboardButton("ប្រចាំថ្ងៃ", callback_data="daily_summary")])
@@ -887,6 +961,13 @@ class MenuHandler:
             elif callback_data.startswith("shift_date_"):
                 date_str = callback_data.replace("shift_date_", "")
                 result = await self._handle_shift_date_report(chat_id, date_str, query)
+                return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
+            elif callback_data == "custom_reports":
+                result = await self._handle_custom_reports_menu(chat_id, query)
+                return 1008 if result else ConversationHandler.END  # CALLBACK_QUERY_CODE
+            elif callback_data.startswith("execute_custom_report_"):
+                report_id = int(callback_data.replace("execute_custom_report_", ""))
+                result = await self._handle_execute_custom_report(report_id, query)
                 return ConversationHandler.END if result else ConversationHandler.END  # End conversation after showing report
 
             # If we get here, it's an unknown callback
