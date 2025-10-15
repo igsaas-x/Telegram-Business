@@ -270,6 +270,7 @@ class CustomReportService:
                 return {
                     **aggregated,
                     "report_name": report.report_name,
+                    "description": report.description,
                 }
 
             except OperationalError as e:

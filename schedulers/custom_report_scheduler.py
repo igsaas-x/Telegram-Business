@@ -112,7 +112,9 @@ class CustomReportScheduler:
             message = format_custom_report_result(
                 results.get("report_name", "របាយការណ៍"),
                 results,
-                execution_date
+                execution_date,
+                description=results.get("description"),
+                trigger_type="auto"
             )
 
             # Get the report to find the chat_id

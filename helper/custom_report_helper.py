@@ -3,7 +3,11 @@ from typing import Any
 
 
 def format_custom_report_result(
-    report_name: str, results: dict[str, Any], execution_date: datetime
+    report_name: str,
+    results: dict[str, Any],
+    execution_date: datetime,
+    description: str | None = None,
+    trigger_type: str = "manual"
 ) -> str:
     """
     Format custom report results into a summary message
@@ -19,6 +23,8 @@ def format_custom_report_result(
                 "total_count": 1288
             }
         execution_date: Date the report was executed
+        description: Optional description of the report
+        trigger_type: How the report was triggered ("manual" or "auto")
 
     Returns:
         Formatted HTML message string
@@ -31,12 +37,20 @@ def format_custom_report_result(
         return f"<b>របាយការណ៍:</b> {report_name}\n\nគ្មានទិន្នន័យទេ។"
 
     # Build the message
-    message = f"<b>របាយការណ៍:</b> {report_name}\n\n"
+    trigger_icon = "🔄" if trigger_type == "auto" else "👤"
+    trigger_text = "Auto" if trigger_type == "auto" else "Manual"
+    message = f"<b>របាយការណ៍:</b> {report_name} {trigger_icon} ({trigger_text})\n\n"
     message += "——----- summary ———----\n"
 
     # Format date as DD-MM-YYYY
     date_str = execution_date.strftime("%d-%m-%Y")
-    message += f"📊 <b>សរុបវេនទាំងអស់ថ្ងៃ {date_str}:</b>\n"
+
+    # Show report name and description (if provided)
+    report_header = f"📊 <b>{report_name}</b>"
+    if description:
+        report_header += f" - {description}"
+    report_header += f" ({date_str})"
+    message += f"{report_header}\n"
 
     # Format currency data
     currency_lines = []
