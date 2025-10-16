@@ -20,20 +20,22 @@ class DailySummaryScheduler:
         self.chat_service = ChatService()
         self.is_running = False
         self.scheduled_jobs = {}  # Track scheduled jobs by private_chat_id
-        self.event_loop = None  # Store the event loop reference
         self.refresh_job = None  # Track the refresh job separately
+        # Use a separate scheduler instance instead of global schedule
+        self.scheduler = schedule.Scheduler()
 
-    def _async_wrapper(self, coro):
+    @staticmethod
+    def _async_wrapper(coro):
         """Wrapper to schedule async coroutines from synchronous schedule library"""
-        if self.event_loop and self.event_loop.is_running():
-            asyncio.run_coroutine_threadsafe(coro, self.event_loop)
-        else:
-            force_log("Event loop not available for async task", "DailySummaryScheduler", "ERROR")
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(coro)
+        except Exception as e:
+            force_log(f"Error in _async_wrapper: {e}", "DailySummaryScheduler", "ERROR")
 
     async def start_scheduler(self):
         """Start the daily summary scheduler using schedule library"""
         self.is_running = True
-        self.event_loop = asyncio.get_event_loop()
         force_log("Daily summary scheduler started", "DailySummaryScheduler")
 
         # Initial setup of scheduled jobs
@@ -41,14 +43,27 @@ class DailySummaryScheduler:
 
         # Periodically refresh schedules (every 10 minutes) to pick up new/changed times
         # Store the refresh job reference so we don't cancel it later
-        self.refresh_job = schedule.every(10).minutes.do(
+        self.refresh_job = self.scheduler.every(10).minutes.do(
             lambda: self._async_wrapper(self._setup_schedules())
         )
 
+        # Log once that the loop is starting
+        force_log(f"Scheduler loop starting with {len(self.scheduler.jobs)} jobs", "DailySummaryScheduler", "DEBUG")
+
+        loop_count = 0
         while self.is_running:
             try:
                 # Run pending scheduled jobs
-                schedule.run_pending()
+                self.scheduler.run_pending()
+
+                # Every 60 seconds, log that we're still alive
+                loop_count += 1
+                if loop_count % 60 == 0:
+                    force_log(
+                        f"Scheduler loop alive, checking jobs (jobs: {len(self.scheduler.jobs)})",
+                        "DailySummaryScheduler",
+                        "DEBUG"
+                    )
 
                 # Sleep for 1 second to avoid busy waiting
                 await asyncio.sleep(1)
@@ -62,7 +77,7 @@ class DailySummaryScheduler:
     async def stop_scheduler(self):
         """Stop the daily summary scheduler"""
         self.is_running = False
-        schedule.clear()
+        self.scheduler.clear()
         force_log("Daily summary scheduler stopped", "DailySummaryScheduler")
 
     async def _setup_schedules(self):
@@ -74,11 +89,11 @@ class DailySummaryScheduler:
             results = PrivateBotGroupBindingService.get_all_with_daily_summary_time()
 
             # Clear existing jobs (except the refresh job)
-            for job in list(schedule.jobs):
+            for job in list(self.scheduler.jobs):
                 # Don't cancel the refresh job
                 if job == self.refresh_job:
                     continue
-                schedule.cancel_job(job)
+                self.scheduler.cancel_job(job)
 
             self.scheduled_jobs = {}
 
@@ -95,7 +110,7 @@ class DailySummaryScheduler:
 
                     # Create a job for this private chat at the specified time
                     # Use _async_wrapper to properly schedule the async coroutine
-                    job = schedule.every().day.at(local_time_str).do(
+                    job = self.scheduler.every().day.at(local_time_str).do(
                         lambda pc_id=private_chat_id: self._async_wrapper(
                             self._send_summary_to_private_chat(pc_id)
                         )
@@ -116,6 +131,11 @@ class DailySummaryScheduler:
 
             force_log(f"Setup {len(self.scheduled_jobs)} scheduled summaries", "DailySummaryScheduler")
 
+            # Debug: Show all schedule jobs
+            force_log(f"Total jobs in this scheduler: {len(self.scheduler.jobs)}", "DailySummaryScheduler", "DEBUG")
+            for job in self.scheduler.jobs:
+                force_log(f"  Job: {job}, next_run: {job.next_run}", "DailySummaryScheduler", "DEBUG")
+
         except Exception as e:
             force_log(f"Error in _setup_schedules: {e}", "DailySummaryScheduler", "ERROR")
             import traceback
@@ -123,7 +143,10 @@ class DailySummaryScheduler:
 
     async def _send_summary_to_private_chat(self, private_chat_id: int):
         """Generate and send consolidated summary for a private chat"""
-        force_log(f"Generating summary for private chat {private_chat_id}", "DailySummaryScheduler")
+        force_log(
+            f"🔔 SCHEDULED JOB TRIGGERED! Generating summary for private chat {private_chat_id}",
+            "DailySummaryScheduler"
+        )
 
         # Get all groups bound to this private chat
         groups = PrivateBotGroupBindingService.get_bound_groups(private_chat_id)

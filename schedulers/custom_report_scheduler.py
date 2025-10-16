@@ -15,6 +15,8 @@ class CustomReportScheduler:
         self.custom_report_service = CustomReportService()
         self.is_running = False
         self.scheduled_jobs = {}  # Track scheduled jobs by report_id
+        # Use a separate scheduler instance instead of global schedule
+        self.scheduler = schedule.Scheduler()
 
     async def start_scheduler(self):
         """Start the custom report scheduler using schedule library"""
@@ -25,12 +27,12 @@ class CustomReportScheduler:
         await self._setup_schedules()
 
         # Periodically refresh schedules (every 10 minutes) to pick up new/changed reports
-        schedule.every(10).minutes.do(self._refresh_schedules_sync)
+        self.scheduler.every(10).minutes.do(self._refresh_schedules_sync)
 
         while self.is_running:
             try:
                 # Run pending scheduled jobs
-                schedule.run_pending()
+                self.scheduler.run_pending()
 
                 # Sleep for 1 second to avoid busy waiting
                 await asyncio.sleep(1)
@@ -44,7 +46,7 @@ class CustomReportScheduler:
     async def stop_scheduler(self):
         """Stop the custom report scheduler"""
         self.is_running = False
-        schedule.clear()
+        self.scheduler.clear()
         force_log("Custom report scheduler stopped", "CustomReportScheduler")
 
     def _refresh_schedules_sync(self):
@@ -70,10 +72,10 @@ class CustomReportScheduler:
             reports = await self.custom_report_service.get_scheduled_reports()
 
             # Clear existing jobs (except the refresh job)
-            for job in list(schedule.jobs):
+            for job in list(self.scheduler.jobs):
                 if hasattr(job, 'job_func') and job.job_func.keywords.get('is_refresh_job'):
                     continue
-                schedule.cancel_job(job)
+                self.scheduler.cancel_job(job)
 
             self.scheduled_jobs = {}
 
@@ -89,7 +91,7 @@ class CustomReportScheduler:
                     local_time_str = DateUtils.convert_ict_time_to_local(report.schedule_time)
 
                     # Create a job for this report at the specified time
-                    job = schedule.every().day.at(local_time_str).do(
+                    job = self.scheduler.every().day.at(local_time_str).do(
                         self._execute_scheduled_report_sync, report_id=report.id
                     )
 
