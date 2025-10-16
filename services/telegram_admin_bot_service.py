@@ -44,6 +44,7 @@ UPDATE_THRESHOLD_CODE = 1026
 FEATURE_FLAG_SELECTION_CODE = 1026
 FEATURE_FLAG_COMMAND_CODE = 1027
 FEATURE_FLAG_CHAT_SELECTION_CODE = 1028
+DAILY_SUMMARY_TIME_CODE = 1029
 
 
 class TelegramAdminBot:
@@ -581,6 +582,105 @@ class TelegramAdminBot:
     
 
     @staticmethod
+    async def set_daily_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /set_daily_summary command to configure daily summary time for a private chat"""
+        await update.message.reply_text(
+            "Please provide the private chat ID (negative number) to configure daily summary time:"
+        )
+        return DAILY_SUMMARY_TIME_CODE
+
+    async def process_daily_summary_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Process daily summary time configuration"""
+        if not update.message or not update.message.text:
+            return ConversationHandler.END
+
+        try:
+            text = update.message.text.strip()
+
+            # If we don't have a chat ID yet, this is the chat ID input
+            if "daily_summary_chat_id" not in context.user_data:
+                try:
+                    chat_id = int(text)
+                    context.user_data["daily_summary_chat_id"] = chat_id
+
+                    # Check if this private chat has any bindings
+                    from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+                    bindings = PrivateBotGroupBindingService.get_bound_groups(chat_id)
+
+                    if not bindings:
+                        await update.message.reply_text(
+                            f"⚠️ Private chat {chat_id} has no group bindings. Please bind groups first."
+                        )
+                        return ConversationHandler.END
+
+                    # Show current time if configured
+                    current_time = PrivateBotGroupBindingService.get_daily_summary_time(chat_id)
+                    current_msg = f"\n\nCurrent time: {current_time}" if current_time else ""
+
+                    bound_groups = ", ".join([f"{g.group_name} ({g.chat_id})" for g in bindings[:3]])
+                    if len(bindings) > 3:
+                        bound_groups += f" and {len(bindings) - 3} more..."
+
+                    await update.message.reply_text(
+                        f"Private chat {chat_id} is bound to {len(bindings)} group(s):\n{bound_groups}"
+                        f"{current_msg}\n\n"
+                        f"Please reply with the time to send daily summaries in HH:MM format (24-hour, ICT timezone)\n"
+                        f"Example: 18:00 for 6:00 PM ICT\n\n"
+                        f"Or reply with 'disable' to turn off daily summaries."
+                    )
+                    return DAILY_SUMMARY_TIME_CODE
+
+                except ValueError:
+                    await update.message.reply_text("Error: Please enter a valid chat ID (negative number)")
+                    return ConversationHandler.END
+
+            # This is the time input
+            chat_id = context.user_data.get("daily_summary_chat_id")
+            if not chat_id:
+                await update.message.reply_text("Error: No chat ID found")
+                return ConversationHandler.END
+
+            from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+
+            # Handle disable
+            if text.lower() == "disable":
+                success = PrivateBotGroupBindingService.set_daily_summary_time(chat_id, None)
+                if success:
+                    await update.message.reply_text(
+                        f"✅ Daily summaries disabled for private chat {chat_id}"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"⚠️ Failed to disable daily summaries for chat {chat_id}"
+                    )
+                context.user_data.pop("daily_summary_chat_id", None)
+                return ConversationHandler.END
+
+            # Validate and set time
+            success = PrivateBotGroupBindingService.set_daily_summary_time(chat_id, text)
+
+            if success:
+                await update.message.reply_text(
+                    f"✅ Daily summary time set to {text} ICT for private chat {chat_id}\n\n"
+                    f"The scheduler will pick up this change within 10 minutes."
+                )
+            else:
+                await update.message.reply_text(
+                    f"⚠️ Failed to set daily summary time. Please check:\n"
+                    f"• Time format should be HH:MM (e.g., 18:00)\n"
+                    f"• Private chat must have group bindings"
+                )
+
+            context.user_data.pop("daily_summary_chat_id", None)
+            return ConversationHandler.END
+
+        except Exception as e:
+            force_log(f"Error in process_daily_summary_time: {e}", "TelegramAdminBot", "ERROR")
+            await update.message.reply_text(f"Error: {str(e)}")
+            context.user_data.pop("daily_summary_chat_id", None)
+            return ConversationHandler.END
+
+    @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Session has been cancelled")
         return ConversationHandler.END
@@ -694,11 +794,25 @@ class TelegramAdminBot:
             per_message=False,
         )
 
+        daily_summary_handler = ConversationHandler(
+            entry_points=[CommandHandler("set_daily_summary", self.set_daily_summary)],
+            states={
+                DAILY_SUMMARY_TIME_CODE: [
+                    MessageHandler(filters.TEXT & filters.REPLY, self.process_daily_summary_time),
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_chat=True,
+            per_user=True,
+            per_message=False,
+        )
+
         self.app.add_handler(package_handler)
         self.app.add_handler(enable_shift_handler)
         self.app.add_handler(menu_handler)
         self.app.add_handler(query_package_handler)
         self.app.add_handler(update_group_handler)
+        self.app.add_handler(daily_summary_handler)
 
         force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 
