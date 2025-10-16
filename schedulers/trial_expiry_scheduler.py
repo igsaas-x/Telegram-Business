@@ -15,6 +15,8 @@ from services.group_package_service import GroupPackageService
 class TrialExpiryScheduler:
     def __init__(self):
         self.group_package_service = GroupPackageService()
+        # Use a separate scheduler instance instead of global schedule
+        self.scheduler = schedule.Scheduler()
 
     @staticmethod
     def convert_expired_trials_to_free():
@@ -75,16 +77,16 @@ class TrialExpiryScheduler:
         """
         # Schedule the job to run daily at 1:00 AM Cambodia time
         cambodia_tz = pytz.timezone('Asia/Phnom_Penh')
-        schedule.every().day.at("01:00", cambodia_tz).do(self.convert_expired_trials_to_free)
+        self.scheduler.every().day.at("01:00", cambodia_tz).do(self.convert_expired_trials_to_free)
 
         # For testing purposes, you can also run it every minute:
-        # schedule.every().minute.do(self.convert_expired_trials_to_free)
+        # self.scheduler.every().minute.do(self.convert_expired_trials_to_free)
 
         force_log("Trial expiry scheduler started. Job will run daily at 9:00 AM Cambodia time (Asia/Phnom_Penh)", "TrialExpiryScheduler")
 
         try:
             while True:
-                schedule.run_pending()
+                self.scheduler.run_pending()
                 await asyncio.sleep(60)  # Check every minute
         except KeyboardInterrupt:
             force_log("Trial expiry scheduler stopped by user", "TrialExpiryScheduler")

@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 # NOW import services after logging is configured
 from helper.credential_loader import CredentialLoader
-from schedulers import AutoCloseScheduler, DailySummaryScheduler
+from schedulers import AutoCloseScheduler, CustomReportScheduler, DailySummaryScheduler
 from schedulers.package_expiry_scheduler import PackageExpiryScheduler
 from schedulers.trial_expiry_scheduler import TrialExpiryScheduler
 from services.bot_registry import BotRegistry
@@ -94,6 +94,7 @@ async def main(loader: CredentialLoader) -> None:
             admin_bot_service=admin_bot
         )
         daily_summary_scheduler = DailySummaryScheduler()
+        custom_report_scheduler = CustomReportScheduler()
 
         # Run database migrations
         alembic_cfg = Config("alembic.ini")
@@ -110,6 +111,7 @@ async def main(loader: CredentialLoader) -> None:
             asyncio.create_task(trial_expiry_scheduler.start_scheduler()),
             asyncio.create_task(package_expiry_scheduler.start_scheduler()),
             asyncio.create_task(daily_summary_scheduler.start_scheduler()),
+            asyncio.create_task(custom_report_scheduler.start_scheduler()),
         ]
 
         # Add business bot only if token is provided

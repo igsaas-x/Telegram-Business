@@ -79,31 +79,32 @@ class BusinessEventHandler:
             chat_id, FeatureFlags.WEEKLY_MONTHLY_REPORTS.value
         )
 
+        # Check if custom reports feature is enabled
+        has_custom_reports = await self.group_package_service.has_feature(
+            chat_id, FeatureFlags.CUSTOM_REPORT.value
+        )
+
         if current_shift:
             buttons = [
                 [("⌛ របាយការណ៍វេននេះ", "current_shift_report")],
-                # [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
-
-            # Add weekly/monthly reports if feature is enabled
-            if has_weekly_monthly_reports:
-                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
-
-            buttons.append([("❌ ត្រលប់ក្រោយ", "close_menu")])
         else:
             buttons = [
                 [("📈 របាយការណ៍វេនមុន", "previous_shift_report")],
                 [("🕐 របាយការណ៍ប្រចាំថ្ងៃ", "other_days_report")],
             ]
 
-            # Add weekly/monthly reports if feature is enabled
-            if has_weekly_monthly_reports:
-                buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
-                buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
+        # Add weekly/monthly reports if feature is enabled
+        if has_weekly_monthly_reports:
+            buttons.append([("📅 របាយការណ៍ប្រចាំសប្តាហ៍", "weekly_reports")])
+            buttons.append([("🗓 របាយការណ៍ប្រចាំខែ", "monthly_reports")])
 
-            buttons.append([("❌ បិទ", "close_menu")])
+        # Add custom reports if feature is enabled
+        if has_custom_reports:
+            buttons.append([("📋 របាយការណ៍ផ្ទាល់ខ្លួន", "custom_reports")])
+
+        buttons.append([("❌ បិទ", "close_menu")])
 
         message = f"""
 ជ្រើសរើសជម្រើសខាងក្រោម
@@ -187,6 +188,10 @@ class BusinessEventHandler:
             await self.show_weekly_report(event, data)
         elif data.startswith("month_"):
             await self.show_monthly_report(event, data)
+        elif data == "custom_reports":
+            await self.show_custom_reports(event)
+        elif data.startswith("execute_custom_report_"):
+            await self.execute_custom_report(event, data)
         else:
             # Fallback to regular command handler
             await self.command_handler.handle_callback_query(event)
@@ -1013,6 +1018,79 @@ Telegram: https://t.me/HK_688
 
         except Exception as e:
             force_log(f"Error showing monthly report: {e}", "BusinessEventHandler", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+
+    async def show_custom_reports(self, event):
+        """Show custom reports menu"""
+        chat_id = int(event.chat_id)
+
+        try:
+            from services import CustomReportService
+
+            custom_report_service = CustomReportService()
+            reports = await custom_report_service.get_active_reports_by_chat_id(chat_id)
+
+            if not reports:
+                message = """
+📋 របាយការណ៍ផ្ទាល់ខ្លួន
+
+🔴 គ្មានរបាយការណ៍ផ្ទាល់ខ្លួនទេ។
+
+💡 របាយការណ៍ផ្ទាល់ខ្លួននឹងបង្ហាញនៅទីនេះ។
+"""
+                buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            else:
+                message = "📋 របាយការណ៍ផ្ទាល់ខ្លួន\n\nជ្រើសរើសរបាយការណ៍:"
+
+                buttons = []
+                for report in reports:
+                    buttons.append([(report.report_name, f"execute_custom_report_{report.id}")])
+
+                buttons.append([("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")])
+
+        except Exception as e:
+            force_log(f"Error showing custom reports: {e}", "BusinessEventHandler", "ERROR")
+            message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+
+        await event.edit(message, buttons=buttons)
+
+    async def execute_custom_report(self, event, data):
+        """Execute a custom report and display results"""
+        report_id = int(data.replace("execute_custom_report_", ""))
+
+        try:
+            from services import CustomReportService
+            from helper import format_custom_report_result
+
+            custom_report_service = CustomReportService()
+
+            # Execute the report
+            results = await custom_report_service.execute_report(report_id)
+
+            # Format the results
+            execution_date = DateUtils.now()
+            message = format_custom_report_result(
+                results.get("report_name", "របាយការណ៍"),
+                results,
+                execution_date,
+                description=results.get("description"),
+                trigger_type="manual"
+            )
+
+            # Delete the menu and send the report as new message
+            await event.delete()
+            await event.respond(message, parse_mode='HTML')
+
+        except ValueError as e:
+            force_log(f"Validation error executing report {report_id}: {e}", "BusinessEventHandler", "WARN")
+            message = f"❌ កំហុស: {str(e)}"
+            buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
+            await event.edit(message, buttons=buttons)
+        except Exception as e:
+            force_log(f"Error executing custom report: {e}", "BusinessEventHandler", "ERROR")
             message = "❌ មានបញ្ហាក្នុងការទាញយករបាយការណ៍។ សូមសាកល្បងម្តងទៀត។"
             buttons = [[("🔙 ត្រឡប់ទៅមីនុយ", "back_to_menu")]]
             await event.edit(message, buttons=buttons)
