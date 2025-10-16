@@ -20,17 +20,30 @@ class DailySummaryScheduler:
         self.chat_service = ChatService()
         self.is_running = False
         self.scheduled_jobs = {}  # Track scheduled jobs by private_chat_id
+        self.event_loop = None  # Store the event loop reference
+        self.refresh_job = None  # Track the refresh job separately
+
+    def _async_wrapper(self, coro):
+        """Wrapper to schedule async coroutines from synchronous schedule library"""
+        if self.event_loop and self.event_loop.is_running():
+            asyncio.run_coroutine_threadsafe(coro, self.event_loop)
+        else:
+            force_log("Event loop not available for async task", "DailySummaryScheduler", "ERROR")
 
     async def start_scheduler(self):
         """Start the daily summary scheduler using schedule library"""
         self.is_running = True
+        self.event_loop = asyncio.get_event_loop()
         force_log("Daily summary scheduler started", "DailySummaryScheduler")
 
         # Initial setup of scheduled jobs
         await self._setup_schedules()
 
         # Periodically refresh schedules (every 10 minutes) to pick up new/changed times
-        schedule.every(10).minutes.do(lambda: asyncio.create_task(self._setup_schedules()))
+        # Store the refresh job reference so we don't cancel it later
+        self.refresh_job = schedule.every(10).minutes.do(
+            lambda: self._async_wrapper(self._setup_schedules())
+        )
 
         while self.is_running:
             try:
@@ -54,13 +67,16 @@ class DailySummaryScheduler:
 
     async def _setup_schedules(self):
         """Setup scheduled jobs for all private chats with configured times"""
+        force_log("Daily summary scheduler setup schedule", "DailySummaryScheduler")
+
         try:
             # Get all unique private chat configurations from service
             results = PrivateBotGroupBindingService.get_all_with_daily_summary_time()
 
             # Clear existing jobs (except the refresh job)
             for job in list(schedule.jobs):
-                if hasattr(job, 'job_func') and job.job_func.keywords.get('is_refresh_job'):
+                # Don't cancel the refresh job
+                if job == self.refresh_job:
                     continue
                 schedule.cancel_job(job)
 
@@ -78,8 +94,9 @@ class DailySummaryScheduler:
                     local_time_str = DateUtils.convert_ict_time_to_local(time_str)
 
                     # Create a job for this private chat at the specified time
+                    # Use _async_wrapper to properly schedule the async coroutine
                     job = schedule.every().day.at(local_time_str).do(
-                        lambda pc_id=private_chat_id: asyncio.create_task(
+                        lambda pc_id=private_chat_id: self._async_wrapper(
                             self._send_summary_to_private_chat(pc_id)
                         )
                     )
