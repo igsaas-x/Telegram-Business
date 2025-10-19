@@ -107,8 +107,8 @@ class ShiftService:
                 db.query(Shift)
                 .filter(
                     Shift.chat_id == chat_id,
-                    Shift.start_time >= start_date,
-                    Shift.start_time <= end_date,
+                    Shift.shift_date >= start_date,
+                    Shift.shift_date <= end_date,
                 )
                 .order_by(Shift.shift_date, Shift.number)
                 .all()

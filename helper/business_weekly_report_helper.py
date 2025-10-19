@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from . import force_log
 from .daily_report_helper import get_khmer_month_name
 
 
@@ -18,11 +19,15 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     end_date_obj = end_date.date()
 
     # Adjust end_date if it's exclusive (00:00:00) to make it inclusive
-    # if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
-    #     end_date_obj = (end_date - timedelta(days=1)).date()
+    if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
+        end_date_obj = (end_date - timedelta(days=1)).date()
+
+    force_log(f'Shifts start date {start_date_obj}, Shifts end date {end_date_obj}', "Business Weekly Report", "DEBUG")
 
     # Get all shifts within the date range
     shifts = await shift_service.get_shifts_by_date_range(chat_id, start_date_obj, end_date_obj)
+
+    force_log(f'Shifts: {len(shifts)} shifts', "Business Weekly Report", "DEBUG")
 
     # Group shifts by date - only allow Shift 1 and Shift 2
     daily_data = {}
