@@ -82,7 +82,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     report += "<b>វេនទី 1 (Shift 1)</b>\n"
     report += "<pre>\n"
     report += f"{'Date':<12} {'USD':<9} {'KHR':<10}\n"
-    report += "=" * 33 + "\n"
+    report += "-" * 30 + "\n"
 
     # Generate Shift 1 daily rows
     current_date = start_date_obj
@@ -98,7 +98,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
         current_date += timedelta(days=1)
 
     # Add Shift 1 total row
-    report += "=" * 33 + "\n"
+    report += "-" * 30 + "\n"
     total_s1_usd = f"{total_shift1_usd:.0f}"
     total_s1_khr = f"{total_shift1_khr:.0f}"
     report += f"{'Total':<12} {total_s1_usd:<9} {total_s1_khr:<10}\n"
@@ -108,7 +108,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     report += "<b>វេនទី 2 (Shift 2)</b>\n"
     report += "<pre>\n"
     report += f"{'Date':<12} {'USD':<9} {'KHR':<10}\n"
-    report += "=" * 33 + "\n"
+    report += "-" * 30 + "\n"
 
     # Generate Shift 2 daily rows
     current_date = start_date_obj
@@ -124,7 +124,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
         current_date += timedelta(days=1)
 
     # Add Shift 2 total row
-    report += "=" * 33 + "\n"
+    report += "-" * 30 + "\n"
     total_s2_usd = f"{total_shift2_usd:.0f}"
     total_s2_khr = f"{total_shift2_khr:.0f}"
     report += f"{'Total':<12} {total_s2_usd:<9} {total_s2_khr:<10}\n"
