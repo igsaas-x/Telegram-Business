@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from . import force_log
 from .daily_report_helper import get_khmer_month_name
+from .logger_utils import force_log
 
 
 async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_date: datetime, group_name: str = None) -> str:
