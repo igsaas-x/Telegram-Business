@@ -106,7 +106,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     report += "-" * 30 + "\n"
     total_s1_usd = f"{total_shift1_usd:.2f}"
     total_s1_khr = f"{total_shift1_khr:.0f}"
-    report += f"{'Total':<12} {total_s1_usd:<9} {total_s1_khr:<10}\n"
+    report += f"{'Total':<12} ${total_s1_usd:<9} ៛{total_s1_khr:<10}\n"
     report += "</pre>\n"
 
     # Build Shift 2 table
@@ -132,7 +132,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     report += "-" * 30 + "\n"
     total_s2_usd = f"{total_shift2_usd:.2f}"
     total_s2_khr = f"{total_shift2_khr:.0f}"
-    report += f"{'Total':<12} {total_s2_usd:<9} {total_s2_khr:<10}\n"
+    report += f"{'Total':<12} ${total_s2_usd:<9} ៛{total_s2_khr:<10}\n"
     report += "</pre>"
 
     return report
