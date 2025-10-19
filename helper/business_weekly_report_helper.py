@@ -36,8 +36,8 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     # Initialize all dates in range
     while current_date <= end_date_obj:
         daily_data[current_date] = {
-            "shift1": {"KHR": 0, "USD": 0},
-            "shift2": {"KHR": 0, "USD": 0}
+            "shift1": {"KHR": 0, "USD": 0.0},
+            "shift2": {"KHR": 0, "USD": 0.0}
         }
         current_date += timedelta(days=1)
 
@@ -92,7 +92,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     # Generate Shift 1 daily rows
     current_date = start_date_obj
     while current_date <= end_date_obj:
-        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0}, "shift2": {"KHR": 0, "USD": 0}})
+        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
 
         date_str = current_date.strftime('%d-%m-%Y')
         s1_usd = f"{day_data['shift1']['USD']:.0f}"
@@ -118,7 +118,7 @@ async def custom_business_weekly_report(chat_id: int, start_date: datetime, end_
     # Generate Shift 2 daily rows
     current_date = start_date_obj
     while current_date <= end_date_obj:
-        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0}, "shift2": {"KHR": 0, "USD": 0}})
+        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
 
         date_str = current_date.strftime('%d-%m-%Y')
         s2_usd = f"{day_data['shift2']['USD']:.0f}"
@@ -165,7 +165,7 @@ async def business_weekly_transaction_report(chat_id: int, start_date: datetime,
     
     # Initialize all dates in range with 0 values
     while current_date <= end_date_obj:
-        daily_data[current_date] = {"KHR": 0, "USD": 0, "count": 0}
+        daily_data[current_date] = {"KHR": 0, "USD": 0.0, "count": 0}
         current_date = current_date.replace(day=current_date.day + 1) if current_date.day < 31 else current_date.replace(month=current_date.month + 1, day=1)
         if current_date > end_date_obj:
             break
@@ -215,8 +215,8 @@ async def business_weekly_transaction_report(chat_id: int, start_date: datetime,
     
     while current_date <= end_date_obj:
         day_num = current_date.day
-        day_data = daily_data.get(current_date, {"KHR": 0, "USD": 0, "count": 0})
-        
+        day_data = daily_data.get(current_date, {"KHR": 0, "USD": 0.0, "count": 0})
+
         khr_formatted = f"{day_data['KHR']:,.0f}"
         usd_formatted = f"{day_data['USD']:,.2f}"
         trans_count = day_data['count']
