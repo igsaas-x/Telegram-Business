@@ -96,7 +96,7 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
         day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
 
         date_str = current_date.strftime('%d-%m-%Y')
-        s1_usd = f"{day_data['shift1']['USD']:.0f}"
+        s1_usd = f"{day_data['shift1']['USD']:.2f}"
         s1_khr = f"{day_data['shift1']['KHR']:.0f}"
 
         report += f"{date_str:<12} {s1_usd:<9} {s1_khr:<10}\n"
@@ -105,7 +105,7 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
 
     # Add Shift 1 total row
     report += "-" * 30 + "\n"
-    total_s1_usd = f"{total_shift1_usd:.0f}"
+    total_s1_usd = f"{total_shift1_usd:.2f}"
     total_s1_khr = f"{total_shift1_khr:.0f}"
     report += f"{'Total':<12} {total_s1_usd:<9} {total_s1_khr:<10}\n"
     report += "</pre>\n"
@@ -122,7 +122,7 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
         day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
 
         date_str = current_date.strftime('%d-%m-%Y')
-        s2_usd = f"{day_data['shift2']['USD']:.0f}"
+        s2_usd = f"{day_data['shift2']['USD']:.2f}"
         s2_khr = f"{day_data['shift2']['KHR']:.0f}"
 
         report += f"{date_str:<12} {s2_usd:<9} {s2_khr:<10}\n"
@@ -131,7 +131,7 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
 
     # Add Shift 2 total row
     report += "-" * 30 + "\n"
-    total_s2_usd = f"{total_shift2_usd:.0f}"
+    total_s2_usd = f"{total_shift2_usd:.2f}"
     total_s2_khr = f"{total_shift2_khr:.0f}"
     report += f"{'Total':<12} {total_s2_usd:<9} {total_s2_khr:<10}\n"
     report += "</pre>"
