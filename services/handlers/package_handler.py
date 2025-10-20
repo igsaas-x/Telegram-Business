@@ -491,39 +491,51 @@ class PackageHandler:
         try:
             chat_id = context.user_data.get("chat_id_input")
             chat_name = context.user_data.get("group_name")
-            
+
             if not chat_id:
                 await update.message.reply_text("Chat ID not found.")  # type: ignore
                 return ConversationHandler.END
 
+            # Get chat object to access internal ID
+            chat = await self.chat_service.get_chat_by_chat_id(int(chat_id))
+
             # Get package details
             group_package = await self.group_package_service.get_package_by_chat_id(chat_id)
-            
+
+            # Check if private bot is used
+            from services.private_bot_group_binding_service import PrivateBotGroupBindingService
+            private_bot_binding_service = PrivateBotGroupBindingService()
+            has_private_bot = False
+            if chat:
+                private_chats = private_bot_binding_service.get_private_chats_for_group(chat.id)
+                has_private_bot = len(private_chats) > 0
+
             if not group_package:
                 message = (
                     f"📋 Package Details\n\n"
                     f"• Group ID: {chat_id}\n"
                     f"• Group Name: {chat_name or 'N/A'}\n"
                     f"• Package: No package assigned\n"
-                    f"• Status: No active package"
+                    f"• Status: No active package\n"
+                    f"• Uses Private Group: {'✅ Yes' if has_private_bot else '❌ No'}"
                 )
             else:
                 # Format dates
                 start_date_str = group_package.package_start_date.strftime("%d-%m-%Y") if group_package.package_start_date else "N/A"
                 end_date_str = group_package.package_end_date.strftime("%d-%m-%Y") if group_package.package_end_date else "N/A"
                 last_paid_str = group_package.last_paid_date.strftime("%d-%m-%Y") if group_package.last_paid_date else "N/A"
-                
+
                 # Calculate status
                 if group_package.package_end_date:
                     now = DateUtils.now()
                     # Convert both to naive datetime to avoid timezone comparison issues
                     if hasattr(now, 'replace') and now.tzinfo is not None:
                         now = now.replace(tzinfo=None)
-                    
+
                     package_end_date = group_package.package_end_date
                     if hasattr(package_end_date, 'replace') and package_end_date.tzinfo is not None:
                         package_end_date = package_end_date.replace(tzinfo=None)
-                    
+
                     if now > package_end_date:
                         status = "❌ Expired"
                     else:
@@ -531,7 +543,7 @@ class PackageHandler:
                         status = f"✅ Active ({days_left} days left)"
                 else:
                     status = "⚠️ No end date set"
-                
+
                 message = (
                     f"📋 Package Details\n\n"
                     f"• Group ID: {chat_id}\n"
@@ -540,15 +552,27 @@ class PackageHandler:
                     f"• Status: {status}\n"
                     f"• Start Date: {start_date_str}\n"
                     f"• End Date: {end_date_str}\n"
+                    f"• Uses Private Bot: {'✅ Yes' if has_private_bot else '❌ No'}"
                 )
-                
+
                 # Add amount paid if available
                 if group_package.amount_paid is not None:
                     message += f"\n• Amount Paid: ${group_package.amount_paid:.2f}"
-                
+
                 # Add note if available
                 if group_package.note:
                     message += f"\n• Note: {group_package.note}"
+
+                # Add feature flags if available
+                if group_package.feature_flags:
+                    message += f"\n\n🚩 Feature Flags:"
+                    for flag_key, flag_value in group_package.feature_flags.items():
+                        # Format the flag value
+                        if isinstance(flag_value, bool):
+                            flag_display = "✅" if flag_value else "❌"
+                        else:
+                            flag_display = str(flag_value)
+                        message += f"\n  • {flag_key}: {flag_display}"
             
             # Check if update is from a callback query or regular message
             if hasattr(update, 'callback_query') and update.callback_query:

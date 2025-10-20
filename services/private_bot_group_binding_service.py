@@ -91,3 +91,48 @@ class PrivateBotGroupBindingService:
             ).distinct().all()
 
             return [(r[0], r[1]) for r in results]
+
+    @staticmethod
+    def set_daily_summary_time(private_chat_id: int, time_str: str | None) -> bool:
+        """
+        Set the daily summary time for all bindings of a private chat.
+
+        Args:
+            private_chat_id: The private chat ID
+            time_str: Time in HH:MM format (24-hour), or None to disable
+
+        Returns:
+            True if successful, False otherwise
+        """
+        with get_db_session() as session:
+            # Validate time format if not None
+            if time_str is not None:
+                from datetime import datetime
+                try:
+                    datetime.strptime(time_str, "%H:%M")
+                except ValueError:
+                    return False
+
+            # Update all bindings for this private chat
+            bindings = session.query(PrivateBotGroupBinding).filter(
+                PrivateBotGroupBinding.private_chat_id == private_chat_id
+            ).all()
+
+            if not bindings:
+                return False
+
+            for binding in bindings:
+                binding.daily_summary_time = time_str
+
+            session.commit()
+            return True
+
+    @staticmethod
+    def get_daily_summary_time(private_chat_id: int) -> str | None:
+        """Get the configured daily summary time for a private chat"""
+        with get_db_session() as session:
+            binding = session.query(PrivateBotGroupBinding).filter(
+                PrivateBotGroupBinding.private_chat_id == private_chat_id
+            ).first()
+
+            return binding.daily_summary_time if binding else None

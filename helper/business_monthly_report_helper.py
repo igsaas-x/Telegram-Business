@@ -40,8 +40,8 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
     # Initialize all dates in range
     while current_date <= end_date_actual:
         daily_data[current_date] = {
-            "shift1": {"KHR": 0, "USD": 0},
-            "shift2": {"KHR": 0, "USD": 0}
+            "shift1": {"KHR": 0, "USD": 0.0},
+            "shift2": {"KHR": 0, "USD": 0.0}
         }
         current_date += timedelta(days=1)
 
@@ -77,45 +77,63 @@ async def custom_business_monthly_report(chat_id: int, start_date: datetime, end
     month_khmer = get_khmer_month_name(start_date.month)
     year = start_date.year
 
-    # Build the report using HTML formatting with table structure
+    # Build the report using HTML formatting with two separate tables
     report = f"<b>សរុបប្រតិបត្តិការ {month_khmer} {year}</b>\n"
 
     # Add group name if provided
     if group_name:
-        report += f"<b>Group: {group_name}</b>\n"
+        report += f"<b>Group: {group_name}</b>\n\n"
 
-    # Build table
+    # Build Shift 1 table
+    report += "<b>វេនទី 1 (Shift 1)</b>\n"
     report += "<pre>\n"
-    report += f"{'Date':<12} {'Shift 1':<9} {'Shift 1':<10} {'Shift2':<9} {'Shift2':<10}\n"
-    report += f"{'':<12} {'(USD)':<9} {'(KHR)':<10} {'(USD)':<9} {'(KHR)':<10}\n"
-    report += "=" * 55 + "\n"
+    report += f"{'Date':<12} {'USD':<9} {'KHR':<10}\n"
+    report += "-" * 30 + "\n"
 
-    # Generate daily rows
+    # Generate Shift 1 daily rows
     current_date = start_date_obj
     while current_date <= end_date_actual:
-        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0}, "shift2": {"KHR": 0, "USD": 0}})
+        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
 
         date_str = current_date.strftime('%d-%m-%Y')
-        s1_usd = f"{day_data['shift1']['USD']:.0f}"
+        s1_usd = f"{day_data['shift1']['USD']:.2f}"
         s1_khr = f"{day_data['shift1']['KHR']:.0f}"
-        s2_usd = f"{day_data['shift2']['USD']:.0f}"
-        s2_khr = f"{day_data['shift2']['KHR']:.0f}"
 
-        report += f"{date_str:<12} {s1_usd:<9} {s1_khr:<10} {s2_usd:<9} {s2_khr:<10}\n"
+        report += f"{date_str:<12} {s1_usd:<9} {s1_khr:<10}\n"
 
         current_date += timedelta(days=1)
 
-    # Add ellipsis row if there are more than a few days
-    if (end_date_actual - start_date_obj).days > 2:
-        report += f"{'...':<12} {'...':<9} {'...':<10} {'...':<9} {'...':<10}\n"
-
-    # Add total row
-    report += "=" * 55 + "\n"
-    total_s1_usd = f"{total_shift1_usd:.0f}"
+    # Add Shift 1 total row
+    report += "-" * 30 + "\n"
+    total_s1_usd = f"{total_shift1_usd:.2f}"
     total_s1_khr = f"{total_shift1_khr:.0f}"
-    total_s2_usd = f"{total_shift2_usd:.0f}"
+    report += f"{'Total':<12} ${total_s1_usd:<9} ៛{total_s1_khr:<10}\n"
+    report += "</pre>\n"
+
+    # Build Shift 2 table
+    report += "<b>វេនទី 2 (Shift 2)</b>\n"
+    report += "<pre>\n"
+    report += f"{'Date':<12} {'USD':<9} {'KHR':<10}\n"
+    report += "-" * 30 + "\n"
+
+    # Generate Shift 2 daily rows
+    current_date = start_date_obj
+    while current_date <= end_date_actual:
+        day_data = daily_data.get(current_date, {"shift1": {"KHR": 0, "USD": 0.0}, "shift2": {"KHR": 0, "USD": 0.0}})
+
+        date_str = current_date.strftime('%d-%m-%Y')
+        s2_usd = f"{day_data['shift2']['USD']:.2f}"
+        s2_khr = f"{day_data['shift2']['KHR']:.0f}"
+
+        report += f"{date_str:<12} {s2_usd:<9} {s2_khr:<10}\n"
+
+        current_date += timedelta(days=1)
+
+    # Add Shift 2 total row
+    report += "-" * 30 + "\n"
+    total_s2_usd = f"{total_shift2_usd:.2f}"
     total_s2_khr = f"{total_shift2_khr:.0f}"
-    report += f"{'Total':<12} {total_s1_usd:<9} {total_s1_khr:<10} {total_s2_usd:<9} {total_s2_khr:<10}\n"
+    report += f"{'Total':<12} ${total_s2_usd:<9} ៛{total_s2_khr:<10}\n"
     report += "</pre>"
 
     return report
@@ -160,7 +178,7 @@ async def business_monthly_transaction_report(chat_id: int, start_date: datetime
     # Initialize all dates in range with 0 values
     current_date = start_date_obj
     while current_date <= end_date_actual:
-        daily_data[current_date] = {"KHR": 0, "USD": 0, "count": 0}
+        daily_data[current_date] = {"KHR": 0, "USD": 0.0, "count": 0}
         current_date = current_date + timedelta(days=1)
     
     # For each shift, get its income data and aggregate by date
@@ -202,8 +220,8 @@ async def business_monthly_transaction_report(chat_id: int, start_date: datetime
     
     while current_date <= end_date_actual:
         day_num = current_date.day
-        day_data = daily_data.get(current_date, {"KHR": 0, "USD": 0, "count": 0})
-        
+        day_data = daily_data.get(current_date, {"KHR": 0, "USD": 0.0, "count": 0})
+
         khr_formatted = f"{day_data['KHR']:,.0f}"
         usd_formatted = f"{day_data['USD']:,.2f}"
         trans_count = day_data['count']
