@@ -18,6 +18,8 @@ class PackageExpiryScheduler:
         self.business_bot_service = business_bot_service
         self.admin_bot_service = admin_bot_service
         self.admin_group_id = -4907090942  # Admin group chat ID
+        # Use a separate scheduler instance instead of global schedule
+        self.scheduler = schedule.Scheduler()
 
     @staticmethod
     def _run_async(coro_func, *args, **kwargs):
@@ -185,14 +187,14 @@ class PackageExpiryScheduler:
         Start the scheduler to run the package expiry notification job.
         """
         # Schedule the job to run daily at 10:00 AM Cambodia time
-        job1 = schedule.every().day.at("10:00", tz="Asia/Phnom_Penh").do(
+        job1 = self.scheduler.every().day.at("10:00", tz="Asia/Phnom_Penh").do(
             self._run_async,
             self.notify_expiring_packages,
             is_refresh_job=True,
         )
 
         # Schedule the expired package update job to run daily at 11:00 AM Cambodia time
-        job2 = schedule.every().day.at("13:55", tz="Asia/Phnom_Penh").do(
+        job2 = self.scheduler.every().day.at("13:55", tz="Asia/Phnom_Penh").do(
             self._run_async,
             self.update_expired_packages_to_free,
             is_refresh_job=True,
@@ -206,7 +208,7 @@ class PackageExpiryScheduler:
 
         try:
             while True:
-                schedule.run_pending()
+                self.scheduler.run_pending()
                 await asyncio.sleep(60)  # Check every minute
         except KeyboardInterrupt:
             force_log("Package expiry scheduler stopped by user", "PackageExpiryScheduler")

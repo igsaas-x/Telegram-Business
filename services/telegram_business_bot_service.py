@@ -173,7 +173,8 @@ class AutosumBusinessBot:
         if not group_package or group_package.package == ServicePackage.FREE:
             await update.message.reply_text(
                 "❌ សេវាកម្មនេះត្រូវការ Business Package\n\n"
-                "សូមទំនាក់ទំនងក្រុមគាំទ្រដើម្បីដំឡើង Business Package"
+                "សូមទំនាក់ទំនងក្រុមគាំទ្រដើម្បីដំឡើង Business Package\n\n"
+                "📞 ទំនាក់ទំនង Admin: https://t.me/HK_688"
             )
             return ConversationHandler.END
 
