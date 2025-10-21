@@ -19,7 +19,9 @@ class IncomeService:
         # Threshold warning service will be set from telethon client
         self.threshold_warning_service = None
         # Cache passive mode setting at initialization
-        self.is_passive_mode = os.getenv("PASSIVE_MODE", "false").lower() in ["true", "1", "yes"]
+        passive_mode_env = os.getenv("PASSIVE_MODE", "false")
+        self.is_passive_mode = passive_mode_env.lower() in ["true", "1", "yes"]
+        force_log(f"IncomeService initialized with PASSIVE_MODE={passive_mode_env}, is_passive_mode={self.is_passive_mode}", "IncomeService", "INFO")
 
     async def ensure_active_shift(self, chat_id: int) -> int:
         force_log(f"_ensure_active_shift called for chat_id: {chat_id}", "IncomeService", "DEBUG")
@@ -206,13 +208,21 @@ class IncomeService:
 
                     # Check thresholds after saving income (fire and forget)
                     # Skip in passive mode to avoid sending messages
+                    force_log(
+                        f"Threshold check: threshold_warning_service={self.threshold_warning_service is not None}, is_passive_mode={self.is_passive_mode}",
+                        "IncomeService",
+                        "INFO"
+                    )
                     if self.threshold_warning_service and not self.is_passive_mode:
+                        force_log("Triggering threshold check task", "IncomeService", "INFO")
                         asyncio.create_task(self._check_thresholds_async(
                             chat_id=chat_id,
                             shift_id=shift_id,
                             new_income_amount=amount,
                             new_income_currency=currency_code
                         ))
+                    else:
+                        force_log("Skipping threshold check (passive mode or no warning service)", "IncomeService", "INFO")
 
                     return new_income
 
