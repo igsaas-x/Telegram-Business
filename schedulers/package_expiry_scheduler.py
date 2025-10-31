@@ -17,7 +17,7 @@ class PackageExpiryScheduler:
         self.standard_bot_service = standard_bot_service
         self.business_bot_service = business_bot_service
         self.admin_bot_service = admin_bot_service
-        self.admin_group_id = -4907090942  # Admin group chat ID
+        self.admin_group_id = -4886548699  # Admin group chat ID
         # Use a separate scheduler instance instead of global schedule
         self.scheduler = schedule.Scheduler()
 
@@ -95,7 +95,10 @@ class PackageExpiryScheduler:
                 admin_message += f"   📊 Package: {group_package.package.value}\n"
                 admin_message += f"   🆔 Chat ID: {chat_group.chat_id}\n"
                 admin_message += f"   ⏰ Expires: {expiry_date_str}\n"
-                admin_message += f"   💰 Amount Paid: ${group_package.amount_paid or 'N/A'}\n\n"
+                admin_message += f"   💰 Amount Paid: ${group_package.amount_paid or 'N/A'}\n"
+                if group_package.note:
+                    admin_message += f"   📝 Note: {group_package.note}\n"
+                admin_message += "\n"
                 
                 # Limit message length to avoid Telegram limits
                 if len(admin_message) > 3500:  # Leave room for closing message
