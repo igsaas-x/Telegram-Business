@@ -7,11 +7,11 @@ import pytz
 
 from helper import (
     DateUtils,
-    extract_amount_and_currency,
     extract_s7pos_amount_and_currency,
     extract_trx_id,
 )
 from helper.logger_utils import force_log
+from helper.message_parser_optimized import extract_amount_and_currency_optimized
 from services import ChatService, IncomeService
 
 
@@ -79,7 +79,7 @@ class IncomeMessageProcessor:
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
         else:
-            currency, amount = extract_amount_and_currency(message_text)
+            currency, amount = extract_amount_and_currency_optimized(message_text, origin_username)
 
         if not (currency and amount):
             force_log(
