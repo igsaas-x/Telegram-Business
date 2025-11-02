@@ -60,7 +60,7 @@ class AutosumBusinessBot:
                 "AMKPlc_bot",
                 "prince_pay_bot",
                 "s7pos_bot",
-                "S7days777",
+                "CCUBank_bot"
             },
         )
         force_log("AutosumBusinessBot initialized with token", "AutosumBusinessBot")

@@ -365,5 +365,10 @@ def extract_trx_id(message_text: str) -> str | None:
     match = re.search(r'Hash:\s*([a-f0-9]+)', message_text, re.IGNORECASE)
     if match:
         return match.group(1)
-    
+
+    # Pattern 11: Hash ID format "Hash ID #865ecfef"
+    match = re.search(r'Hash ID #([a-f0-9]+)', message_text, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
     return None
