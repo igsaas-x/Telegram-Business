@@ -13,7 +13,7 @@ from helper.message_patterns import (
     ACLEDA_RECEIVED, ABA_SYMBOL_START, PLB_CREDITED, CANADIA_PAID,
     HLB_IS_PAID, VATTANAC_IS_PAID, CPBANK_RECEIVED, SATHAPANA_AMOUNT,
     CHIPMONG_IS_PAID, PRASAC_PAYMENT_AMOUNT, AMK_BOLD_AMOUNT, PRINCE_AMOUNT_BOLD,
-    S7POS_FINAL_AMOUNT, S7DAYS_USD_VALUES,
+    CCU_IS_PAID_BY, S7POS_FINAL_AMOUNT, S7DAYS_USD_VALUES,
     # Universal patterns
     KHMER_RIEL_PATTERN, KHMER_DOLLAR_PATTERN,
     CURRENCY_SYMBOL_BEFORE, AMOUNT_BEFORE_CODE, CODE_BEFORE_AMOUNT, AMOUNT_WITH_LABEL,
@@ -226,6 +226,30 @@ def extract_transaction_time(text: str) -> Optional[datetime]:
             minute = int(match.group(5))
             am_pm = match.group(6).upper()
             month = MONTH_MAP.get(month_name[:3], None)
+
+            if month:
+                # Convert 12-hour to 24-hour
+                if am_pm == 'PM' and hour != 12:
+                    hour += 12
+                elif am_pm == 'AM' and hour == 12:
+                    hour = 0
+
+                dt = datetime(year, month, day, hour, minute, 0)
+                return ict.localize(dt)
+        except (ValueError, AttributeError):
+            pass
+
+    # Try CCU Bank format: "31-October-2025, 08:35PM"
+    match = TIME_PATTERNS['datetime_full_month_12h'].search(text)
+    if match:
+        try:
+            day = int(match.group(1))
+            month_name = match.group(2).lower()
+            year = int(match.group(3))
+            hour = int(match.group(4))
+            minute = int(match.group(5))
+            am_pm = match.group(6).upper()
+            month = MONTH_MAP.get(month_name, None)
 
             if month:
                 # Convert 12-hour to 24-hour
@@ -499,6 +523,22 @@ def parse_prince(text: str) -> Tuple[Optional[str], Optional[float], Optional[da
     if match:
         currency_code = match.group(1).upper()
         amount_str = match.group(2).replace(',', '')
+        currency = '$' if currency_code == 'USD' else '៛'
+        amount = float(amount_str) if '.' in amount_str else int(amount_str)
+        trx_time = extract_transaction_time(text)
+        return currency, amount, trx_time
+
+    # Fallback to universal parser
+    return parse_universal(text)
+
+
+def parse_ccu(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+    """Parse CCU Bank messages (English)"""
+    # Try bot-specific pattern: "X.XX USD is paid by" or "X,XXX KHR is paid by"
+    match = CCU_IS_PAID_BY.search(text)
+    if match:
+        amount_str = match.group(1).replace(',', '')
+        currency_code = match.group(2).upper()
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)

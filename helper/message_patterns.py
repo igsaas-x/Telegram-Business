@@ -63,6 +63,9 @@ AMK_BOLD_AMOUNT = re.compile(r'\*\*(USD|KHR)\s+([\d,]+(?:\.\d+)?)\*\*', re.IGNOR
 # Prince Bank - "Amount: **USD X.XX**" or "Amount: **KHR X,XXX**"
 PRINCE_AMOUNT_BOLD = re.compile(r'Amount:\s+\*\*(USD|KHR)\s+([\d,]+(?:\.\d+)?)\*\*', re.IGNORECASE)
 
+# CCU Bank - "X.XX USD is paid by" or "X,XXX.XX KHR is paid by"
+CCU_IS_PAID_BY = re.compile(r'([\d,]+(?:\.\d+)?)\s+(USD|KHR)\s+is\s+paid\s+by', re.IGNORECASE)
+
 # ========================================
 # Transaction ID Patterns
 # ========================================
@@ -135,6 +138,9 @@ TIME_PATTERNS = {
 
     # Sathapana format: "2025-10-04 08.58.45 AM" (ISO date with dot time and AM/PM)
     'datetime_iso_dots_12h': re.compile(r'(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2})\.(\d{2})\.(\d{2})\s+(AM|PM)', re.IGNORECASE),
+
+    # CCU Bank format: "31-October-2025, 08:35PM" (day-FullMonthName-year, hour:minuteAM/PM)
+    'datetime_full_month_12h': re.compile(r'(\d{1,2})-(January|February|March|April|May|June|July|August|September|October|November|December)-(\d{4}),?\s+(\d{1,2}):(\d{2})(AM|PM)', re.IGNORECASE),
 
     # Khmer timestamp labels
     'khmer_time_label': re.compile(r'ម៉ោង[:\s]*(\d{1,2}):(\d{2})'),

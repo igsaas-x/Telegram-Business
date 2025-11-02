@@ -17,7 +17,7 @@ from helper.bot_parsers import (
     parse_acleda, parse_aba, parse_plb, parse_canadia,
     parse_hlb, parse_vattanac, parse_cpbank, parse_sathapana,
     parse_chipmong, parse_prasac, parse_amk, parse_prince,
-    parse_s7pos, parse_s7days, parse_payment_bk,
+    parse_ccu, parse_s7pos, parse_s7days, parse_payment_bk,
     parse_universal
 )
 from helper.bot_parsers_registry import get_parser_name
@@ -36,6 +36,7 @@ PARSER_FUNCTIONS = {
     "parse_prasac": parse_prasac,
     "parse_amk": parse_amk,
     "parse_prince": parse_prince,
+    "parse_ccu": parse_ccu,
     "parse_s7pos": parse_s7pos,
     "parse_s7days": parse_s7days,
     "parse_payment_bk": parse_payment_bk,

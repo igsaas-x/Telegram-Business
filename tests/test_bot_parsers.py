@@ -97,6 +97,36 @@ class TestABABankParser(unittest.TestCase):
         self.assertEqual(amount, 4.00)
 
 
+class TestCCUBankParser(unittest.TestCase):
+    """Tests for CCU Bank parser (parse_ccu)"""
+
+    def test_ccu_usd_paid_by(self):
+        """Test CCU Bank USD 'paid by' format with Hash ID"""
+        message = "105.00 USD is paid by SOYANUK SAMOEURN, ABA Bank *3961 on 31-October-2025, 08:35PM at X Gear Computer with Hash ID #865ecfef"
+        currency, amount, trx_time = extract_amount_currency_and_time(message, "ccu_bank_bot")
+        self.assertEqual(currency, '$')
+        self.assertEqual(amount, 105.0)
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 31)
+        self.assertEqual(trx_time.hour, 20)
+        self.assertEqual(trx_time.minute, 35)
+
+    def test_ccu_khr_paid_by(self):
+        """Test CCU Bank KHR 'paid by' format with Hash ID"""
+        message = "5,000.00 KHR is paid by THAIYUTH SOPHEAP, ABA Bank *2505 on 31-October-2025, 08:18PM at X Gear Computer with Hash ID #a1e837e7"
+        currency, amount, trx_time = extract_amount_currency_and_time(message, "ccu_bank_bot")
+        self.assertEqual(currency, '៛')
+        self.assertEqual(amount, 5000.0)
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 31)
+        self.assertEqual(trx_time.hour, 20)
+        self.assertEqual(trx_time.minute, 18)
+
+
 class TestPLBBankParser(unittest.TestCase):
     """Tests for PLBITBot parser (parse_plb)"""
 

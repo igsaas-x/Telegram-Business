@@ -24,6 +24,7 @@ BOT_PARSERS: dict[str, str] = {
     "prasac_merchant_payment_bot": "parse_prasac",
     "AMKPlc_bot": "parse_amk",
     "prince_pay_bot": "parse_prince",
+    "ccu_bank_bot": "parse_ccu",
 
     # Special format bots
     "s7pos_bot": "parse_s7pos",
