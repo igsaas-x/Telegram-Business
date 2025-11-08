@@ -1,0 +1,69 @@
+# Time assertions to add to test_bot_parsers.py
+
+# PLB tests - AFTER line "self.assertEqual(amount, 4000)"
+PLB_KHR_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 11)
+        self.assertEqual(trx_time.hour, 10)
+        self.assertEqual(trx_time.minute, 8)
+        self.assertEqual(trx_time.second, 57)
+
+# AFTER line "self.assertEqual(amount, 2.65)"
+PLB_USD_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 11)
+        self.assertEqual(trx_time.hour, 9)
+        self.assertEqual(trx_time.minute, 36)
+        self.assertEqual(trx_time.second, 33)
+
+# Canadia - AFTER "self.assertEqual(amount, 1.50)"
+CANADIA_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 11)
+        self.assertEqual(trx_time.hour, 10)
+        self.assertEqual(trx_time.minute, 8)
+        self.assertEqual(trx_time.second, 53)
+
+# HLB KHR - AFTER "self.assertEqual(amount, 14000.00)"
+HLB_KHR_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 11)
+        self.assertEqual(trx_time.hour, 10)
+        self.assertEqual(trx_time.minute, 23)
+        self.assertEqual(trx_time.second, 23)
+
+# HLB USD - AFTER "self.assertEqual(amount, 5.00)"
+HLB_USD_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 9)
+        self.assertEqual(trx_time.hour, 16)
+        self.assertEqual(trx_time.minute, 0)
+        self.assertEqual(trx_time.second, 50)
+
+# Vattanac USD - AFTER "self.assertEqual(amount, 16.50)"
+VATTANAC_USD_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 4)
+        self.assertEqual(trx_time.hour, 21)  # 9:32 PM = 21:32
+        self.assertEqual(trx_time.minute, 32)
+
+# Vattanac KHR - AFTER "self.assertEqual(amount, 16500)"
+VATTANAC_KHR_ASSERTIONS:
+        self.assertIsNotNone(trx_time)
+        self.assertEqual(trx_time.year, 2025)
+        self.assertEqual(trx_time.month, 10)
+        self.assertEqual(trx_time.day, 5)
+        self.assertEqual(trx_time.hour, 19)  # 7:52 PM = 19:52
+        self.assertEqual(trx_time.minute, 52)

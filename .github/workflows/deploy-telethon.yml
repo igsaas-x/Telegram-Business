@@ -37,7 +37,7 @@ jobs:
           python3 -m pip install --upgrade pip
           
           # Create .env file with secrets from GitHub
-          cat > .env << EOF
+          cat > .env.telethon << EOF
           DB_NAME=${{ secrets.DB_NAME }}
           DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -48,6 +48,7 @@ jobs:
           API_HASH1=${{ secrets.API_HASH1 }}
 
           NEW_RELIC_ENVIRONMENT=staging
+          PASSIVE_MODE=true
           EOF
           
           pip install -r requirements.txt

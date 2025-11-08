@@ -7,13 +7,11 @@ import pytz
 
 from helper import (
     DateUtils,
-    extract_amount_and_currency,
     extract_s7pos_amount_and_currency,
-    extract_s7days_amount_and_currency,
-    extract_shifts_with_breakdown,
     extract_trx_id,
 )
 from helper.logger_utils import force_log
+from helper.message_parser_optimized import extract_amount_and_currency_optimized
 from services import ChatService, IncomeService
 
 
@@ -80,27 +78,8 @@ class IncomeMessageProcessor:
         # Determine amount & currency based on origin bot
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
-        elif origin_username == "S7days777" or origin_username == "payment_bk_bot":
-            # Try to extract shifts with breakdown first (for messages with multiple shifts)
-            shifts_breakdown = extract_shifts_with_breakdown(message_text)
-            if shifts_breakdown:
-                force_log(
-                    f"Extracted {len(shifts_breakdown)} shifts with breakdown",
-                    "IncomeMessageProcessor",
-                )
-            # If shifts_breakdown has "total" fields, use sum of those instead
-            if shifts_breakdown and any("total" in shift for shift in shifts_breakdown):
-                total_amount = sum(shift.get("total", 0) for shift in shifts_breakdown)
-                currency = "$"
-                amount = total_amount
-                force_log(
-                    f"Using sum of shift totals: {amount}",
-                    "IncomeMessageProcessor",
-                )
-            else:
-                currency, amount, parsed_income_date = extract_s7days_amount_and_currency(message_text)
         else:
-            currency, amount = extract_amount_and_currency(message_text)
+            currency, amount = extract_amount_and_currency_optimized(message_text, origin_username)
 
         if not (currency and amount):
             force_log(

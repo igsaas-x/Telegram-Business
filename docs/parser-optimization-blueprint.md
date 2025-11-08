@@ -107,6 +107,7 @@ allowed_bots = {
     "prasac_merchant_payment_bot",
     "AMKPlc_bot",              # Advanced Bank of Asia
     "prince_pay_bot",          # Prince Bank
+    "CCUBank_bot",
 
     # Special format bots (3 bots)
     "s7pos_bot",               # Custom restaurant POS format
