@@ -10,12 +10,11 @@ from telethon.tl.types import Message
 
 from common.enums import ServicePackage
 from helper import (
-    extract_amount_and_currency,
     extract_trx_id,
     extract_s7pos_amount_and_currency,
-    extract_s7days_amount_and_currency,
 )
 from helper.logger_utils import force_log
+from helper.message_parser_optimized import extract_amount_currency_and_time
 from services import ChatService, IncomeService, ShiftService, GroupPackageService
 
 
@@ -259,12 +258,11 @@ class MessageVerificationScheduler:
             username = getattr(sender, "username", "") if sender else ""
 
             parsed_income_date = None
+            paid_by = None
             if username == "s7pos_bot":
                 currency, amount = extract_s7pos_amount_and_currency(message_text)
-            elif username == "S7days777":
-                currency, amount, parsed_income_date = extract_s7days_amount_and_currency(message_text)
             else:
-                currency, amount = extract_amount_and_currency(message_text)
+                currency, amount, parsed_income_date, paid_by = extract_amount_currency_and_time(message_text, username)
             if not (currency and amount):
                 force_log(
                     f"No valid currency/amount found in message {message_id}, skipping"
@@ -323,6 +321,7 @@ class MessageVerificationScheduler:
                 shift_id_for_income,  # actual shift ID
                 enable_shift_for_income,  # enable_shift
                 username,  # sent_by
+                paid_by,  # paid_by
                 None,  # revenue_breakdown
                 None,  # shifts_breakdown
                 parsed_income_date,  # income_date

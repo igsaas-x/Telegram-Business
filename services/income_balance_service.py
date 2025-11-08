@@ -107,6 +107,7 @@ class IncomeService:
         shift_id: int = 0,
         enable_shift: bool = False,
         sent_by: str | None = None,
+        paid_by: str | None = None,
         revenue_breakdown: dict[str, float] | None = None,
         shifts_breakdown: list[dict] | None = None,
         income_date: datetime | None = None,
@@ -153,6 +154,7 @@ class IncomeService:
                         trx_id=trx_id,
                         shift_id=shift_id if shift_id != 0 else None,
                         sent_by=sent_by,
+                        paid_by=paid_by,
                     )
 
                     db.add(new_income)

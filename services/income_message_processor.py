@@ -11,7 +11,7 @@ from helper import (
     extract_trx_id,
 )
 from helper.logger_utils import force_log
-from helper.message_parser_optimized import extract_amount_and_currency_optimized
+from helper.message_parser_optimized import extract_amount_currency_and_time
 from services import ChatService, IncomeService
 
 
@@ -73,13 +73,14 @@ class IncomeMessageProcessor:
             return None
 
         shifts_breakdown = None
-        parsed_income_date = None
+        parsed_income_date = DateUtils.now()
+        paid_by = None
 
         # Determine amount & currency based on origin bot
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
         else:
-            currency, amount = extract_amount_and_currency_optimized(message_text, origin_username)
+            currency, amount, parsed_income_date, paid_by = extract_amount_currency_and_time(message_text, origin_username)
 
         if not (currency and amount):
             force_log(
@@ -116,6 +117,7 @@ class IncomeMessageProcessor:
             0,
             chat.enable_shift,
             origin_username,
+            paid_by,
             None,
             shifts_breakdown,
             parsed_income_date,
