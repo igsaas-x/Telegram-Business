@@ -167,7 +167,7 @@ class MessageVerificationScheduler:
                             "AMKPlc_bot",
                             "prince_pay_bot",
                             "s7pos_bot",
-                            "CCUBank_bot",
+                            "CCUBank_bot"
                         }
                         
                         if username not in allowed_bots:

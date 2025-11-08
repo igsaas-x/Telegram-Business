@@ -143,7 +143,7 @@ class TelethonClientService:
                     "prince_pay_bot",
                     "s7pos_bot",
                     "payment_bk_bot",
-                    "CCUBank_bot",
+                    "CCUBank_bot"
                 }
                 if username not in allowed_bots:
                     force_log(f"Message from bot '{username}' not in allowed list, ignoring.")

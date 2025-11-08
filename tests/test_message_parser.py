@@ -31,6 +31,24 @@ class TestMessageParser(unittest.TestCase):
         self.assertEqual(amount, 10.0)
         self.assertEqual(trx_id, 'b117ffd9')
 
+    def test_ccu_paid_by_format(self):
+        """Test ABA Bank 'paid by' format with Hash ID"""
+        test_cases = [
+            ("105.00 USD is paid by SOYANUK SAMOEURN, ABA Bank *3961 on 31-October-2025, 08:35PM at X Gear Computer with Hash ID #865ecfef",
+             '$', 105.0, '865ecfef'),
+            ("5,000.00 KHR is paid by THAIYUTH SOPHEAP, ABA Bank *2505 on 31-October-2025, 08:18PM at X Gear Computer with Hash ID #a1e837e7",
+             '៛', 5000.0, 'a1e837e7'),
+        ]
+
+        for message, expected_currency, expected_amount, expected_trx_id in test_cases:
+            with self.subTest(message=message):
+                currency, amount = extract_amount_and_currency(message)
+                trx_id = extract_trx_id(message)
+
+                self.assertEqual(currency, expected_currency)
+                self.assertEqual(amount, expected_amount)
+                self.assertEqual(trx_id, expected_trx_id)
+
     def test_acleda_khmer_format(self):
         """Test specific Khmer money amount patterns"""
         test_cases = [
