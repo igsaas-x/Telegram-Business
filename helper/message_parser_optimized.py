@@ -4,10 +4,11 @@ Optimized message parser with bot-specific routing.
 This module provides optimized parsing by routing messages to bot-specific parsers,
 reducing unnecessary regex pattern attempts from 17 to 1-3 per message.
 
-Returns: Tuple of (currency, amount, transaction_time)
+Returns: Tuple of (currency, amount, transaction_time, paid_by)
 - currency: str (e.g., '$', '៛')
 - amount: float or int
 - transaction_time: datetime object or None
+- paid_by: str (last 3 digits of account number) or None
 """
 
 from datetime import datetime
@@ -47,9 +48,9 @@ PARSER_FUNCTIONS = {
 def extract_amount_currency_and_time(
     text: str,
     bot_username: str | None = None
-) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """
-    Extract amount, currency, and transaction time from payment message.
+    Extract amount, currency, transaction time, and paid_by from payment message.
     Routes to bot-specific parser for optimized performance.
 
     Args:
@@ -57,16 +58,17 @@ def extract_amount_currency_and_time(
         bot_username: Username of the bot that sent the message
 
     Returns:
-        Tuple of (currency, amount, transaction_time)
+        Tuple of (currency, amount, transaction_time, paid_by)
         - currency: str like '$' or '៛', or None if not found
         - amount: float or int, or None if not found
         - transaction_time: datetime object in ICT timezone, or None if not found
+        - paid_by: str with last 3 digits of account number (e.g., "708"), or None if not found
 
     Example:
-        >>> text = "Received 10.50 USD from John Doe, 11-Oct-2025 10:12AM."
-        >>> currency, amount, trx_time = extract_amount_currency_and_time(text, "ACLEDABankBot")
-        >>> print(currency, amount, trx_time)
-        $ 10.5 2025-10-11 10:12:00+07:00
+        >>> text = "$28.00 paid by HORN SAMIV (*708) on Nov 09, 03:02 AM..."
+        >>> currency, amount, trx_time, paid_by = extract_amount_currency_and_time(text, "PayWayByABA_bot")
+        >>> print(currency, amount, trx_time, paid_by)
+        $ 28.0 2025-11-09 03:02:00+07:00 708
     """
     # Get the parser function name for this bot
     parser_name = get_parser_name(bot_username)
@@ -84,7 +86,7 @@ def extract_amount_and_currency_optimized(
     bot_username: str | None = None
 ) -> Tuple[Optional[str], Optional[float]]:
     """
-    Extract amount and currency only (without time).
+    Extract amount and currency only (without time and paid_by).
     Wrapper around extract_amount_currency_and_time for backward compatibility.
 
     Args:
@@ -94,5 +96,5 @@ def extract_amount_and_currency_optimized(
     Returns:
         Tuple of (currency, amount)
     """
-    currency, amount, _ = extract_amount_currency_and_time(text, bot_username)
+    currency, amount, _, _ = extract_amount_currency_and_time(text, bot_username)
     return currency, amount

@@ -1,6 +1,6 @@
 """
 Bot-specific parser functions for optimized message parsing.
-Each bot has a dedicated parser that returns (currency, amount, datetime).
+Each bot has a dedicated parser that returns (currency, amount, datetime, paid_by).
 """
 
 from datetime import datetime, time as dt_time
@@ -20,8 +20,28 @@ from helper.message_patterns import (
     # Time patterns
     TIME_PATTERNS, MONTH_MAP,
     # Helpers
-    CURRENCY_MAP,
+    CURRENCY_MAP, PAID_BY_PATTERN,
 )
+
+
+# ========================================
+# Paid By Extraction Helper
+# ========================================
+
+def extract_paid_by(text: str) -> Optional[str]:
+    """
+    Extract last 3 digits of account number from message.
+
+    Args:
+        text: Payment message text
+
+    Returns:
+        Last 3 digits of account number (e.g., "708"), or None if not found
+    """
+    match = PAID_BY_PATTERN.search(text)
+    if match:
+        return match.group(1)
+    return None
 
 
 # ========================================
@@ -335,7 +355,7 @@ def extract_transaction_time(text: str) -> Optional[datetime]:
 # Bot-Specific Parsers
 # ========================================
 
-def parse_acleda(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_acleda(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse ACLEDA Bank messages (English + Khmer)"""
     # Try bot-specific pattern first: "Received X.XX USD" or "បានទទួល X.XX ដុល្លារ"
     match = ACLEDA_RECEIVED.search(text)
@@ -351,13 +371,14 @@ def parse_acleda(text: str) -> Tuple[Optional[str], Optional[float], Optional[da
             currency = currency_raw
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_aba(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_aba(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse ABA Bank messages (English + Khmer)"""
     # Try bot-specific pattern: "៛X,XXX paid" or "$X.XX paid" (symbol at start of line)
     match = ABA_SYMBOL_START.search(text)
@@ -366,13 +387,14 @@ def parse_aba(text: str) -> Tuple[Optional[str], Optional[float], Optional[datet
         amount_str = match.group(2).replace(',', '')
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_plb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_plb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse PLB Bank messages (English)"""
     # Try bot-specific pattern: "X,XXX KHR was credited"
     match = PLB_CREDITED.search(text)
@@ -382,13 +404,14 @@ def parse_plb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datet
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_canadia(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_canadia(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Canadia Bank messages (English)"""
     # Try bot-specific pattern: "X.XX USD was paid"
     match = CANADIA_PAID.search(text)
@@ -398,13 +421,14 @@ def parse_canadia(text: str) -> Tuple[Optional[str], Optional[float], Optional[d
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_hlb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_hlb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Hong Leong Bank messages (English)"""
     # Try bot-specific pattern: "KHR X,XXX.XX is paid"
     match = HLB_IS_PAID.search(text)
@@ -414,13 +438,14 @@ def parse_hlb(text: str) -> Tuple[Optional[str], Optional[float], Optional[datet
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_vattanac(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_vattanac(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Vattanac Bank messages (English)"""
     # Try bot-specific pattern: "USD X.XX is paid by"
     match = VATTANAC_IS_PAID.search(text)
@@ -430,13 +455,14 @@ def parse_vattanac(text: str) -> Tuple[Optional[str], Optional[float], Optional[
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_cpbank(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_cpbank(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse CP Bank messages (English)"""
     # Try bot-specific pattern: "received KHR X,XXX" or "amount USD X.XX"
     match = CPBANK_RECEIVED.search(text)
@@ -446,13 +472,14 @@ def parse_cpbank(text: str) -> Tuple[Optional[str], Optional[float], Optional[da
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_sathapana(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_sathapana(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Sathapana Bank messages (English)"""
     # Try bot-specific pattern: "The amount X.XX USD"
     match = SATHAPANA_AMOUNT.search(text)
@@ -462,13 +489,14 @@ def parse_sathapana(text: str) -> Tuple[Optional[str], Optional[float], Optional
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_chipmong(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_chipmong(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Chip Mong Bank messages (English)"""
     # Try bot-specific pattern: "KHR X,XXX is paid"
     match = CHIPMONG_IS_PAID.search(text)
@@ -478,13 +506,14 @@ def parse_chipmong(text: str) -> Tuple[Optional[str], Optional[float], Optional[
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_prasac(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_prasac(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse PRASAC Bank messages (English)"""
     # Try bot-specific pattern: "Payment Amount X.XX USD"
     match = PRASAC_PAYMENT_AMOUNT.search(text)
@@ -494,13 +523,14 @@ def parse_prasac(text: str) -> Tuple[Optional[str], Optional[float], Optional[da
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_amk(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_amk(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Advanced Bank of Asia messages (English)"""
     # Try bot-specific pattern: "**KHR X,XXX**"
     match = AMK_BOLD_AMOUNT.search(text)
@@ -510,13 +540,14 @@ def parse_amk(text: str) -> Tuple[Optional[str], Optional[float], Optional[datet
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_prince(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_prince(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse Prince Bank messages (English)"""
     # Try bot-specific pattern: "Amount: **USD X.XX**"
     match = PRINCE_AMOUNT_BOLD.search(text)
@@ -526,13 +557,14 @@ def parse_prince(text: str) -> Tuple[Optional[str], Optional[float], Optional[da
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_ccu(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_ccu(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse CCU Bank messages (English)"""
     # Try bot-specific pattern: "X.XX USD is paid by" or "X,XXX KHR is paid by"
     match = CCU_IS_PAID_BY.search(text)
@@ -542,36 +574,39 @@ def parse_ccu(text: str) -> Tuple[Optional[str], Optional[float], Optional[datet
         currency = '$' if currency_code == 'USD' else '៛'
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Fallback to universal parser
     return parse_universal(text)
 
 
-def parse_s7pos(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_s7pos(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse s7pos_bot messages (Khmer)"""
     match = S7POS_FINAL_AMOUNT.search(text)
     if match:
         amount_str = match.group(1).replace(',', '')
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return '$', amount, trx_time
-    return None, None, None
+        paid_by = extract_paid_by(text)
+        return '$', amount, trx_time, paid_by
+    return None, None, None, None
 
 
-def parse_s7days(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_s7days(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse S7days777 messages (English)"""
     matches = S7DAYS_USD_VALUES.findall(text)
     if not matches:
-        return None, None, None
+        return None, None, None, None
     total = round(sum(float(value) for value in matches), 2)
     if total == int(total):
         total = int(total)
     trx_time = extract_transaction_time(text)
-    return '$', total, trx_time
+    paid_by = extract_paid_by(text)
+    return '$', total, trx_time, paid_by
 
 
-def parse_payment_bk(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_payment_bk(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """Parse payment_bk_bot messages (English)"""
     # No specific pattern yet, use universal parser
     return parse_universal(text)
@@ -581,7 +616,7 @@ def parse_payment_bk(text: str) -> Tuple[Optional[str], Optional[float], Optiona
 # Universal Fallback Parser
 # ========================================
 
-def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime]]:
+def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional[datetime], Optional[str]]:
     """
     Universal fallback parser - tries all common patterns
     Used for unknown bots or when bot-specific parser fails
@@ -592,14 +627,16 @@ def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional
         amount_str = match.group(1).replace(',', '')
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return '$', amount, trx_time
+        paid_by = extract_paid_by(text)
+        return '$', amount, trx_time, paid_by
 
     match = KHMER_RIEL_PATTERN.search(text)
     if match:
         amount_str = match.group(1).replace(',', '')
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return '៛', amount, trx_time
+        paid_by = extract_paid_by(text)
+        return '៛', amount, trx_time, paid_by
 
     # Try currency symbol before amount
     match = CURRENCY_SYMBOL_BEFORE.search(text)
@@ -608,7 +645,8 @@ def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional
         amount_str = match.group(2).replace(',', '')
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Try amount before currency code
     match = AMOUNT_BEFORE_CODE.search(text)
@@ -618,7 +656,8 @@ def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional
         currency = CURRENCY_MAP.get(currency_code, currency_code)
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Try currency code before amount
     match = CODE_BEFORE_AMOUNT.search(text)
@@ -628,7 +667,8 @@ def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional
         currency = CURRENCY_MAP.get(currency_code, currency_code)
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # Try amount with label
     match = AMOUNT_WITH_LABEL.search(text)
@@ -638,7 +678,8 @@ def parse_universal(text: str) -> Tuple[Optional[str], Optional[float], Optional
         currency = CURRENCY_MAP.get(currency_code, currency_code)
         amount = float(amount_str) if '.' in amount_str else int(amount_str)
         trx_time = extract_transaction_time(text)
-        return currency, amount, trx_time
+        paid_by = extract_paid_by(text)
+        return currency, amount, trx_time, paid_by
 
     # No match found
-    return None, None, None
+    return None, None, None, None
