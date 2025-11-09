@@ -14,6 +14,7 @@ from telegram.ext import (
     ContextTypes,
     Application,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
 )
 
@@ -50,28 +51,22 @@ class SenderManagementBot:
 
 This bot helps you manage and track transactions by sender.
 
-📋 **Available Commands:**
+📋 **Main Command:**
+• /sender - Open the main menu
 
-**Sender Management:**
-• /sender_add - Add new sender
-• /sender_delete - Delete sender
-• /sender_update - Update sender name
-• /sender_list - List all senders
-
-**Reporting:**
-• /sender_report - Generate today's report grouped by sender
-
-**Utility:**
-• /cancel - Cancel current operation
-• /help - Show this help message
+**What you can do:**
+⚙️ Configure Sender - Add, delete, or list senders
+📊 Reports - View daily, weekly, or monthly reports
 
 🔧 **How to Use:**
-
-1. Add senders using /sender_add
-2. Configure their account numbers (last 3 digits)
-3. View daily reports with /sender_report
+1. Type /sender to open the menu
+2. Select Configure Sender to add senders
+3. Add account numbers (last 3 digits) and names
+4. View reports to see transactions grouped by sender
 
 The bot will group all transactions by the configured senders!
+
+Type /help for more information.
         """
 
         await update.message.reply_text(welcome_message)
@@ -83,46 +78,48 @@ The bot will group all transactions by the configured senders!
         help_message = """
 📚 **Sender Management Bot Help**
 
-**Commands:**
+**Main Command:**
+**/sender** - Open the main menu
+  Shows three options:
+  • Configure Sender
+  • Reports
+  • Cancel
 
-**/sender_add** - Add new sender
-  Interactive flow to add a sender with:
-  - Account number (last 3 digits)
-  - Sender name
+**Configure Sender Menu:**
+  • List Senders - View all configured senders
+  • Add Sender - Add a new sender
+  • Delete Sender - Remove a sender
 
-**/sender_delete** - Delete sender
-  Interactive flow to remove a sender
+**Reports Menu:**
+  • Daily Report - View today's transactions by sender
+  • Weekly Report - Coming soon
+  • Monthly Report - Coming soon
 
-**/sender_update** - Update sender name
-  Interactive flow to update an existing sender's name
-
-**/sender_list** - List all senders
-  Shows all configured senders for this group
-
-**/sender_report** - Daily sender report
-  Generates a report grouped by:
-  ✅ Configured senders
-  ⚠️ Unknown senders
-  ❓ No sender info
-
-**/cancel** - Cancel operation
-  Cancels any active interactive flow
-
+**Other Commands:**
+**/start** - Welcome message
 **/help** - Show this help
 
 📝 **Example Usage:**
 
-1. Type /sender_add
-2. Reply with account number: 708
-3. Reply with name: John Doe
-4. Done! Sender added.
+1. Type /sender
+2. Click "Configure Sender"
+3. Click "Add Sender"
+4. Reply with account number: 708
+5. Reply with name: John Doe
+6. Done! Sender added.
 
-5. Use /sender_report to see transactions grouped by sender
+7. Go back to menu and select "Reports"
+8. Click "Daily Report" to see transactions grouped by sender
+
+📊 **Daily Report Sections:**
+  ✅ Configured senders - Your saved senders
+  ⚠️ Unknown senders - Not in your configuration
+  ❓ No sender info - Transactions without sender data
 
 ⚠️ **Note:**
 - Account numbers must be exactly 3 digits
 - Each sender can only be added once per group
-- Conversations timeout after 5 minutes of inactivity
+- Use the menu buttons to navigate
         """
 
         await update.message.reply_text(help_message)
@@ -138,13 +135,19 @@ The bot will group all transactions by the configured senders!
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
 
-        # Sender management commands
+        # Main sender menu command
+        self.app.add_handler(CommandHandler("sender", self.sender_handler.show_main_menu))
+
+        # Keep old commands for backward compatibility (optional - can remove later)
         self.app.add_handler(CommandHandler("sender_add", self.sender_handler.sender_add_start))
         self.app.add_handler(CommandHandler("sender_delete", self.sender_handler.sender_delete_start))
         self.app.add_handler(CommandHandler("sender_update", self.sender_handler.sender_update_start))
         self.app.add_handler(CommandHandler("sender_list", self.sender_handler.sender_list))
         self.app.add_handler(CommandHandler("sender_report", self.sender_handler.sender_report))
         self.app.add_handler(CommandHandler("cancel", self.sender_handler.cancel_conversation))
+
+        # Callback query handler for inline keyboard buttons
+        self.app.add_handler(CallbackQueryHandler(self.sender_handler.handle_callback_query))
 
         # Text message handler for conversation states
         # Accept both regular messages and replies, in groups and private chats
