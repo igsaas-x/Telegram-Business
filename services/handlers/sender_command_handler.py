@@ -217,14 +217,10 @@ class SenderCommandHandler:
                 chat_id, user_id, "sender_add", ConversationState.WAITING_FOR_ACCOUNT_NUMBER
             )
 
-            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="sender_add_cancel")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
             await query.edit_message_text(
                 "➕ Add New Sender\n\n"
                 "Please reply with the account number (last 3 digits):\n\n"
-                "Example: 708",
-                reply_markup=reply_markup
+                "Example: 708"
             )
 
         except Exception as e:
@@ -266,14 +262,10 @@ class SenderCommandHandler:
                 chat_id, user_id, "sender_delete", ConversationState.WAITING_FOR_ACCOUNT_NUMBER
             )
 
-            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="sender_delete_cancel")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
             await query.edit_message_text(
                 f"🗑 Delete Sender\n\n"
                 f"Current senders:\n{sender_list}\n\n"
-                f"Please reply with the account number (last 3 digits) to delete:",
-                reply_markup=reply_markup
+                f"Please reply with the account number (last 3 digits) to delete:"
             )
 
         except Exception as e:
@@ -303,10 +295,7 @@ class SenderCommandHandler:
             # Generate report
             report = await self.report_service.generate_daily_report(chat_id)
 
-            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="sender_reports")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(report, reply_markup=reply_markup, parse_mode='HTML')
+            await query.edit_message_text(report, parse_mode='HTML')
 
         except Exception as e:
             force_log(f"Error in sender_report_inline: {e}", "SenderCommandHandler", "ERROR")
