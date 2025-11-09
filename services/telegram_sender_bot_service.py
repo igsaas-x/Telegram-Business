@@ -146,10 +146,12 @@ The bot will group all transactions by the configured senders!
         self.app.add_handler(CommandHandler("sender_report", self.sender_handler.sender_report))
         self.app.add_handler(CommandHandler("cancel", self.sender_handler.cancel_conversation))
 
-        # Text message handler for conversation states (only in groups, not replies, not commands)
+        # Text message handler for conversation states
+        # Accept both regular messages and replies, in groups and private chats
+        # Exclude only commands
         self.app.add_handler(
             MessageHandler(
-                filters.TEXT & ~filters.COMMAND & ~filters.REPLY & filters.ChatType.GROUPS,
+                filters.TEXT & ~filters.COMMAND,
                 self.sender_handler.handle_text_message
             )
         )

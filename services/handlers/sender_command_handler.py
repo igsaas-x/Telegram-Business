@@ -37,9 +37,19 @@ class SenderCommandHandler:
             chat_id = update.effective_chat.id
             user_id = update.effective_user.id
 
+            force_log(
+                f"/sender_add started by user {user_id} in chat {chat_id}",
+                "SenderCommandHandler"
+            )
+
             # Start conversation
             self.conversation_manager.start_conversation(
                 chat_id, user_id, "sender_add", ConversationState.WAITING_FOR_ACCOUNT_NUMBER
+            )
+
+            force_log(
+                f"Conversation state created for user {user_id}: WAITING_FOR_ACCOUNT_NUMBER",
+                "SenderCommandHandler"
             )
 
             await update.message.reply_text(
@@ -51,6 +61,8 @@ class SenderCommandHandler:
 
         except Exception as e:
             force_log(f"Error in sender_add_start: {e}", "SenderCommandHandler", "ERROR")
+            import traceback
+            force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
             await update.message.reply_text(
                 "❌ An error occurred. Please try again."
             )
@@ -489,30 +501,48 @@ class SenderCommandHandler:
         try:
             chat_id = update.effective_chat.id
             user_id = update.effective_user.id
+            message_text = update.message.text if update.message else ""
 
             # Get current state and command
             state = self.conversation_manager.get_state(chat_id, user_id)
             command = self.conversation_manager.get_command(chat_id, user_id)
 
+            # Log for debugging
+            force_log(
+                f"Text message received: user={user_id}, chat={chat_id}, state={state}, command={command}, text='{message_text[:50]}'",
+                "SenderCommandHandler"
+            )
+
             if not state or not command:
+                force_log(
+                    f"No active conversation for user {user_id} in chat {chat_id}",
+                    "SenderCommandHandler"
+                )
                 return  # Not in a conversation
 
             # Route based on state and command
             if command == "sender_add":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
+                    force_log(f"Routing to sender_add_handle_account for user {user_id}", "SenderCommandHandler")
                     await self.sender_add_handle_account(update, context)
                 elif state == ConversationState.WAITING_FOR_NAME:
+                    force_log(f"Routing to sender_add_handle_name for user {user_id}", "SenderCommandHandler")
                     await self.sender_add_handle_name(update, context)
 
             elif command == "sender_delete":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
+                    force_log(f"Routing to sender_delete_handle_account for user {user_id}", "SenderCommandHandler")
                     await self.sender_delete_handle_account(update, context)
 
             elif command == "sender_update":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
+                    force_log(f"Routing to sender_update_handle_account for user {user_id}", "SenderCommandHandler")
                     await self.sender_update_handle_account(update, context)
                 elif state == ConversationState.WAITING_FOR_NEW_NAME:
+                    force_log(f"Routing to sender_update_handle_name for user {user_id}", "SenderCommandHandler")
                     await self.sender_update_handle_name(update, context)
 
         except Exception as e:
             force_log(f"Error in handle_text_message: {e}", "SenderCommandHandler", "ERROR")
+            import traceback
+            force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
