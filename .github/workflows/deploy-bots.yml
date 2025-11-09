@@ -51,6 +51,8 @@ jobs:
           ADMIN_BOT_TOKEN=${{ secrets.ADMIN_BOT_TOKEN }}
           AUTOSUM_BUSINESS_BOT_TOKEN=${{ secrets.AUTOSUM_BUSINESS_BOT_TOKEN }}
           PRIVATE_CHAT_BOT=${{ secrets.PRIVATE_CHAT_BOT }}
+          UTILS_BOT_TOKEN=${{ secrets.UTILS_BOT_TOKEN }}
+          SENDER_BOT_TOKEN=${{ secrets.SENDER_BOT_TOKEN }}
 
           NEW_RELIC_ENVIRONMENT=staging
           EOF
