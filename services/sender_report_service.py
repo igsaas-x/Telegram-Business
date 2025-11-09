@@ -174,16 +174,30 @@ class SenderReportService:
                 totals = self._calculate_totals(transactions)
                 sender_name = sender_names.get(account_num, "")
 
-                # Format sender line
+                # Format sender line with HTML
                 sender_display = f"*{account_num}"
                 if sender_name:
                     sender_display += f" ({sender_name})"
 
                 count = len(transactions)
-                total_str = self._format_currency_totals(totals)
 
-                lines.append(f"{sender_display}")
-                lines.append(f"  {count} txn | {total_str}")
+                # Format each currency amount similar to daily summary
+                currency_lines = []
+                for currency in sorted(totals.keys()):
+                    amount = totals[currency]
+                    if currency == "KHR":
+                        formatted_amount = f"{amount:,.0f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                    elif currency == "USD":
+                        formatted_amount = f"{amount:.2f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                    else:
+                        formatted_amount = f"{amount:,.2f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                lines.append(f"<b>{sender_display}</b>")
+                if currency_lines:
+                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
             lines.append("")
 
@@ -197,10 +211,24 @@ class SenderReportService:
                 totals = self._calculate_totals(transactions)
 
                 count = len(transactions)
-                total_str = self._format_currency_totals(totals)
 
-                lines.append(f"*{account_num} (not configured)")
-                lines.append(f"  {count} txn | {total_str}")
+                # Format each currency amount similar to daily summary
+                currency_lines = []
+                for currency in sorted(totals.keys()):
+                    amount = totals[currency]
+                    if currency == "KHR":
+                        formatted_amount = f"{amount:,.0f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                    elif currency == "USD":
+                        formatted_amount = f"{amount:.2f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                    else:
+                        formatted_amount = f"{amount:,.2f}"
+                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                lines.append(f"<b>*{account_num} (not configured)</b>")
+                if currency_lines:
+                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
             lines.append("")
 
@@ -211,9 +239,23 @@ class SenderReportService:
 
             totals = self._calculate_totals(grouped["no_sender"])
             count = len(grouped["no_sender"])
-            total_str = self._format_currency_totals(totals)
 
-            lines.append(f"{count} txn | {total_str}")
+            # Format each currency amount similar to daily summary
+            currency_lines = []
+            for currency in sorted(totals.keys()):
+                amount = totals[currency]
+                if currency == "KHR":
+                    formatted_amount = f"{amount:,.0f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                elif currency == "USD":
+                    formatted_amount = f"{amount:.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                else:
+                    formatted_amount = f"{amount:,.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+            if currency_lines:
+                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
             lines.append("")
 
         # Overall Summary
@@ -229,9 +271,24 @@ class SenderReportService:
         all_transactions.extend(grouped["no_sender"])
 
         grand_totals = self._calculate_totals(all_transactions)
-        grand_total_str = self._format_currency_totals(grand_totals)
+        total_count = len(all_transactions)
 
-        lines.append(f"Total: {grand_total_str}")
+        # Format each currency amount similar to daily summary
+        currency_lines = []
+        for currency in sorted(grand_totals.keys()):
+            amount = grand_totals[currency]
+            if currency == "KHR":
+                formatted_amount = f"{amount:,.0f}"
+                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+            elif currency == "USD":
+                formatted_amount = f"{amount:.2f}"
+                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+            else:
+                formatted_amount = f"{amount:,.2f}"
+                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+
+        if currency_lines:
+            lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
         return "\n".join(lines)
 
