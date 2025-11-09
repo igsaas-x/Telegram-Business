@@ -458,7 +458,7 @@ class SenderCommandHandler:
             # Generate report
             report = await self.report_service.generate_daily_report(chat_id)
 
-            await update.message.reply_text(report)
+            await update.message.reply_text(report, parse_mode='HTML')
 
         except Exception as e:
             force_log(f"Error in sender_report: {e}", "SenderCommandHandler", "ERROR")

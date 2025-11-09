@@ -167,7 +167,7 @@ class SenderReportService:
         # Section 1: Configured Senders
         if grouped["configured"]:
             lines.append("✅ CONFIGURED SENDERS")
-            lines.append("─" * 40)
+            # lines.append("─" * 40)
 
             for account_num in sorted(grouped["configured"].keys()):
                 transactions = grouped["configured"][account_num]
@@ -260,7 +260,7 @@ class SenderReportService:
 
         # Overall Summary
         lines.append("📈 OVERALL SUMMARY")
-        lines.append("─" * 40)
+        # lines.append("─" * 40)
 
         # Calculate grand totals
         all_transactions = []
