@@ -229,7 +229,7 @@ class SenderReportService:
                     formatted_amount = f"{amount:,.2f}"
                     currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-            lines.append(f"<b>Unknown Senders (not configured)</b>")
+            # lines.append(f"<b>Unknown Senders (not configured)</b>")
             if currency_lines:
                 lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
