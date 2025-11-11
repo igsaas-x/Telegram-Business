@@ -201,34 +201,36 @@ class SenderReportService:
 
             lines.append("")
 
-        # Section 2: Unknown Senders
+        # Section 2: Unknown Senders (aggregated)
         if grouped["unknown"]:
             lines.append("⚠️ UNKNOWN SENDERS")
-            lines.append("─" * 40)
+            # lines.append("─" * 40)
 
-            for account_num in sorted(grouped["unknown"].keys()):
-                transactions = grouped["unknown"][account_num]
-                totals = self._calculate_totals(transactions)
+            # Combine all unknown transactions regardless of account number
+            all_unknown_transactions = []
+            for transactions in grouped["unknown"].values():
+                all_unknown_transactions.extend(transactions)
 
-                count = len(transactions)
+            totals = self._calculate_totals(all_unknown_transactions)
+            count = len(all_unknown_transactions)
 
-                # Format each currency amount similar to daily summary
-                currency_lines = []
-                for currency in sorted(totals.keys()):
-                    amount = totals[currency]
-                    if currency == "KHR":
-                        formatted_amount = f"{amount:,.0f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                    elif currency == "USD":
-                        formatted_amount = f"{amount:.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                    else:
-                        formatted_amount = f"{amount:,.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+            # Format each currency amount similar to daily summary
+            currency_lines = []
+            for currency in sorted(totals.keys()):
+                amount = totals[currency]
+                if currency == "KHR":
+                    formatted_amount = f"{amount:,.0f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                elif currency == "USD":
+                    formatted_amount = f"{amount:.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                else:
+                    formatted_amount = f"{amount:,.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-                lines.append(f"<b>*{account_num} (not configured)</b>")
-                if currency_lines:
-                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+            lines.append(f"<b>Unknown Senders (not configured)</b>")
+            if currency_lines:
+                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
             lines.append("")
 
