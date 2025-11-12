@@ -293,7 +293,8 @@ class SenderCommandHandler:
                 return
 
             # Generate report
-            report = await self.report_service.generate_daily_report(chat_id)
+            telegram_username = update.effective_user.username or "Admin"
+            report = await self.report_service.generate_daily_report(chat_id, telegram_username=telegram_username)
 
             await query.edit_message_text(report, parse_mode='HTML')
 
@@ -729,7 +730,8 @@ class SenderCommandHandler:
                 return
 
             # Generate report
-            report = await self.report_service.generate_daily_report(chat_id)
+            telegram_username = update.effective_user.username or "Admin"
+            report = await self.report_service.generate_daily_report(chat_id, telegram_username=telegram_username)
 
             await update.message.reply_text(report, parse_mode='HTML')
 

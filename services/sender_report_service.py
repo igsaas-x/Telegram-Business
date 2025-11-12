@@ -4,6 +4,8 @@ from datetime import date
 from sqlalchemy import func
 
 from config import get_db_session
+from helper.daily_report_helper import get_khmer_month_name, format_time_12hour
+from helper.dateutils import DateUtils
 from helper.logger_utils import force_log
 from models.income_balance_model import IncomeBalance
 from services.sender_config_service import SenderConfigService
@@ -16,7 +18,7 @@ class SenderReportService:
         self.sender_config_service = SenderConfigService()
 
     async def generate_daily_report(
-        self, chat_id: int, report_date: date | None = None
+        self, chat_id: int, report_date: date | None = None, telegram_username: str = "Admin"
     ) -> str:
         """
         Generate daily summary report grouped by sender.
@@ -24,6 +26,7 @@ class SenderReportService:
         Args:
             chat_id: The chat ID
             report_date: Date to generate report for (defaults to today)
+            telegram_username: Username of the person generating the report
 
         Returns:
             Formatted report string
@@ -56,7 +59,7 @@ class SenderReportService:
 
             # Format and return report
             return self._format_report(
-                grouped, sender_names, report_date, len(transactions)
+                grouped, sender_names, report_date, len(transactions), telegram_username
             )
 
         except Exception as e:
@@ -155,18 +158,29 @@ class SenderReportService:
         sender_names: dict[str, str],
         report_date: date,
         total_transactions: int,
+        telegram_username: str = "Admin",
     ) -> str:
         """Format the complete report"""
         lines = []
 
+        # Get current time
+        current_time = DateUtils.now()
+        trigger_time = format_time_12hour(current_time)
+
+        # Format date in Khmer
+        day = report_date.day
+        month_khmer = get_khmer_month_name(report_date.month)
+        year = report_date.year
+
         # Header
-        lines.append(f"📊 Daily Sender Report - {report_date.strftime('%Y-%m-%d')}")
-        lines.append(f"Total Transactions: {total_transactions}")
+        lines.append(f"សរុបប្រតិបត្តិការថ្ងៃ {day} {month_khmer} {year}")
+        lines.append(f"ម៉ោងបូកសរុប {trigger_time}")
+        lines.append(f"(ដោយ: @{telegram_username})")
         lines.append("")
 
         # Section 1: Unknown Senders (aggregated - includes both unknown and no_sender)
         if grouped["unknown"] or grouped["no_sender"]:
-            lines.append("Customers:")
+            lines.append("<b>Customers:<b>")
             # lines.append("─" * 40)
 
             # Combine all unknown transactions (both with unknown account numbers and no sender info)
@@ -200,7 +214,7 @@ class SenderReportService:
 
         # Section 2: Configured Senders
         if grouped["configured"]:
-            lines.append("Delivery:")
+            lines.append("<b>Delivery:</b>")
             # lines.append("─" * 40)
 
             for account_num in sorted(grouped["configured"].keys()):
@@ -236,8 +250,7 @@ class SenderReportService:
             lines.append("")
 
         # Overall Summary
-        lines.append("📈 OVERALL SUMMARY")
-        # lines.append("─" * 40)
+        lines.append("<b>Summary:</b>")
 
         # Calculate grand totals
         all_transactions = []
@@ -256,16 +269,24 @@ class SenderReportService:
             amount = grand_totals[currency]
             if currency == "KHR":
                 formatted_amount = f"{amount:,.0f}"
-                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+                currency_lines.append(f"({currency[0]}): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
             elif currency == "USD":
                 formatted_amount = f"{amount:.2f}"
-                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+                currency_lines.append(f"($): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
             else:
                 formatted_amount = f"{amount:,.2f}"
-                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {total_count}")
+                currency_lines.append(f"({currency}): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
 
         if currency_lines:
             lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+
+        # Add working hours
+        transaction_times = [txn.income_date for txn in all_transactions if txn.income_date]
+        if transaction_times:
+            transaction_times.sort()
+            start_time = format_time_12hour(transaction_times[0])
+            end_time = format_time_12hour(transaction_times[-1])
+            lines.append(f"ម៉ោងប្រតិបត្តិការ: {start_time} ➝ {end_time}")
 
         return "\n".join(lines)
 
