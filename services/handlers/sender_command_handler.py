@@ -28,19 +28,20 @@ class SenderCommandHandler:
 
     # ========== Main Menu ==========
 
-    async def show_main_menu(
+    async def show_sender_menu(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Show the main sender menu"""
+        """Show the sender reports menu directly"""
         try:
             keyboard = [
-                [InlineKeyboardButton("⚙️ Configure Sender", callback_data="sender_configure")],
-                [InlineKeyboardButton("📊 Reports", callback_data="sender_reports")],
+                [InlineKeyboardButton("📅 Daily Report", callback_data="report_daily")],
+                [InlineKeyboardButton("📆 Weekly Report (Coming Soon)", callback_data="report_weekly_disabled")],
+                [InlineKeyboardButton("📊 Monthly Report (Coming Soon)", callback_data="report_monthly_disabled")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            message_text = "📋 Sender Management\n\nPlease select an option:"
+            message_text = "📊 Sender Reports\n\nPlease select a report type:"
 
             # Check if this is a callback query or a command
             if update.callback_query:
@@ -54,55 +55,41 @@ class SenderCommandHandler:
                     reply_markup=reply_markup
                 )
         except Exception as e:
-            force_log(f"Error in show_main_menu: {e}", "SenderCommandHandler", "ERROR")
+            force_log(f"Error in show_sender_menu: {e}", "SenderCommandHandler", "ERROR")
             import traceback
             force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
 
-    async def show_configure_menu(
+    async def show_setup_menu(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Show the configure sender submenu"""
+        """Show the setup/configure sender menu"""
         try:
-            query = update.callback_query
-            await query.answer()
-
             keyboard = [
                 [InlineKeyboardButton("📋 List Senders", callback_data="sender_list")],
                 [InlineKeyboardButton("➕ Add Sender", callback_data="sender_add")],
                 [InlineKeyboardButton("🗑 Delete Sender", callback_data="sender_delete")],
-                [InlineKeyboardButton("🔙 Back", callback_data="sender_main")]
+                [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await query.edit_message_text(
-                "⚙️ Configure Sender\n\nPlease select an option:",
-                reply_markup=reply_markup
-            )
+            message_text = "⚙️ Configure Sender\n\nPlease select an option:"
+
+            # Check if this is a callback query or a command
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    message_text,
+                    reply_markup=reply_markup
+                )
+            else:
+                await update.message.reply_text(
+                    message_text,
+                    reply_markup=reply_markup
+                )
         except Exception as e:
-            force_log(f"Error in show_configure_menu: {e}", "SenderCommandHandler", "ERROR")
+            force_log(f"Error in show_setup_menu: {e}", "SenderCommandHandler", "ERROR")
+            import traceback
+            force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
 
-    async def show_reports_menu(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
-        """Show the reports submenu"""
-        try:
-            query = update.callback_query
-            await query.answer()
-
-            keyboard = [
-                [InlineKeyboardButton("📅 Daily Report", callback_data="report_daily")],
-                [InlineKeyboardButton("📆 Weekly Report (Coming Soon)", callback_data="report_weekly_disabled")],
-                [InlineKeyboardButton("📊 Monthly Report (Coming Soon)", callback_data="report_monthly_disabled")],
-                [InlineKeyboardButton("🔙 Back", callback_data="sender_main")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            await query.edit_message_text(
-                "📊 Sender Reports\n\nPlease select a report type:",
-                reply_markup=reply_markup
-            )
-        except Exception as e:
-            force_log(f"Error in show_reports_menu: {e}", "SenderCommandHandler", "ERROR")
 
     async def handle_callback_query(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -114,18 +101,16 @@ class SenderCommandHandler:
 
             force_log(f"Callback query received: {callback_data}", "SenderCommandHandler")
 
-            # Main menu navigation
-            if callback_data == "sender_main":
-                await self.show_main_menu(update, context)
-            elif callback_data == "sender_configure":
-                await self.show_configure_menu(update, context)
-            elif callback_data == "sender_reports":
-                await self.show_reports_menu(update, context)
-            elif callback_data == "sender_cancel":
+            # Cancel action
+            if callback_data == "sender_cancel":
                 await query.answer()
                 await query.edit_message_text("❌ Cancelled")
 
-            # Configure submenu actions
+            # Back to setup menu
+            elif callback_data == "setup_back":
+                await self.show_setup_menu(update, context)
+
+            # Configure/Setup menu actions
             elif callback_data == "sender_list":
                 await self.sender_list_inline(update, context)
             elif callback_data == "sender_add":
@@ -133,7 +118,7 @@ class SenderCommandHandler:
             elif callback_data == "sender_delete":
                 await self.sender_delete_start_inline(update, context)
 
-            # Reports submenu actions
+            # Reports actions
             elif callback_data == "report_daily":
                 await self.sender_report_inline(update, context)
             elif callback_data in ["report_weekly_disabled", "report_monthly_disabled"]:
@@ -145,7 +130,7 @@ class SenderCommandHandler:
                 user_id = update.effective_user.id
                 chat_id = update.effective_chat.id
                 self.conversation_manager.end_conversation(chat_id, user_id)
-                await self.show_configure_menu(update, context)
+                await self.show_setup_menu(update, context)
 
         except Exception as e:
             force_log(f"Error in handle_callback_query: {e}", "SenderCommandHandler", "ERROR")
@@ -167,7 +152,7 @@ class SenderCommandHandler:
             senders = await self.sender_service.get_senders(chat_id)
 
             if not senders:
-                keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="sender_configure")]]
+                keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="setup_back")]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(
                     "📋 Sender List\n\n"
@@ -185,7 +170,7 @@ class SenderCommandHandler:
 
             sender_list = "\n".join(sender_lines)
 
-            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="sender_configure")]]
+            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="setup_back")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             await query.edit_message_text(
@@ -240,7 +225,7 @@ class SenderCommandHandler:
             senders = await self.sender_service.get_senders(chat_id)
 
             if not senders:
-                keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="sender_configure")]]
+                keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="setup_back")]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(
                     "❌ No senders configured yet.\n\n"
@@ -283,13 +268,7 @@ class SenderCommandHandler:
             # Check if any senders configured
             senders = await self.sender_service.get_senders(chat_id)
             if not senders:
-                keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="sender_reports")]]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                await query.edit_message_text(
-                    "❌ No senders configured yet.\n\n"
-                    "Use Configure Sender to add senders first.",
-                    reply_markup=reply_markup
-                )
+                await query.answer("❌ No senders configured. Use /setup to add senders first.", show_alert=True)
                 return
 
             # Generate report

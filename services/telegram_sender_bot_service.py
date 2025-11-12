@@ -51,18 +51,18 @@ class SenderManagementBot:
 
 This bot helps you manage and track transactions by sender.
 
-📋 **Main Command:**
-• /sender - Open the main menu
+📋 **Main Commands:**
+• /sender - View sender reports
+• /setup - Configure senders
 
 **What you can do:**
-⚙️ Configure Sender - Add, delete, or list senders
+⚙️ Setup - Add, delete, or list senders
 📊 Reports - View daily, weekly, or monthly reports
 
 🔧 **How to Use:**
-1. Type /sender to open the menu
-2. Select Configure Sender to add senders
-3. Add account numbers (last 3 digits) and names
-4. View reports to see transactions grouped by sender
+1. Type /setup to add senders
+2. Add account numbers (last 3 digits) and names
+3. Type /sender to view reports grouped by sender
 
 The bot will group all transactions by the configured senders!
 
@@ -78,19 +78,16 @@ Type /help for more information.
         help_message = """
 📚 **Sender Management Bot Help**
 
-**Main Command:**
-**/sender** - Open the main menu
-  Shows three options:
-  • Configure Sender
-  • Reports
-  • Cancel
+**Main Commands:**
+**/sender** - View sender reports (Daily, Weekly, Monthly)
+**/setup** - Configure senders (Add, Delete, List)
 
-**Configure Sender Menu:**
+**Setup Menu (via /setup):**
   • List Senders - View all configured senders
   • Add Sender - Add a new sender
   • Delete Sender - Remove a sender
 
-**Reports Menu:**
+**Reports Menu (via /sender):**
   • Daily Report - View today's transactions by sender
   • Weekly Report - Coming soon
   • Monthly Report - Coming soon
@@ -101,20 +98,19 @@ Type /help for more information.
 
 📝 **Example Usage:**
 
-1. Type /sender
-2. Click "Configure Sender"
-3. Click "Add Sender"
-4. Reply with account number: 708
-5. Reply with name: John Doe
-6. Done! Sender added.
+1. Type /setup
+2. Click "Add Sender"
+3. Reply with account number: 708
+4. Reply with name: John Doe
+5. Done! Sender added.
 
-7. Go back to menu and select "Reports"
-8. Click "Daily Report" to see transactions grouped by sender
+6. Type /sender
+7. Click "Daily Report" to see transactions grouped by sender
 
 📊 **Daily Report Sections:**
-  ✅ Configured senders - Your saved senders
-  ⚠️ Unknown senders - Not in your configuration
-  ❓ No sender info - Transactions without sender data
+  • Customers - Transactions from unknown/unconfigured senders
+  • Delivery - Transactions from your configured senders
+  • Summary - Total transactions with working hours
 
 ⚠️ **Note:**
 - Account numbers must be exactly 3 digits
@@ -135,8 +131,11 @@ Type /help for more information.
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
 
-        # Main sender menu command
-        self.app.add_handler(CommandHandler("sender", self.sender_handler.show_main_menu))
+        # Main sender menu command - shows reports directly
+        self.app.add_handler(CommandHandler("sender", self.sender_handler.show_sender_menu))
+
+        # Setup command for sender configuration
+        self.app.add_handler(CommandHandler("setup", self.sender_handler.show_setup_menu))
 
         # Keep old commands for backward compatibility (optional - can remove later)
         self.app.add_handler(CommandHandler("sender_add", self.sender_handler.sender_add_start))

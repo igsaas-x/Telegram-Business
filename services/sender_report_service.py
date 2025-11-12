@@ -180,7 +180,7 @@ class SenderReportService:
 
         # Section 1: Unknown Senders (aggregated - includes both unknown and no_sender)
         if grouped["unknown"] or grouped["no_sender"]:
-            lines.append("<b>Customers:<b>")
+            lines.append("<b>Customers:</b>")
             # lines.append("─" * 40)
 
             # Combine all unknown transactions (both with unknown account numbers and no sender info)
