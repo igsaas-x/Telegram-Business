@@ -8,10 +8,14 @@ Provides interactive commands for managing sender configurations:
   * Cancel
 """
 
+from calendar import monthrange
+from datetime import datetime, timedelta
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 
 from helper import force_log
+from helper.dateutils import DateUtils
 from services.conversation_state_manager import ConversationState, ConversationStateManager
 from services.sender_config_service import SenderConfigService
 from services.sender_report_service import SenderReportService
@@ -35,8 +39,8 @@ class SenderCommandHandler:
         try:
             keyboard = [
                 [InlineKeyboardButton("📅 Daily Report", callback_data="report_daily")],
-                [InlineKeyboardButton("📆 Weekly Report (Coming Soon)", callback_data="report_weekly_disabled")],
-                [InlineKeyboardButton("📊 Monthly Report (Coming Soon)", callback_data="report_monthly_disabled")],
+                [InlineKeyboardButton("📆 Weekly Report", callback_data="report_weekly")],
+                [InlineKeyboardButton("📊 Monthly Report", callback_data="report_monthly")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -121,8 +125,14 @@ class SenderCommandHandler:
             # Reports actions
             elif callback_data == "report_daily":
                 await self.sender_report_inline(update, context)
-            elif callback_data in ["report_weekly_disabled", "report_monthly_disabled"]:
-                await query.answer("This feature is coming soon!", show_alert=True)
+            elif callback_data == "report_weekly":
+                await self.show_weekly_selection(update, context)
+            elif callback_data == "report_monthly":
+                await self.show_monthly_selection(update, context)
+            elif callback_data.startswith("sender_week_"):
+                await self.generate_weekly_report(update, context)
+            elif callback_data.startswith("sender_month_"):
+                await self.generate_monthly_report(update, context)
 
             # Cancel conversation callbacks
             elif callback_data in ["sender_add_cancel", "sender_delete_cancel", "sender_update_cancel"]:
@@ -279,6 +289,176 @@ class SenderCommandHandler:
 
         except Exception as e:
             force_log(f"Error in sender_report_inline: {e}", "SenderCommandHandler", "ERROR")
+
+    async def show_weekly_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Show weekly report selection menu"""
+        try:
+            query = update.callback_query
+            await query.answer()
+
+            now = DateUtils.now()
+            current_year = now.year
+            current_month = now.month
+
+            _, days_in_month = monthrange(current_year, current_month)
+
+            keyboard = []
+
+            # Week 1: 1-7
+            week1_end = min(7, days_in_month)
+            keyboard.append([InlineKeyboardButton(f"សប្តាហ៍ 1 (1-{week1_end})", callback_data=f"sender_week_{current_year}-{current_month:02d}-1")])
+
+            # Week 2: 8-14
+            if days_in_month >= 8:
+                week2_end = min(14, days_in_month)
+                keyboard.append([InlineKeyboardButton(f"សប្តាហ៍ 2 (8-{week2_end})", callback_data=f"sender_week_{current_year}-{current_month:02d}-2")])
+
+            # Week 3: 15-21
+            if days_in_month >= 15:
+                week3_end = min(21, days_in_month)
+                keyboard.append([InlineKeyboardButton(f"សប្តាហ៍ 3 (15-{week3_end})", callback_data=f"sender_week_{current_year}-{current_month:02d}-3")])
+
+            # Week 4: 22-end of month
+            if days_in_month >= 22:
+                keyboard.append([InlineKeyboardButton(f"សប្តាហ៍ 4 (22-{days_in_month})", callback_data=f"sender_week_{current_year}-{current_month:02d}-4")])
+
+            keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")])
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(f"📆 របាយការណ៍ប្រចាំសប្តាហ៍ - {now.strftime('%B %Y')}\n\nជ្រើសរើសសប្តាហ៍:", reply_markup=reply_markup)
+
+        except Exception as e:
+            force_log(f"Error in show_weekly_selection: {e}", "SenderCommandHandler", "ERROR")
+
+    async def show_monthly_selection(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Show monthly report selection menu"""
+        try:
+            query = update.callback_query
+            await query.answer()
+
+            now = DateUtils.now()
+            year = now.year
+            keyboard = []
+
+            for month in range(1, 13, 2):
+                month_date_1 = datetime(year, month, 1)
+                label_1 = month_date_1.strftime("%B %Y")
+                callback_value_1 = month_date_1.strftime("%Y-%m")
+
+                row = [InlineKeyboardButton(label_1, callback_data=f"sender_month_{callback_value_1}")]
+
+                if month + 1 <= 12:
+                    month_date_2 = datetime(year, month + 1, 1)
+                    label_2 = month_date_2.strftime("%B %Y")
+                    callback_value_2 = month_date_2.strftime("%Y-%m")
+                    row.append(InlineKeyboardButton(label_2, callback_data=f"sender_month_{callback_value_2}"))
+
+                keyboard.append(row)
+
+            keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")])
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("ជ្រើសរើសខែ:", reply_markup=reply_markup)
+
+        except Exception as e:
+            force_log(f"Error in show_monthly_selection: {e}", "SenderCommandHandler", "ERROR")
+
+    async def generate_weekly_report(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Generate weekly sender report"""
+        try:
+            query = update.callback_query
+            await query.answer()
+            chat_id = update.effective_chat.id
+
+            # Check if any senders configured
+            senders = await self.sender_service.get_senders(chat_id)
+            if not senders:
+                await query.answer("❌ No senders configured. Use /setup to add senders first.", show_alert=True)
+                return
+
+            # Parse callback data: YYYY-MM-W format
+            callback_data = query.data
+            date_parts = callback_data.replace("sender_week_", "").split("-")
+            year = int(date_parts[0])
+            month = int(date_parts[1])
+            week_number = int(date_parts[2])
+
+            # Calculate start and end dates based on week number
+            _, days_in_month = monthrange(year, month)
+
+            if week_number == 1:
+                start_day = 1
+                end_day = min(7, days_in_month)
+            elif week_number == 2:
+                start_day = 8
+                end_day = min(14, days_in_month)
+            elif week_number == 3:
+                start_day = 15
+                end_day = min(21, days_in_month)
+            elif week_number == 4:
+                start_day = 22
+                end_day = days_in_month
+            else:
+                raise ValueError(f"Invalid week number: {week_number}")
+
+            start_date = datetime(year, month, start_day)
+            end_date = datetime(year, month, end_day) + timedelta(days=1)  # End of day
+
+            # Generate report
+            telegram_username = update.effective_user.username or "Admin"
+            report = await self.report_service.generate_weekly_report(
+                chat_id, start_date, end_date, telegram_username=telegram_username
+            )
+
+            await query.edit_message_text(report, parse_mode='HTML')
+
+        except Exception as e:
+            force_log(f"Error in generate_weekly_report: {e}", "SenderCommandHandler", "ERROR")
+            import traceback
+            force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
+
+    async def generate_monthly_report(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Generate monthly sender report"""
+        try:
+            query = update.callback_query
+            await query.answer()
+            chat_id = update.effective_chat.id
+
+            # Check if any senders configured
+            senders = await self.sender_service.get_senders(chat_id)
+            if not senders:
+                await query.answer("❌ No senders configured. Use /setup to add senders first.", show_alert=True)
+                return
+
+            # Parse callback data: YYYY-MM format
+            callback_data = query.data
+            start_date = datetime.strptime(
+                callback_data.replace("sender_month_", ""), "%Y-%m"
+            )
+
+            _, last_day = monthrange(start_date.year, start_date.month)
+            end_date = start_date.replace(day=last_day) + timedelta(days=1)
+
+            # Generate report
+            telegram_username = update.effective_user.username or "Admin"
+            report = await self.report_service.generate_monthly_report(
+                chat_id, start_date, end_date, telegram_username=telegram_username
+            )
+
+            await query.edit_message_text(report, parse_mode='HTML')
+
+        except Exception as e:
+            force_log(f"Error in generate_monthly_report: {e}", "SenderCommandHandler", "ERROR")
+            import traceback
+            force_log(f"Traceback: {traceback.format_exc()}", "SenderCommandHandler", "ERROR")
 
     # ========== /sender_add Command ==========
 

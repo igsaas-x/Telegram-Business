@@ -89,8 +89,8 @@ Type /help for more information.
 
 **Reports Menu (via /sender):**
   • Daily Report - View today's transactions by sender
-  • Weekly Report - Coming soon
-  • Monthly Report - Coming soon
+  • Weekly Report - View weekly transactions by sender
+  • Monthly Report - View monthly transactions by sender
 
 **Other Commands:**
 **/start** - Welcome message
