@@ -164,9 +164,43 @@ class SenderReportService:
         lines.append(f"Total Transactions: {total_transactions}")
         lines.append("")
 
-        # Section 1: Configured Senders
+        # Section 1: Unknown Senders (aggregated - includes both unknown and no_sender)
+        if grouped["unknown"] or grouped["no_sender"]:
+            lines.append("Customers:")
+            # lines.append("─" * 40)
+
+            # Combine all unknown transactions (both with unknown account numbers and no sender info)
+            all_unknown_transactions = []
+            for transactions in grouped["unknown"].values():
+                all_unknown_transactions.extend(transactions)
+            all_unknown_transactions.extend(grouped["no_sender"])
+
+            totals = self._calculate_totals(all_unknown_transactions)
+            count = len(all_unknown_transactions)
+
+            # Format each currency amount similar to daily summary
+            currency_lines = []
+            for currency in sorted(totals.keys()):
+                amount = totals[currency]
+                if currency == "KHR":
+                    formatted_amount = f"{amount:,.0f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                elif currency == "USD":
+                    formatted_amount = f"{amount:.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                else:
+                    formatted_amount = f"{amount:,.2f}"
+                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+            # lines.append(f"<b>Unknown Senders (not configured)</b>")
+            if currency_lines:
+                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+
+            lines.append("")
+
+        # Section 2: Configured Senders
         if grouped["configured"]:
-            lines.append("✅ CONFIGURED SENDERS")
+            lines.append("Delivery:")
             # lines.append("─" * 40)
 
             for account_num in sorted(grouped["configured"].keys()):
@@ -198,40 +232,6 @@ class SenderReportService:
                 lines.append(f"\n<b>{sender_display}</b>")
                 if currency_lines:
                     lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
-
-            lines.append("")
-
-        # Section 2: Unknown Senders (aggregated - includes both unknown and no_sender)
-        if grouped["unknown"] or grouped["no_sender"]:
-            lines.append("⚠️ Other Senders")
-            # lines.append("─" * 40)
-
-            # Combine all unknown transactions (both with unknown account numbers and no sender info)
-            all_unknown_transactions = []
-            for transactions in grouped["unknown"].values():
-                all_unknown_transactions.extend(transactions)
-            all_unknown_transactions.extend(grouped["no_sender"])
-
-            totals = self._calculate_totals(all_unknown_transactions)
-            count = len(all_unknown_transactions)
-
-            # Format each currency amount similar to daily summary
-            currency_lines = []
-            for currency in sorted(totals.keys()):
-                amount = totals[currency]
-                if currency == "KHR":
-                    formatted_amount = f"{amount:,.0f}"
-                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                elif currency == "USD":
-                    formatted_amount = f"{amount:.2f}"
-                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                else:
-                    formatted_amount = f"{amount:,.2f}"
-                    currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-
-            # lines.append(f"<b>Unknown Senders (not configured)</b>")
-            if currency_lines:
-                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
             lines.append("")
 
