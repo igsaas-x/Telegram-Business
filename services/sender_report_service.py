@@ -241,7 +241,7 @@ class SenderReportService:
                         formatted_amount = f"{amount:,.2f}"
                         currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-                lines.append(f"<b>{sender_display}</b>")
+                lines.append(f"{sender_display}")
                 if currency_lines:
                     lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
@@ -602,7 +602,7 @@ class SenderReportService:
                         formatted_amount = f"{amount:,.2f}"
                         currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-                lines.append(f"<b>{sender_display}</b>")
+                lines.append(f"{sender_display}")
                 if currency_lines:
                     lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
@@ -733,7 +733,7 @@ class SenderReportService:
                         formatted_amount = f"{amount:,.2f}"
                         currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-                lines.append(f"<b>{sender_display}</b>")
+                lines.append(f"{sender_display}")
                 if currency_lines:
                     lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
