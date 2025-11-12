@@ -210,8 +210,6 @@ class SenderReportService:
             if currency_lines:
                 lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
-            lines.append("")
-
         # Section 2: Configured Senders
         if grouped["configured"]:
             lines.append("<b>Delivery:</b>")
@@ -246,8 +244,6 @@ class SenderReportService:
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
                     lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
-
-            lines.append("")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -576,8 +572,6 @@ class SenderReportService:
             if currency_lines:
                 lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
-            lines.append("")
-
         # Section 2: Delivery (Configured Senders)
         if grouped["configured"]:
             lines.append("<b>Delivery:</b>")
@@ -611,8 +605,6 @@ class SenderReportService:
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
                     lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
-
-            lines.append("")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -711,8 +703,6 @@ class SenderReportService:
             if currency_lines:
                 lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
 
-            lines.append("")
-
         # Section 2: Delivery (Configured Senders)
         if grouped["configured"]:
             lines.append("<b>Delivery:</b>")
@@ -746,8 +736,6 @@ class SenderReportService:
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
                     lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
-
-            lines.append("")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
