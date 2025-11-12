@@ -208,7 +208,7 @@ class SenderReportService:
 
             # lines.append(f"<b>Unknown Senders (not configured)</b>")
             if currency_lines:
-                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Section 2: Configured Senders
         if grouped["configured"]:
@@ -243,7 +243,7 @@ class SenderReportService:
 
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
-                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -274,7 +274,7 @@ class SenderReportService:
                 currency_lines.append(f"({currency}): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
 
         if currency_lines:
-            lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Add working hours
         transaction_times = [txn.income_date for txn in all_transactions if txn.income_date]
@@ -570,7 +570,7 @@ class SenderReportService:
                     currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
             if currency_lines:
-                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Section 2: Delivery (Configured Senders)
         if grouped["configured"]:
@@ -604,7 +604,7 @@ class SenderReportService:
 
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
-                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -635,7 +635,7 @@ class SenderReportService:
                 currency_lines.append(f"({currency}): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
 
         if currency_lines:
-            lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Add working hours
         transaction_times = [txn.income_date for txn in all_transactions if txn.income_date]
@@ -701,7 +701,7 @@ class SenderReportService:
                     currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
             if currency_lines:
-                lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Section 2: Delivery (Configured Senders)
         if grouped["configured"]:
@@ -735,7 +735,7 @@ class SenderReportService:
 
                 lines.append(f"<b>{sender_display}</b>")
                 if currency_lines:
-                    lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -766,7 +766,7 @@ class SenderReportService:
                 currency_lines.append(f"({currency}): {formatted_amount}     | ប្រតិបត្តិការ: {total_count}")
 
         if currency_lines:
-            lines.append(f"<pre>{chr(10).join(currency_lines)}</pre>")
+            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Add working hours
         transaction_times = [txn.income_date for txn in all_transactions if txn.income_date]
