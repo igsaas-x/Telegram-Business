@@ -56,7 +56,7 @@ class SenderManagementBot:
 This bot helps you manage and track transactions by sender.
 
 📋 **Main Commands:**
-• /sender - View sender reports
+• /report - View sender reports
 • /setup - Configure senders
 • /category - Manage categories (Admin only)
 
@@ -70,7 +70,7 @@ This bot helps you manage and track transactions by sender.
 1. Type /setup to add senders
 2. Add account numbers (last 3 digits) and names
 3. Type /category to organize senders (Admin only)
-4. Type /sender to view reports grouped by sender
+4. Type /report to view reports grouped by sender
 
 The bot will group all transactions by the configured senders!
 
@@ -87,7 +87,7 @@ Type /help for more information.
 📚 **Sender Management Bot Help**
 
 **Main Commands:**
-**/sender** - View sender reports (Daily, Weekly, Monthly)
+**/report** - View sender reports (Daily, Weekly, Monthly)
 **/setup** - Configure senders (Add, Delete, List)
 **/category** - Manage categories (Admin only)
 
@@ -104,7 +104,7 @@ Type /help for more information.
   • Assign Senders - Assign senders to categories
   • Set Nickname - Set custom display names
 
-**Reports Menu (via /sender):**
+**Reports Menu (via /report):**
   • Daily Report - View today's transactions by sender
   • Weekly Report - View weekly transactions by sender
   • Monthly Report - View monthly transactions by sender
@@ -119,16 +119,18 @@ Type /help for more information.
 1. Type /setup
 2. Click "Add Sender"
 3. Reply with account number: 708
-4. Reply with name: John Doe
-5. Done! Sender added.
+4. Reply with account name: John Doe
+5. Reply with nickname: Johnny (or skip)
+6. Select category
+7. Done! Sender added.
 
-6. Type /category (Admin only)
-7. Create categories like "VIP", "Delivery Partners"
-8. Assign senders to categories
-9. Set nicknames for easier identification
+8. Type /category (Admin only)
+9. Create categories like "VIP", "Delivery Partners"
+10. Assign senders to categories
+11. Set nicknames for easier identification
 
-10. Type /sender
-11. Click "Daily Report" to see transactions grouped by category
+12. Type /report
+13. Click "Daily Report" to see transactions grouped by category
 
 📊 **Report Features:**
   • Customers - Transactions from unknown/unconfigured senders
@@ -156,8 +158,8 @@ Type /help for more information.
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
 
-        # Main sender menu command - shows reports directly
-        self.app.add_handler(CommandHandler("sender", self.sender_handler.show_sender_menu))
+        # Main report menu command - shows reports directly
+        self.app.add_handler(CommandHandler("report", self.sender_handler.show_sender_menu))
 
         # Setup command for sender configuration
         self.app.add_handler(CommandHandler("setup", self.sender_handler.show_setup_menu))

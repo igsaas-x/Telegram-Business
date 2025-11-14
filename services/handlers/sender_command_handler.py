@@ -553,7 +553,7 @@ class SenderCommandHandler:
 
             await update.message.reply_text(
                 f"✅ Account number: *{account_number}\n\n"
-                "Please reply with the sender name:\n\n"
+                "Please reply with the account name:\n\n"
                 "Example: John Doe\n\n"
                 "Send /cancel to cancel this operation."
             )
@@ -567,7 +567,7 @@ class SenderCommandHandler:
     async def sender_add_handle_name(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle name input for /sender_add"""
+        """Handle account name input for /sender_add"""
         try:
             chat_id = update.effective_chat.id
             user_id = update.effective_user.id
@@ -585,7 +585,57 @@ class SenderCommandHandler:
                 return
 
             account_number = data["account_number"]
-            sender_name = update.message.text.strip()
+            account_name = update.message.text.strip()
+
+            # Move to nickname step
+            self.conversation_manager.update_state(
+                chat_id,
+                user_id,
+                ConversationState.WAITING_FOR_NICKNAME,
+                account_number=account_number,
+                account_name=account_name,
+            )
+
+            await update.message.reply_text(
+                f"✅ Account number: *{account_number}\n"
+                f"✅ Account name: {account_name}\n\n"
+                "Please reply with a nickname (or type 'skip' to use account name):\n\n"
+                "Example: Johnny\n\n"
+                "Send /cancel to cancel this operation."
+            )
+
+        except Exception as e:
+            force_log(f"Error in sender_add_handle_name: {e}", "SenderCommandHandler", "ERROR")
+            await update.message.reply_text(
+                "❌ An error occurred. Please try again."
+            )
+
+    async def sender_add_handle_nickname(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle nickname input for /sender_add"""
+        try:
+            chat_id = update.effective_chat.id
+            user_id = update.effective_user.id
+
+            # Check if user is in this conversation
+            state = self.conversation_manager.get_state(chat_id, user_id)
+            if state != ConversationState.WAITING_FOR_NICKNAME:
+                return
+
+            # Get conversation data
+            data = self.conversation_manager.get_data(chat_id, user_id)
+            if not data or "account_number" not in data or "account_name" not in data:
+                await update.message.reply_text("❌ Session expired. Please start again with /sender_add")
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            account_number = data["account_number"]
+            account_name = data["account_name"]
+            nickname_input = update.message.text.strip()
+
+            # Handle 'skip' to use account name as display name
+            nickname = None if nickname_input.lower() == 'skip' else nickname_input
 
             # Get all categories
             categories = await self.category_service.list_categories(chat_id)
@@ -607,7 +657,8 @@ class SenderCommandHandler:
                 user_id,
                 ConversationState.WAITING_FOR_CATEGORY_SELECTION,
                 account_number=account_number,
-                sender_name=sender_name,
+                account_name=account_name,
+                nickname=nickname,
             )
 
             # Create inline keyboard with category buttons (no skip option)
@@ -621,15 +672,17 @@ class SenderCommandHandler:
                 ])
             reply_markup = InlineKeyboardMarkup(keyboard)
 
+            display_name = nickname if nickname else account_name
             await update.message.reply_text(
                 f"✅ Account number: *{account_number}\n"
-                f"✅ Name: {sender_name}\n\n"
+                f"✅ Account name: {account_name}\n"
+                f"✅ Display name: {display_name}\n\n"
                 f"🏷️ Please select a category:",
                 reply_markup=reply_markup
             )
 
         except Exception as e:
-            force_log(f"Error in sender_add_handle_name: {e}", "SenderCommandHandler", "ERROR")
+            force_log(f"Error in sender_add_handle_nickname: {e}", "SenderCommandHandler", "ERROR")
             await update.message.reply_text(
                 "❌ An error occurred. Please try again."
             )
@@ -653,13 +706,14 @@ class SenderCommandHandler:
 
             # Get conversation data
             data = self.conversation_manager.get_data(chat_id, user_id)
-            if not data or "account_number" not in data or "sender_name" not in data:
+            if not data or "account_number" not in data or "account_name" not in data:
                 await query.edit_message_text("❌ Session expired. Please start again.")
                 self.conversation_manager.end_conversation(chat_id, user_id)
                 return
 
             account_number = data["account_number"]
-            sender_name = data["sender_name"]
+            account_name = data["account_name"]
+            nickname = data.get("nickname")  # May be None
 
             # Parse callback data: sender_add_category_{id}
             callback_data = query.data
@@ -672,23 +726,35 @@ class SenderCommandHandler:
                 self.conversation_manager.end_conversation(chat_id, user_id)
                 return
 
-            # Create sender
+            # Create sender with account name
             success, message = await self.sender_service.add_sender(
-                chat_id, account_number, sender_name
+                chat_id, account_number, account_name
             )
 
             if success:
+                # Set nickname if provided
+                if nickname:
+                    await self.category_service.update_sender_nickname(
+                        chat_id, account_number, nickname
+                    )
+
                 # Assign category to the newly created sender
                 assign_success, assign_message = await self.category_service.assign_sender_to_category(
                     chat_id, account_number, category.category_name
                 )
+
+                display_name = nickname if nickname else account_name
                 if assign_success:
                     await query.edit_message_text(
-                        f"{message}\n{assign_message}"
+                        f"{message}\n"
+                        f"{assign_message}\n"
+                        f"Display name: {display_name}"
                     )
                 else:
                     await query.edit_message_text(
-                        f"{message}\n⚠️ {assign_message}"
+                        f"{message}\n"
+                        f"⚠️ {assign_message}\n"
+                        f"Display name: {display_name}"
                     )
             else:
                 await query.edit_message_text(message)
@@ -1069,6 +1135,9 @@ class SenderCommandHandler:
                 elif state == ConversationState.WAITING_FOR_NAME:
                     force_log(f"Routing to sender_add_handle_name for user {user_id}", "SenderCommandHandler")
                     await self.sender_add_handle_name(update, context)
+                elif state == ConversationState.WAITING_FOR_NICKNAME:
+                    force_log(f"Routing to sender_add_handle_nickname for user {user_id}", "SenderCommandHandler")
+                    await self.sender_add_handle_nickname(update, context)
                 # WAITING_FOR_CATEGORY_SELECTION is handled by callback, not text
 
             elif command == "sender_delete":
