@@ -137,6 +137,10 @@ class SenderCommandHandler:
             elif callback_data.startswith("sender_month_"):
                 await self.generate_monthly_report(update, context)
 
+            # Category selection during sender add
+            elif callback_data.startswith("sender_add_category_"):
+                await self.sender_add_handle_category_callback(update, context)
+
             # Cancel conversation callbacks
             elif callback_data in ["sender_add_cancel", "sender_delete_cancel", "sender_update_cancel"]:
                 await query.answer()
@@ -587,11 +591,13 @@ class SenderCommandHandler:
             categories = await self.category_service.list_categories(chat_id)
 
             if not categories:
-                # No categories available, create sender without category
-                success, message = await self.sender_service.add_sender(
-                    chat_id, account_number, sender_name
+                # No categories available - must create categories first
+                await update.message.reply_text(
+                    "❌ No categories found!\n\n"
+                    "All senders must belong to a category. "
+                    "Please ask an admin to create categories first using /category command.\n\n"
+                    "Operation cancelled."
                 )
-                await update.message.reply_text(message)
                 self.conversation_manager.end_conversation(chat_id, user_id)
                 return
 
@@ -604,14 +610,22 @@ class SenderCommandHandler:
                 sender_name=sender_name,
             )
 
-            # Format category list
-            category_list = "\n".join([f"• {c.category_name}" for c in categories])
+            # Create inline keyboard with category buttons (no skip option)
+            keyboard = []
+            for category in categories:
+                keyboard.append([
+                    InlineKeyboardButton(
+                        category.category_name,
+                        callback_data=f"sender_add_category_{category.id}"
+                    )
+                ])
+            reply_markup = InlineKeyboardMarkup(keyboard)
 
             await update.message.reply_text(
                 f"✅ Account number: *{account_number}\n"
                 f"✅ Name: {sender_name}\n\n"
-                f"📋 Available categories:\n{category_list}\n\n"
-                f"Please reply with the category name (or 'none' to skip):"
+                f"🏷️ Please select a category:",
+                reply_markup=reply_markup
             )
 
         except Exception as e:
@@ -620,74 +634,74 @@ class SenderCommandHandler:
                 "❌ An error occurred. Please try again."
             )
 
-    async def sender_add_handle_category(
+    async def sender_add_handle_category_callback(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle category selection for /sender_add"""
+        """Handle category selection button click for /sender_add"""
         try:
+            query = update.callback_query
+            await query.answer()
+
             chat_id = update.effective_chat.id
             user_id = update.effective_user.id
 
             # Check if user is in this conversation
             state = self.conversation_manager.get_state(chat_id, user_id)
             if state != ConversationState.WAITING_FOR_CATEGORY_SELECTION:
+                await query.edit_message_text("❌ Session expired. Please start again.")
                 return
 
             # Get conversation data
             data = self.conversation_manager.get_data(chat_id, user_id)
             if not data or "account_number" not in data or "sender_name" not in data:
-                await update.message.reply_text("❌ Session expired. Please start again.")
+                await query.edit_message_text("❌ Session expired. Please start again.")
                 self.conversation_manager.end_conversation(chat_id, user_id)
                 return
 
             account_number = data["account_number"]
             sender_name = data["sender_name"]
-            category_input = update.message.text.strip()
 
-            # Handle 'none' to skip category
-            category_id = None
-            if category_input.lower() != "none":
-                # Find the category by name
-                category = await self.category_service.get_category_by_name(
-                    chat_id, category_input
-                )
-                if not category:
-                    await update.message.reply_text(
-                        f"❌ Category '{category_input}' not found.\n\n"
-                        "Please try again or type 'none' to skip category selection."
-                    )
-                    return
-                category_id = category.id
+            # Parse callback data: sender_add_category_{id}
+            callback_data = query.data
+            category_id = int(callback_data.replace("sender_add_category_", ""))
 
-            # Create sender with category
+            # Get category to get its name
+            category = await self.category_service.get_category_by_id(category_id)
+            if not category:
+                await query.edit_message_text("❌ Category not found. Please try again.")
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            # Create sender
             success, message = await self.sender_service.add_sender(
                 chat_id, account_number, sender_name
             )
 
-            if success and category_id:
+            if success:
                 # Assign category to the newly created sender
                 assign_success, assign_message = await self.category_service.assign_sender_to_category(
-                    chat_id, account_number, category_input
+                    chat_id, account_number, category.category_name
                 )
                 if assign_success:
-                    await update.message.reply_text(
+                    await query.edit_message_text(
                         f"{message}\n{assign_message}"
                     )
                 else:
-                    await update.message.reply_text(
+                    await query.edit_message_text(
                         f"{message}\n⚠️ {assign_message}"
                     )
             else:
-                await update.message.reply_text(message)
+                await query.edit_message_text(message)
 
             # End conversation
             self.conversation_manager.end_conversation(chat_id, user_id)
 
         except Exception as e:
-            force_log(f"Error in sender_add_handle_category: {e}", "SenderCommandHandler", "ERROR")
-            await update.message.reply_text(
-                "❌ An error occurred. Please try again."
-            )
+            force_log(f"Error in sender_add_handle_category_callback: {e}", "SenderCommandHandler", "ERROR")
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    "❌ An error occurred. Please try again."
+                )
 
     # ========== /sender_delete Command ==========
 
@@ -1055,9 +1069,7 @@ class SenderCommandHandler:
                 elif state == ConversationState.WAITING_FOR_NAME:
                     force_log(f"Routing to sender_add_handle_name for user {user_id}", "SenderCommandHandler")
                     await self.sender_add_handle_name(update, context)
-                elif state == ConversationState.WAITING_FOR_CATEGORY_SELECTION:
-                    force_log(f"Routing to sender_add_handle_category for user {user_id}", "SenderCommandHandler")
-                    await self.sender_add_handle_category(update, context)
+                # WAITING_FOR_CATEGORY_SELECTION is handled by callback, not text
 
             elif command == "sender_delete":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
