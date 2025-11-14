@@ -74,7 +74,7 @@ class SenderCommandHandler:
                 [InlineKeyboardButton("📋 List Senders", callback_data="sender_list")],
                 [InlineKeyboardButton("➕ Add Sender", callback_data="sender_add")],
                 [InlineKeyboardButton("🗑 Delete Sender", callback_data="sender_delete")],
-                [InlineKeyboardButton("🏷️ Manage Categories", callback_data="category_menu")],
+                # [InlineKeyboardButton("🏷️ Manage Categories", callback_data="category_menu")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
