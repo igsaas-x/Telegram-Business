@@ -10,6 +10,7 @@ from telegram.ext import (
     filters,
 )
 
+from config.constants import is_admin_user
 from helper.logger_utils import force_log
 from models import Chat
 from services.chat_service import ChatService
@@ -40,10 +41,9 @@ class TelegramPrivateBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
         # Check if user is authorized
-        allowed_users = ["HK_688", "houhokheng", "autosum_kh", "chanhengsng"]
         username = update.effective_user.username if update.effective_user else None
-        
-        if not username or username not in allowed_users:
+
+        if not is_admin_user(username):
             await update.message.reply_text(
                 "🚫 Access denied. Please contact the administrator for access. https://t.me/HK_688"
             )

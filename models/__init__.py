@@ -6,6 +6,8 @@ from models.custom_report_model import CustomReport
 from models.group_package_model import GroupPackage
 from models.income_balance_model import IncomeBalance
 from models.revenue_source_model import RevenueSource
+from models.sender_category_model import SenderCategory
+from models.sender_config_model import SenderConfig
 from models.shift_configuration_model import ShiftConfiguration
 from models.shift_model import Shift
 from models.shift_permission_model import ShiftPermission
@@ -23,4 +25,6 @@ __all__ = [
     "IncomeBalance",
     "RevenueSource",
     "CustomReport",
+    "SenderCategory",
+    "SenderConfig",
 ]
