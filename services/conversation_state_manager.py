@@ -12,6 +12,7 @@ class ConversationState(Enum):
     WAITING_FOR_ACCOUNT_NUMBER = "waiting_for_account_number"
     WAITING_FOR_NAME = "waiting_for_name"
     WAITING_FOR_NEW_NAME = "waiting_for_new_name"
+    WAITING_FOR_CATEGORY_SELECTION = "waiting_for_category_selection"
     WAITING_FOR_DELETE_CONFIRMATION = "waiting_for_delete_confirmation"
 
 

@@ -8,6 +8,7 @@ from helper.daily_report_helper import get_khmer_month_name, format_time_12hour
 from helper.dateutils import DateUtils
 from helper.logger_utils import force_log
 from models.income_balance_model import IncomeBalance
+from services.sender_category_service import SenderCategoryService
 from services.sender_config_service import SenderConfigService
 
 
@@ -16,6 +17,7 @@ class SenderReportService:
 
     def __init__(self):
         self.sender_config_service = SenderConfigService()
+        self.category_service = SenderCategoryService()
 
     async def generate_daily_report(
         self, chat_id: int, report_date: date | None = None, telegram_username: str = "Admin"
@@ -39,12 +41,14 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender name
-            sender_names = {
-                s.sender_account_number: s.sender_name
+            # Create mapping of account number to sender object
+            sender_map = {
+                s.sender_account_number: s
                 for s in configured_senders
-                if s.sender_name
             }
+
+            # Get all categories
+            categories = await self.category_service.list_categories(chat_id)
 
             # Get all transactions for the date
             transactions = await self._get_daily_transactions(chat_id, report_date)
@@ -59,7 +63,7 @@ class SenderReportService:
 
             # Format and return report
             return self._format_report(
-                grouped, sender_names, report_date, len(transactions), telegram_username
+                grouped, sender_map, categories, report_date, len(transactions), telegram_username
             )
 
         except Exception as e:
@@ -155,7 +159,8 @@ class SenderReportService:
     def _format_report(
         self,
         grouped: dict,
-        sender_names: dict[str, str],
+        sender_map: dict,
+        categories: list,
         report_date: date,
         total_transactions: int,
         telegram_username: str = "Admin",
@@ -179,9 +184,9 @@ class SenderReportService:
         lines.append("")
 
         # Section 1: Unknown Senders (aggregated - includes both unknown and no_sender)
+        # This represents uncategorized/customer transactions
         if grouped["unknown"] or grouped["no_sender"]:
             lines.append("<b>Customers:</b>")
-            # lines.append("─" * 40)
 
             # Combine all unknown transactions (both with unknown account numbers and no sender info)
             all_unknown_transactions = []
@@ -206,44 +211,87 @@ class SenderReportService:
                     formatted_amount = f"{amount:,.2f}"
                     currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
 
-            # lines.append(f"<b>Unknown Senders (not configured)</b>")
             if currency_lines:
                 lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
-        # Section 2: Configured Senders
+        # Section 2: Configured Senders - Grouped by Category
         if grouped["configured"]:
-            lines.append("<b>Delivery:</b>")
-            # lines.append("─" * 40)
+            # Group senders by category
+            category_groups = defaultdict(list)
+            uncategorized_senders = []
 
-            for account_num in sorted(grouped["configured"].keys()):
-                transactions = grouped["configured"][account_num]
-                totals = self._calculate_totals(transactions)
-                sender_name = sender_names.get(account_num, "")
-
-                # Format sender line with HTML
-                sender_display = f"*{account_num}"
-                if sender_name:
-                    sender_display += f" ({sender_name})"
-
-                count = len(transactions)
-
-                # Format each currency amount similar to daily summary
-                currency_lines = []
-                for currency in sorted(totals.keys()):
-                    amount = totals[currency]
-                    if currency == "KHR":
-                        formatted_amount = f"{amount:,.0f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                    elif currency == "USD":
-                        formatted_amount = f"{amount:.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+            for account_num in grouped["configured"].keys():
+                sender = sender_map.get(account_num)
+                if sender:
+                    if sender.category_id:
+                        category_groups[sender.category_id].append(account_num)
                     else:
-                        formatted_amount = f"{amount:,.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        uncategorized_senders.append(account_num)
 
-                lines.append(f"{sender_display}")
-                if currency_lines:
-                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+            # Display senders grouped by category (ordered by display_order)
+            for category in categories:
+                if category.id in category_groups:
+                    lines.append(f"<b>{category.category_name}:</b>")
+
+                    for account_num in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][account_num]
+                        totals = self._calculate_totals(transactions)
+                        sender = sender_map.get(account_num)
+
+                        # Use get_display_name() for consistent display
+                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                        count = len(transactions)
+
+                        # Format each currency amount
+                        currency_lines = []
+                        for currency in sorted(totals.keys()):
+                            amount = totals[currency]
+                            if currency == "KHR":
+                                formatted_amount = f"{amount:,.0f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            elif currency == "USD":
+                                formatted_amount = f"{amount:.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            else:
+                                formatted_amount = f"{amount:,.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                        lines.append(f"{sender_display}")
+                        if currency_lines:
+                            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+
+            # Display uncategorized senders under "Delivery:" (backward compatibility)
+            if uncategorized_senders:
+                lines.append("<b>Delivery:</b>")
+
+                for account_num in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][account_num]
+                    totals = self._calculate_totals(transactions)
+                    sender = sender_map.get(account_num)
+
+                    # Use get_display_name() for consistent display
+                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                    count = len(transactions)
+
+                    # Format each currency amount
+                    currency_lines = []
+                    for currency in sorted(totals.keys()):
+                        amount = totals[currency]
+                        if currency == "KHR":
+                            formatted_amount = f"{amount:,.0f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        elif currency == "USD":
+                            formatted_amount = f"{amount:.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        else:
+                            formatted_amount = f"{amount:,.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                    lines.append(f"{sender_display}")
+                    if currency_lines:
+                        lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -318,19 +366,15 @@ class SenderReportService:
             )
 
             if not transactions:
-                sender_display = f"{sender_account_number}"
-                if sender.sender_name:
-                    sender_display += f" ({sender.sender_name})"
+                sender_display = sender.get_display_name()
                 return f"📊 Sender Report: {sender_display}\n{report_date.strftime('%Y-%m-%d')}\n\n❌ No transactions found."
 
             # Calculate totals
             totals = self._calculate_totals(transactions)
             total_str = self._format_currency_totals(totals)
 
-            # Format report
-            sender_display = f"{sender_account_number}"
-            if sender.sender_name:
-                sender_display += f" ({sender.sender_name})"
+            # Format report using get_display_name()
+            sender_display = sender.get_display_name()
 
             lines = [
                 f"📊 Sender Report: {sender_display}",
@@ -400,12 +444,14 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender name
-            sender_names = {
-                s.sender_account_number: s.sender_name
+            # Create mapping of account number to sender object
+            sender_map = {
+                s.sender_account_number: s
                 for s in configured_senders
-                if s.sender_name
             }
+
+            # Get all categories
+            categories = await self.category_service.list_categories(chat_id)
 
             # Get all transactions for the date range
             transactions = await self._get_transactions_by_date_range(chat_id, start_date, end_date)
@@ -420,7 +466,7 @@ class SenderReportService:
 
             # Format and return report
             return self._format_weekly_report(
-                grouped, sender_names, start_date, end_date, len(transactions), telegram_username
+                grouped, sender_map, categories, start_date, end_date, len(transactions), telegram_username
             )
 
         except Exception as e:
@@ -449,12 +495,14 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender name
-            sender_names = {
-                s.sender_account_number: s.sender_name
+            # Create mapping of account number to sender object
+            sender_map = {
+                s.sender_account_number: s
                 for s in configured_senders
-                if s.sender_name
             }
+
+            # Get all categories
+            categories = await self.category_service.list_categories(chat_id)
 
             # Get all transactions for the date range
             transactions = await self._get_transactions_by_date_range(chat_id, start_date, end_date)
@@ -469,7 +517,7 @@ class SenderReportService:
 
             # Format and return report
             return self._format_monthly_report(
-                grouped, sender_names, start_date, end_date, len(transactions), telegram_username
+                grouped, sender_map, categories, start_date, end_date, len(transactions), telegram_username
             )
 
         except Exception as e:
@@ -513,7 +561,8 @@ class SenderReportService:
     def _format_weekly_report(
         self,
         grouped: dict,
-        sender_names: dict[str, str],
+        sender_map: dict,
+        categories: list,
         start_date: datetime,
         end_date: datetime,
         total_transactions: int,
@@ -572,39 +621,84 @@ class SenderReportService:
             if currency_lines:
                 lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
-        # Section 2: Delivery (Configured Senders)
+        # Section 2: Configured Senders - Grouped by Category
         if grouped["configured"]:
-            lines.append("<b>Delivery:</b>")
+            # Group senders by category
+            category_groups = defaultdict(list)
+            uncategorized_senders = []
 
-            for account_num in sorted(grouped["configured"].keys()):
-                transactions = grouped["configured"][account_num]
-                totals = self._calculate_totals(transactions)
-                sender_name = sender_names.get(account_num, "")
-
-                # Format sender line
-                sender_display = f"*{account_num}"
-                if sender_name:
-                    sender_display += f" ({sender_name})"
-
-                count = len(transactions)
-
-                # Format each currency amount
-                currency_lines = []
-                for currency in sorted(totals.keys()):
-                    amount = totals[currency]
-                    if currency == "KHR":
-                        formatted_amount = f"{amount:,.0f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                    elif currency == "USD":
-                        formatted_amount = f"{amount:.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+            for account_num in grouped["configured"].keys():
+                sender = sender_map.get(account_num)
+                if sender:
+                    if sender.category_id:
+                        category_groups[sender.category_id].append(account_num)
                     else:
-                        formatted_amount = f"{amount:,.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        uncategorized_senders.append(account_num)
 
-                lines.append(f"{sender_display}")
-                if currency_lines:
-                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+            # Display senders grouped by category (ordered by display_order)
+            for category in categories:
+                if category.id in category_groups:
+                    lines.append(f"<b>{category.category_name}:</b>")
+
+                    for account_num in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][account_num]
+                        totals = self._calculate_totals(transactions)
+                        sender = sender_map.get(account_num)
+
+                        # Use get_display_name() for consistent display
+                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                        count = len(transactions)
+
+                        # Format each currency amount
+                        currency_lines = []
+                        for currency in sorted(totals.keys()):
+                            amount = totals[currency]
+                            if currency == "KHR":
+                                formatted_amount = f"{amount:,.0f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            elif currency == "USD":
+                                formatted_amount = f"{amount:.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            else:
+                                formatted_amount = f"{amount:,.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                        lines.append(f"{sender_display}")
+                        if currency_lines:
+                            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+
+            # Display uncategorized senders under "Delivery:" (backward compatibility)
+            if uncategorized_senders:
+                lines.append("<b>Delivery:</b>")
+
+                for account_num in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][account_num]
+                    totals = self._calculate_totals(transactions)
+                    sender = sender_map.get(account_num)
+
+                    # Use get_display_name() for consistent display
+                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                    count = len(transactions)
+
+                    # Format each currency amount
+                    currency_lines = []
+                    for currency in sorted(totals.keys()):
+                        amount = totals[currency]
+                        if currency == "KHR":
+                            formatted_amount = f"{amount:,.0f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        elif currency == "USD":
+                            formatted_amount = f"{amount:.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        else:
+                            formatted_amount = f"{amount:,.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                    lines.append(f"{sender_display}")
+                    if currency_lines:
+                        lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")
@@ -650,7 +744,8 @@ class SenderReportService:
     def _format_monthly_report(
         self,
         grouped: dict,
-        sender_names: dict[str, str],
+        sender_map: dict,
+        categories: list,
         start_date: datetime,
         end_date: datetime,
         total_transactions: int,
@@ -703,39 +798,84 @@ class SenderReportService:
             if currency_lines:
                 lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
-        # Section 2: Delivery (Configured Senders)
+        # Section 2: Configured Senders - Grouped by Category
         if grouped["configured"]:
-            lines.append("<b>Delivery:</b>")
+            # Group senders by category
+            category_groups = defaultdict(list)
+            uncategorized_senders = []
 
-            for account_num in sorted(grouped["configured"].keys()):
-                transactions = grouped["configured"][account_num]
-                totals = self._calculate_totals(transactions)
-                sender_name = sender_names.get(account_num, "")
-
-                # Format sender line
-                sender_display = f"*{account_num}"
-                if sender_name:
-                    sender_display += f" ({sender_name})"
-
-                count = len(transactions)
-
-                # Format each currency amount
-                currency_lines = []
-                for currency in sorted(totals.keys()):
-                    amount = totals[currency]
-                    if currency == "KHR":
-                        formatted_amount = f"{amount:,.0f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
-                    elif currency == "USD":
-                        formatted_amount = f"{amount:.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+            for account_num in grouped["configured"].keys():
+                sender = sender_map.get(account_num)
+                if sender:
+                    if sender.category_id:
+                        category_groups[sender.category_id].append(account_num)
                     else:
-                        formatted_amount = f"{amount:,.2f}"
-                        currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        uncategorized_senders.append(account_num)
 
-                lines.append(f"{sender_display}")
-                if currency_lines:
-                    lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+            # Display senders grouped by category (ordered by display_order)
+            for category in categories:
+                if category.id in category_groups:
+                    lines.append(f"<b>{category.category_name}:</b>")
+
+                    for account_num in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][account_num]
+                        totals = self._calculate_totals(transactions)
+                        sender = sender_map.get(account_num)
+
+                        # Use get_display_name() for consistent display
+                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                        count = len(transactions)
+
+                        # Format each currency amount
+                        currency_lines = []
+                        for currency in sorted(totals.keys()):
+                            amount = totals[currency]
+                            if currency == "KHR":
+                                formatted_amount = f"{amount:,.0f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            elif currency == "USD":
+                                formatted_amount = f"{amount:.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                            else:
+                                formatted_amount = f"{amount:,.2f}"
+                                currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                        lines.append(f"{sender_display}")
+                        if currency_lines:
+                            lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
+
+            # Display uncategorized senders under "Delivery:" (backward compatibility)
+            if uncategorized_senders:
+                lines.append("<b>Delivery:</b>")
+
+                for account_num in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][account_num]
+                    totals = self._calculate_totals(transactions)
+                    sender = sender_map.get(account_num)
+
+                    # Use get_display_name() for consistent display
+                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+
+                    count = len(transactions)
+
+                    # Format each currency amount
+                    currency_lines = []
+                    for currency in sorted(totals.keys()):
+                        amount = totals[currency]
+                        if currency == "KHR":
+                            formatted_amount = f"{amount:,.0f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        elif currency == "USD":
+                            formatted_amount = f"{amount:.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+                        else:
+                            formatted_amount = f"{amount:,.2f}"
+                            currency_lines.append(f"{currency}: {formatted_amount}    | ប្រតិបត្តិការ: {count}")
+
+                    lines.append(f"{sender_display}")
+                    if currency_lines:
+                        lines.append(f"<pre>\n{chr(10).join(currency_lines)}</pre>")
 
         # Overall Summary
         lines.append("<b>Summary:</b>")

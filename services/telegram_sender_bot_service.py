@@ -19,6 +19,7 @@ from telegram.ext import (
 )
 
 from helper import force_log
+from services.handlers.category_command_handler import CategoryCommandHandler
 from services.handlers.sender_command_handler import SenderCommandHandler
 
 # Get logger
@@ -31,6 +32,8 @@ class SenderManagementBot:
 
     Features:
     - Add/Delete/Update sender configurations
+    - Manage sender categories
+    - Set sender nicknames
     - List all configured senders
     - Generate daily reports grouped by sender
     - Interactive conversation flows
@@ -40,6 +43,7 @@ class SenderManagementBot:
         self.bot_token = bot_token
         self.app: Application | None = None
         self.sender_handler = SenderCommandHandler()
+        self.category_handler = CategoryCommandHandler()
         force_log("SenderManagementBot initialized", "SenderManagementBot")
 
     async def start_command(
@@ -54,15 +58,19 @@ This bot helps you manage and track transactions by sender.
 📋 **Main Commands:**
 • /sender - View sender reports
 • /setup - Configure senders
+• /category - Manage categories (Admin only)
 
 **What you can do:**
 ⚙️ Setup - Add, delete, or list senders
+🏷️ Categories - Organize senders by category
+✏️ Nicknames - Set custom display names
 📊 Reports - View daily, weekly, or monthly reports
 
 🔧 **How to Use:**
 1. Type /setup to add senders
 2. Add account numbers (last 3 digits) and names
-3. Type /sender to view reports grouped by sender
+3. Type /category to organize senders (Admin only)
+4. Type /sender to view reports grouped by sender
 
 The bot will group all transactions by the configured senders!
 
@@ -81,11 +89,20 @@ Type /help for more information.
 **Main Commands:**
 **/sender** - View sender reports (Daily, Weekly, Monthly)
 **/setup** - Configure senders (Add, Delete, List)
+**/category** - Manage categories (Admin only)
 
 **Setup Menu (via /setup):**
   • List Senders - View all configured senders
   • Add Sender - Add a new sender
   • Delete Sender - Remove a sender
+
+**Category Menu (via /category):** [Admin Only]
+  • List Categories - View all categories
+  • Add Category - Create a new category
+  • Edit Category - Update category name
+  • Delete Category - Remove a category
+  • Assign Senders - Assign senders to categories
+  • Set Nickname - Set custom display names
 
 **Reports Menu (via /sender):**
   • Daily Report - View today's transactions by sender
@@ -95,6 +112,7 @@ Type /help for more information.
 **Other Commands:**
 **/start** - Welcome message
 **/help** - Show this help
+**/cancel** - Cancel current operation
 
 📝 **Example Usage:**
 
@@ -104,17 +122,24 @@ Type /help for more information.
 4. Reply with name: John Doe
 5. Done! Sender added.
 
-6. Type /sender
-7. Click "Daily Report" to see transactions grouped by sender
+6. Type /category (Admin only)
+7. Create categories like "VIP", "Delivery Partners"
+8. Assign senders to categories
+9. Set nicknames for easier identification
 
-📊 **Daily Report Sections:**
+10. Type /sender
+11. Click "Daily Report" to see transactions grouped by category
+
+📊 **Report Features:**
   • Customers - Transactions from unknown/unconfigured senders
-  • Delivery - Transactions from your configured senders
+  • Category Sections - Transactions grouped by custom categories
+  • Nicknames - Shows custom display names if set
   • Summary - Total transactions with working hours
 
 ⚠️ **Note:**
 - Account numbers must be exactly 3 digits
 - Each sender can only be added once per group
+- Category management requires admin authorization
 - Use the menu buttons to navigate
         """
 
@@ -137,24 +162,50 @@ Type /help for more information.
         # Setup command for sender configuration
         self.app.add_handler(CommandHandler("setup", self.sender_handler.show_setup_menu))
 
+        # Category management command (admin only)
+        self.app.add_handler(CommandHandler("category", self.category_handler.show_category_menu))
+
         # Keep old commands for backward compatibility (optional - can remove later)
         self.app.add_handler(CommandHandler("sender_add", self.sender_handler.sender_add_start))
         self.app.add_handler(CommandHandler("sender_delete", self.sender_handler.sender_delete_start))
         self.app.add_handler(CommandHandler("sender_update", self.sender_handler.sender_update_start))
         self.app.add_handler(CommandHandler("sender_list", self.sender_handler.sender_list))
         self.app.add_handler(CommandHandler("sender_report", self.sender_handler.sender_report))
-        self.app.add_handler(CommandHandler("cancel", self.sender_handler.cancel_conversation))
 
-        # Callback query handler for inline keyboard buttons
+        # Cancel command - shared by both handlers
+        async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            """Universal cancel handler for all conversations"""
+            # Try sender handler first
+            await self.sender_handler.cancel_conversation(update, context)
+            # Also try category handler in case there's a category conversation
+            await self.category_handler.cancel_conversation(update, context)
+
+        self.app.add_handler(CommandHandler("cancel", cancel_handler))
+
+        # Callback query handlers for inline keyboard buttons
+        # Category callbacks (priority for category-related callbacks)
+        self.app.add_handler(
+            CallbackQueryHandler(
+                self.category_handler.handle_callback_query,
+                pattern="^category_"
+            )
+        )
+        # Sender callbacks (for all other callbacks)
         self.app.add_handler(CallbackQueryHandler(self.sender_handler.handle_callback_query))
 
         # Text message handler for conversation states
-        # Accept both regular messages and replies, in groups and private chats
-        # Exclude only commands
+        # Route messages to both handlers (they will check if they have an active conversation)
+        async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            """Route text messages to appropriate handler based on conversation state"""
+            # Try category handler first (it will check if it has an active conversation)
+            await self.category_handler.handle_text_message(update, context)
+            # Also try sender handler (it will check if it has an active conversation)
+            await self.sender_handler.handle_text_message(update, context)
+
         self.app.add_handler(
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
-                self.sender_handler.handle_text_message
+                text_router
             )
         )
 

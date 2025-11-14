@@ -17,6 +17,7 @@ from telegram.ext import ContextTypes
 from helper import force_log
 from helper.dateutils import DateUtils
 from services.conversation_state_manager import ConversationState, ConversationStateManager
+from services.sender_category_service import SenderCategoryService
 from services.sender_config_service import SenderConfigService
 from services.sender_report_service import SenderReportService
 
@@ -27,6 +28,7 @@ class SenderCommandHandler:
     def __init__(self):
         self.conversation_manager = ConversationStateManager()
         self.sender_service = SenderConfigService()
+        self.category_service = SenderCategoryService()
         self.report_service = SenderReportService()
         force_log("SenderCommandHandler initialized", "SenderCommandHandler")
 
@@ -72,6 +74,7 @@ class SenderCommandHandler:
                 [InlineKeyboardButton("📋 List Senders", callback_data="sender_list")],
                 [InlineKeyboardButton("➕ Add Sender", callback_data="sender_add")],
                 [InlineKeyboardButton("🗑 Delete Sender", callback_data="sender_delete")],
+                [InlineKeyboardButton("🏷️ Manage Categories", callback_data="category_menu")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -580,18 +583,108 @@ class SenderCommandHandler:
             account_number = data["account_number"]
             sender_name = update.message.text.strip()
 
-            # Add sender to database
+            # Get all categories
+            categories = await self.category_service.list_categories(chat_id)
+
+            if not categories:
+                # No categories available, create sender without category
+                success, message = await self.sender_service.add_sender(
+                    chat_id, account_number, sender_name
+                )
+                await update.message.reply_text(message)
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            # Update conversation state to wait for category selection
+            self.conversation_manager.update_state(
+                chat_id,
+                user_id,
+                ConversationState.WAITING_FOR_CATEGORY_SELECTION,
+                account_number=account_number,
+                sender_name=sender_name,
+            )
+
+            # Format category list
+            category_list = "\n".join([f"• {c.category_name}" for c in categories])
+
+            await update.message.reply_text(
+                f"✅ Account number: *{account_number}\n"
+                f"✅ Name: {sender_name}\n\n"
+                f"📋 Available categories:\n{category_list}\n\n"
+                f"Please reply with the category name (or 'none' to skip):"
+            )
+
+        except Exception as e:
+            force_log(f"Error in sender_add_handle_name: {e}", "SenderCommandHandler", "ERROR")
+            await update.message.reply_text(
+                "❌ An error occurred. Please try again."
+            )
+
+    async def sender_add_handle_category(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle category selection for /sender_add"""
+        try:
+            chat_id = update.effective_chat.id
+            user_id = update.effective_user.id
+
+            # Check if user is in this conversation
+            state = self.conversation_manager.get_state(chat_id, user_id)
+            if state != ConversationState.WAITING_FOR_CATEGORY_SELECTION:
+                return
+
+            # Get conversation data
+            data = self.conversation_manager.get_data(chat_id, user_id)
+            if not data or "account_number" not in data or "sender_name" not in data:
+                await update.message.reply_text("❌ Session expired. Please start again.")
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            account_number = data["account_number"]
+            sender_name = data["sender_name"]
+            category_input = update.message.text.strip()
+
+            # Handle 'none' to skip category
+            category_id = None
+            if category_input.lower() != "none":
+                # Find the category by name
+                category = await self.category_service.get_category_by_name(
+                    chat_id, category_input
+                )
+                if not category:
+                    await update.message.reply_text(
+                        f"❌ Category '{category_input}' not found.\n\n"
+                        "Please try again or type 'none' to skip category selection."
+                    )
+                    return
+                category_id = category.id
+
+            # Create sender with category
             success, message = await self.sender_service.add_sender(
                 chat_id, account_number, sender_name
             )
 
-            await update.message.reply_text(message)
+            if success and category_id:
+                # Assign category to the newly created sender
+                assign_success, assign_message = await self.category_service.assign_sender_to_category(
+                    chat_id, account_number, category_input
+                )
+                if assign_success:
+                    await update.message.reply_text(
+                        f"{message}\n{assign_message}"
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"{message}\n⚠️ {assign_message}"
+                    )
+            else:
+                await update.message.reply_text(message)
 
             # End conversation
             self.conversation_manager.end_conversation(chat_id, user_id)
 
         except Exception as e:
-            force_log(f"Error in sender_add_handle_name: {e}", "SenderCommandHandler", "ERROR")
+            force_log(f"Error in sender_add_handle_category: {e}", "SenderCommandHandler", "ERROR")
             await update.message.reply_text(
                 "❌ An error occurred. Please try again."
             )
@@ -962,6 +1055,9 @@ class SenderCommandHandler:
                 elif state == ConversationState.WAITING_FOR_NAME:
                     force_log(f"Routing to sender_add_handle_name for user {user_id}", "SenderCommandHandler")
                     await self.sender_add_handle_name(update, context)
+                elif state == ConversationState.WAITING_FOR_CATEGORY_SELECTION:
+                    force_log(f"Routing to sender_add_handle_category for user {user_id}", "SenderCommandHandler")
+                    await self.sender_add_handle_category(update, context)
 
             elif command == "sender_delete":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
