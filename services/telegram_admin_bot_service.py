@@ -14,7 +14,7 @@ from handlers.bot_command_handler import EventHandler
 from helper.logger_utils import force_log
 from services.chat_service import ChatService
 from services.shift_permission_service import ShiftPermissionService
-from .handlers import ChatSearchHandler, MenuHandler, PackageHandler
+from .handlers import ChatSearchHandler, MenuHandler, PackageHandler, CategoryCommandHandler
 
 # Conversation state codes
 PACKAGE_COMMAND_CODE = 1003
@@ -61,8 +61,9 @@ class TelegramAdminBot:
         self.chat_search_handler = ChatSearchHandler()
         self.menu_handler = MenuHandler()
         self.package_handler = PackageHandler()
+        self.category_handler = CategoryCommandHandler()
         self.shift_permission_service = ShiftPermissionService()
-        
+
         force_log("TelegramAdminBot initialized with token", "TelegramAdminBot")
 
     @staticmethod
@@ -348,6 +349,7 @@ class TelegramAdminBot:
             keyboard = [
                 [InlineKeyboardButton("🔧 Shift Permissions", callback_data="shift_permissions")],
                 [InlineKeyboardButton("⚠️ Update Thresholds", callback_data="update_thresholds")],
+                [InlineKeyboardButton("🏷️ Manage Categories", callback_data="manage_categories")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -435,7 +437,13 @@ class TelegramAdminBot:
                 )
                 
                 return UPDATE_GROUP_MENU_CODE
-                
+
+            elif action == "manage_categories":
+                # Show category management menu
+                await self.category_handler.show_category_menu(update, context)
+                # Don't return a conversation state, let category handler manage its own state
+                return UPDATE_GROUP_MENU_CODE
+
             elif action in ["add_user", "remove_user"]:
                 context.user_data["permission_action"] = action.replace("_user", "")
                 await query.edit_message_text(
@@ -680,8 +688,10 @@ class TelegramAdminBot:
             context.user_data.pop("daily_summary_chat_id", None)
             return ConversationHandler.END
 
-    @staticmethod
-    async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        # Try to cancel category conversation first
+        await self.category_handler.cancel_conversation(update, context)
+        # Then cancel regular conversation handler
         await update.message.reply_text("Session has been cancelled")
         return ConversationHandler.END
 
@@ -813,6 +823,25 @@ class TelegramAdminBot:
         self.app.add_handler(query_package_handler)
         self.app.add_handler(update_group_handler)
         self.app.add_handler(daily_summary_handler)
+
+        # Category management command (admin only) - uses its own conversation state manager
+        self.app.add_handler(CommandHandler("category", self.category_handler.show_category_menu))
+
+        # Category callback query handlers (must be before other callback handlers to take priority)
+        self.app.add_handler(
+            CallbackQueryHandler(
+                self.category_handler.handle_callback_query,
+                pattern="^category_"
+            )
+        )
+
+        # Category text message handler for conversation states
+        self.app.add_handler(
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND & ~filters.REPLY,
+                self.category_handler.handle_text_message
+            )
+        )
 
         force_log("TelegramAdminBot handlers set up", "TelegramAdminBot")
 

@@ -48,6 +48,28 @@ class CategoryCommandHandler:
         username = update.effective_user.username
         return is_admin_user(username)
 
+    def _get_chat_id(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """
+        Get the chat_id to use for category operations.
+
+        When called from update_group menu, uses the selected_chat_id from context.
+        Otherwise, uses the current chat's ID.
+
+        Args:
+            update: Telegram update object
+            context: Telegram context object
+
+        Returns:
+            The chat_id to use for operations
+        """
+        # Check if there's a selected_chat_id from update_group flow
+        selected_chat_id = context.user_data.get("selected_chat_id")
+        if selected_chat_id:
+            return selected_chat_id
+
+        # Otherwise use the current chat ID
+        return update.effective_chat.id
+
     async def _send_unauthorized_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -197,7 +219,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
 
             # Get all categories
             categories = await self.category_service.list_categories(chat_id)
@@ -253,7 +275,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Start conversation
@@ -279,7 +301,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle category name input for add category"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -328,7 +350,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Get all categories
@@ -377,7 +399,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle old category name input for edit"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -431,7 +453,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle new category name input for edit"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -483,7 +505,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Get all categories
@@ -527,7 +549,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle category name input for delete"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -574,7 +596,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Get all senders
@@ -623,7 +645,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle account number input for category assignment"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -703,7 +725,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle category name input for assignment"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -758,7 +780,7 @@ class CategoryCommandHandler:
         try:
             query = update.callback_query
             await query.answer()
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Get all senders
@@ -807,7 +829,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle account number input for nickname"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -875,7 +897,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Handle nickname input"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization
@@ -933,7 +955,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Route text messages based on conversation state"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
             message_text = update.message.text if update.message else ""
 
@@ -1003,7 +1025,7 @@ class CategoryCommandHandler:
     ) -> None:
         """Cancel current conversation"""
         try:
-            chat_id = update.effective_chat.id
+            chat_id = self._get_chat_id(update, context)
             user_id = update.effective_user.id
 
             # Check authorization

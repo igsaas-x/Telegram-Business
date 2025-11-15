@@ -183,6 +183,7 @@ AUTOSUM_BUSINESS_BOT_TOKEN=your_business_bot_token
 PRIVATE_CHAT_BOT_TOKEN=your_private_bot_token
 UTILS_BOT_TOKEN=your_utils_bot_token
 AUTOSUM_BUSINESS_CUSTOM_BOT_TOKEN=your_custom_business_bot_token
+SENDER_BOT_TOKEN=your_sender_bot_token
 
 # Telethon (optional, for client mode)
 PHONE_NUMBER=+1234567890
