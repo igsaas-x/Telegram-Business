@@ -514,6 +514,13 @@ class TelegramAdminBot:
             if category_state:
                 # There's an active category conversation, let category handler handle this
                 await self.category_handler.handle_text_message(update, context)
+
+                # Check if category conversation ended after handling the message
+                category_state_after = self.category_handler.conversation_manager.get_state(chat_id, user_id)
+                if not category_state_after:
+                    # Category conversation ended, end the update_group conversation too
+                    return ConversationHandler.END
+
                 return UPDATE_GROUP_MENU_CODE
 
             # Handle shift permission actions
