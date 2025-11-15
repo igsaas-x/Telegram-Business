@@ -370,15 +370,20 @@ class TelegramAdminBot:
         """Handle group update menu selection"""
         query = update.callback_query
         await query.answer()
-        
+
         try:
             action = query.data
             chat_id = context.user_data.get("selected_chat_id")
-            
+
             if not chat_id:
                 await query.edit_message_text("Error: No chat selected")
                 return ConversationHandler.END
-            
+
+            # Handle category-related callbacks by delegating to category handler
+            if action.startswith("category_"):
+                await self.category_handler.handle_callback_query(update, context)
+                return UPDATE_GROUP_MENU_CODE
+
             if action == "shift_permissions":
                 # Show shift permissions menu
                 allowed_users = await self.shift_permission_service.get_allowed_users(chat_id)
@@ -494,15 +499,23 @@ class TelegramAdminBot:
         """Process input for group updates (username or threshold)"""
         if not update.message or not update.message.text:
             return ConversationHandler.END
-        
+
         try:
             input_text = update.message.text.strip()
             chat_id = context.user_data.get("selected_chat_id")
-            
+
             if not chat_id:
                 await update.message.reply_text("Error: No chat selected")
                 return ConversationHandler.END
-            
+
+            # Check if there's an active category conversation - delegate to category handler
+            user_id = update.effective_user.id
+            category_state = self.category_handler.conversation_manager.get_state(chat_id, user_id)
+            if category_state:
+                # There's an active category conversation, let category handler handle this
+                await self.category_handler.handle_text_message(update, context)
+                return UPDATE_GROUP_MENU_CODE
+
             # Handle shift permission actions
             permission_action = context.user_data.get("permission_action")
             if permission_action:
