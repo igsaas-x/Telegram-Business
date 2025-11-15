@@ -127,7 +127,14 @@ class SenderCommandHandler:
 
             # Reports actions
             elif callback_data == "report_daily":
+                await self.show_daily_date_selection(update, context)
+            elif callback_data == "daily_today":
                 await self.sender_report_inline(update, context)
+            elif callback_data == "daily_other_dates":
+                await self.show_daily_date_picker(update, context)
+            elif callback_data.startswith("daily_date_"):
+                date_str = callback_data.replace("daily_date_", "")
+                await self.generate_daily_report_for_date(update, context, date_str)
             elif callback_data == "report_weekly":
                 await self.show_weekly_selection(update, context)
             elif callback_data == "report_monthly":
@@ -273,10 +280,10 @@ class SenderCommandHandler:
         except Exception as e:
             force_log(f"Error in sender_delete_start_inline: {e}", "SenderCommandHandler", "ERROR")
 
-    async def sender_report_inline(
+    async def show_daily_date_selection(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Generate daily sender report (inline version)"""
+        """Show date selection menu for daily report"""
         try:
             query = update.callback_query
             await query.answer()
@@ -288,7 +295,31 @@ class SenderCommandHandler:
                 await query.answer("❌ No senders configured. Use /setup to add senders first.", show_alert=True)
                 return
 
-            # Generate report
+            keyboard = [
+                [InlineKeyboardButton("📅 Today", callback_data="daily_today")],
+                [InlineKeyboardButton("📆 Other Dates", callback_data="daily_other_dates")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(
+                "📊 Daily Report - Select Date\n\nPlease choose an option:",
+                reply_markup=reply_markup
+            )
+
+        except Exception as e:
+            force_log(f"Error in show_daily_date_selection: {e}", "SenderCommandHandler", "ERROR")
+
+    async def sender_report_inline(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Generate daily sender report for today (inline version)"""
+        try:
+            query = update.callback_query
+            await query.answer()
+            chat_id = update.effective_chat.id
+
+            # Generate report for today
             telegram_username = update.effective_user.username or "Admin"
             report = await self.report_service.generate_daily_report(chat_id, telegram_username=telegram_username)
 
@@ -296,6 +327,92 @@ class SenderCommandHandler:
 
         except Exception as e:
             force_log(f"Error in sender_report_inline: {e}", "SenderCommandHandler", "ERROR")
+
+    async def show_daily_date_picker(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Show date picker with dates from current month"""
+        try:
+            query = update.callback_query
+            await query.answer()
+
+            now = DateUtils.now()
+            current_year = now.year
+            current_month = now.month
+            current_day = now.day
+
+            _, days_in_month = monthrange(current_year, current_month)
+
+            keyboard = []
+
+            # Add dates as buttons (4 dates per row)
+            row = []
+            for day in range(1, days_in_month + 1):
+                date_str = f"{current_year}-{current_month:02d}-{day:02d}"
+
+                # Mark today with a special indicator
+                if day == current_day:
+                    button_text = f"📅 {day}"
+                else:
+                    button_text = str(day)
+
+                row.append(InlineKeyboardButton(button_text, callback_data=f"daily_date_{date_str}"))
+
+                # Add row when we have 7 buttons (one week)
+                if len(row) == 7:
+                    keyboard.append(row)
+                    row = []
+
+            # Add remaining buttons
+            if row:
+                keyboard.append(row)
+
+            # Add back and cancel buttons
+            keyboard.append([
+                InlineKeyboardButton("🔙 Back", callback_data="report_daily"),
+                InlineKeyboardButton("❌ Cancel", callback_data="sender_cancel")
+            ])
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            month_name = now.strftime("%B %Y")
+            await query.edit_message_text(
+                f"📆 Select Date - {month_name}\n\nClick on a date to view the report:",
+                reply_markup=reply_markup
+            )
+
+        except Exception as e:
+            force_log(f"Error in show_daily_date_picker: {e}", "SenderCommandHandler", "ERROR")
+
+    async def generate_daily_report_for_date(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, date_str: str
+    ) -> None:
+        """Generate daily report for a specific date"""
+        try:
+            query = update.callback_query
+            await query.answer()
+            chat_id = update.effective_chat.id
+
+            # Parse date
+            from datetime import datetime
+            try:
+                report_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                await query.edit_message_text("❌ Invalid date format")
+                return
+
+            # Generate report for the specified date
+            telegram_username = update.effective_user.username or "Admin"
+            report = await self.report_service.generate_daily_report(
+                chat_id,
+                telegram_username=telegram_username,
+                target_date=report_date
+            )
+
+            await query.edit_message_text(report, parse_mode='HTML')
+
+        except Exception as e:
+            force_log(f"Error in generate_daily_report_for_date: {e}", "SenderCommandHandler", "ERROR")
 
     async def show_weekly_selection(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
