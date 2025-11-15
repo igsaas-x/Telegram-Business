@@ -166,7 +166,7 @@ class SenderCommandHandler:
     async def sender_list_inline(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """List all configured senders (inline version)"""
+        """List all configured senders grouped by category (inline version)"""
         try:
             query = update.callback_query
             await query.answer()
@@ -186,11 +186,55 @@ class SenderCommandHandler:
                 )
                 return
 
-            # Format sender list
+            # Get all categories
+            from services.sender_category_service import SenderCategoryService
+            category_service = SenderCategoryService()
+            categories = await category_service.list_categories(chat_id)
+
+            # Create category mapping (category_id -> category_name)
+            category_map = {cat.id: cat.category_name for cat in categories}
+
+            # Group senders by category
+            senders_by_category = {}
+            senders_without_category = []
+
+            for sender in senders:
+                if sender.category_id and sender.category_id in category_map:
+                    category_name = category_map[sender.category_id]
+                    if category_name not in senders_by_category:
+                        senders_by_category[category_name] = []
+                    senders_by_category[category_name].append(sender)
+                else:
+                    senders_without_category.append(sender)
+
+            # Format sender list grouped by category
             sender_lines = []
-            for i, sender in enumerate(senders, 1):
-                name = sender.sender_name or "No name"
-                sender_lines.append(f"{i}. *{sender.sender_account_number} - {name}")
+
+            # Add categorized senders
+            for category_name in sorted(senders_by_category.keys()):
+                sender_lines.append(f"\n<b>{category_name}:</b>")
+                for sender in senders_by_category[category_name]:
+                    account_num = sender.sender_account_number
+                    nickname = sender.nickname if sender.nickname else ""
+                    name = sender.sender_name or "No name"
+
+                    if nickname:
+                        sender_lines.append(f"  *{account_num} {nickname} - {name}")
+                    else:
+                        sender_lines.append(f"  *{account_num} {name}")
+
+            # Add uncategorized senders
+            if senders_without_category:
+                sender_lines.append(f"\n<b>(No Category):</b>")
+                for sender in senders_without_category:
+                    account_num = sender.sender_account_number
+                    nickname = sender.nickname if sender.nickname else ""
+                    name = sender.sender_name or "No name"
+
+                    if nickname:
+                        sender_lines.append(f"  *{account_num} {nickname} - {name}")
+                    else:
+                        sender_lines.append(f"  *{account_num} {name}")
 
             sender_list = "\n".join(sender_lines)
 
@@ -198,9 +242,10 @@ class SenderCommandHandler:
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             await query.edit_message_text(
-                f"📋 Sender List ({len(senders)} total)\n\n"
+                f"📋 Sender List ({len(senders)} total)\n"
                 f"{sender_list}",
-                reply_markup=reply_markup
+                reply_markup=reply_markup,
+                parse_mode='HTML'
             )
 
         except Exception as e:
