@@ -75,12 +75,13 @@ class IncomeMessageProcessor:
         shifts_breakdown = None
         parsed_income_date = DateUtils.now()
         paid_by = None
+        paid_by_name = None
 
         # Determine amount & currency based on origin bot
         if origin_username == "s7pos_bot":
             currency, amount = extract_s7pos_amount_and_currency(message_text)
         else:
-            currency, amount, parsed_income_date, paid_by = extract_amount_currency_and_time(message_text, origin_username)
+            currency, amount, parsed_income_date, paid_by, paid_by_name = extract_amount_currency_and_time(message_text, origin_username)
 
         if not (currency and amount):
             force_log(
@@ -118,6 +119,7 @@ class IncomeMessageProcessor:
             chat.enable_shift,
             origin_username,
             paid_by,
+            paid_by_name,
             None,
             shifts_breakdown,
             parsed_income_date,
