@@ -18,11 +18,103 @@ from datetime import datetime, timedelta
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from config.database_config import get_db_session
-from models.income_balance_model import IncomeBalance
-from helper.bot_parsers import extract_paid_by_name
-from helper.logger_utils import force_log
-from sqlalchemy import and_
+# Import directly from modules to avoid circular imports
+from sqlalchemy import and_, create_engine
+from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
+
+# Direct imports to avoid package __init__.py circular dependencies
+import importlib.util
+
+def load_module_from_path(module_name, file_path):
+    """Load a module directly from file path"""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+# Get the project root
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+
+# Load configuration
+try:
+    import dotenv
+    dotenv.load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
+except ImportError:
+    print("Warning: python-dotenv not installed. Make sure environment variables are set.")
+    print("Install with: pip install python-dotenv")
+
+# Database connection
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '3306')
+DB_NAME = os.getenv('DB_NAME')
+
+DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Create engine and session
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+@contextmanager
+def get_db_session():
+    """Context manager for database sessions"""
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+# Load the IncomeBalance model directly
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, Float, String, BigInteger, DateTime, Text, ForeignKey
+
+Base = declarative_base()
+
+class IncomeBalance(Base):
+    """Simplified IncomeBalance model for migration script"""
+    __tablename__ = "income_balance"
+
+    id = Column(Integer, primary_key=True)
+    amount = Column(Float, nullable=False)
+    chat_id = Column(BigInteger, nullable=False)
+    currency = Column(String(16), nullable=False)
+    original_amount = Column(Float, nullable=False)
+    income_date = Column(DateTime, nullable=False)
+    message_id = Column(BigInteger, nullable=False)
+    message = Column(Text, nullable=False)
+    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=True)
+    trx_id = Column(String(50), nullable=True)
+    sent_by = Column(String(50), nullable=True)
+    paid_by = Column(String(10), nullable=True)
+    paid_by_name = Column(String(100), nullable=True)
+    note = Column(Text, nullable=True)
+
+# Import the name extraction function
+import re
+
+# Khmer-aware name extraction pattern
+PAID_BY_NAME_PATTERN = re.compile(
+    r'(?:paid|credited|ត្រូវបានបង់ដោយ)\s+(?:by\s+)?([A-Z\u1780-\u17FF\s]+?)(?:\s*\(\*\d{3}\)|\s*,\s*ABA Bank|\s*\(ABA Bank\)|\s+via|\s+នៅ)',
+    re.IGNORECASE
+)
+
+def extract_paid_by_name(text: str):
+    """Extract payer name from message"""
+    match = PAID_BY_NAME_PATTERN.search(text)
+    if match:
+        name = match.group(1).strip()
+        # Collapse multiple spaces into single space
+        name = ' '.join(name.split())
+        return name
+    return None
+
+def force_log(message: str, component: str = "Script", level: str = "INFO"):
+    """Simple logging function"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] [{level}] [{component}] {message}")
 
 
 # Configuration
