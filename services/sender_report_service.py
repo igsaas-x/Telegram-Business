@@ -41,9 +41,9 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender object
+            # Create mapping of (account_number, sender_name) tuple to sender object
             sender_map = {
-                s.sender_account_number: s
+                (s.sender_account_number, s.sender_name): s
                 for s in configured_senders
             }
 
@@ -109,7 +109,7 @@ class SenderReportService:
     ) -> dict:
         """
         Group transactions into three categories:
-        - configured: Senders in configuration
+        - configured: Senders in configuration (grouped by account_number and sender_name)
         - unknown: paid_by not in configuration
         - no_sender: paid_by is NULL
         """
@@ -123,7 +123,9 @@ class SenderReportService:
             if txn.paid_by is None:
                 grouped["no_sender"].append(txn)
             elif txn.paid_by in configured_account_numbers:
-                grouped["configured"][txn.paid_by].append(txn)
+                # Group by both account number and sender name to handle duplicates
+                sender_key = (txn.paid_by, txn.paid_by_name)
+                grouped["configured"][sender_key].append(txn)
             else:
                 grouped["unknown"][txn.paid_by].append(txn)
 
@@ -220,26 +222,26 @@ class SenderReportService:
             category_groups = defaultdict(list)
             uncategorized_senders = []
 
-            for account_num in grouped["configured"].keys():
-                sender = sender_map.get(account_num)
+            for sender_key in grouped["configured"].keys():
+                sender = sender_map.get(sender_key)
                 if sender:
                     if sender.category_id:
-                        category_groups[sender.category_id].append(account_num)
+                        category_groups[sender.category_id].append(sender_key)
                     else:
-                        uncategorized_senders.append(account_num)
+                        uncategorized_senders.append(sender_key)
 
             # Display senders grouped by category (ordered by display_order)
             for category in categories:
                 if category.id in category_groups:
                     lines.append(f"<b>{category.category_name}:</b>")
 
-                    for account_num in sorted(category_groups[category.id]):
-                        transactions = grouped["configured"][account_num]
+                    for sender_key in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][sender_key]
                         totals = self._calculate_totals(transactions)
-                        sender = sender_map.get(account_num)
+                        sender = sender_map.get(sender_key)
 
                         # Use get_display_name() for consistent display
-                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                        sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                         count = len(transactions)
 
@@ -265,13 +267,13 @@ class SenderReportService:
             if uncategorized_senders:
                 lines.append("<b>Delivery:</b>")
 
-                for account_num in sorted(uncategorized_senders):
-                    transactions = grouped["configured"][account_num]
+                for sender_key in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][sender_key]
                     totals = self._calculate_totals(transactions)
-                    sender = sender_map.get(account_num)
+                    sender = sender_map.get(sender_key)
 
                     # Use get_display_name() for consistent display
-                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                    sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                     count = len(transactions)
 
@@ -444,9 +446,9 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender object
+            # Create mapping of (account_number, sender_name) tuple to sender object
             sender_map = {
-                s.sender_account_number: s
+                (s.sender_account_number, s.sender_name): s
                 for s in configured_senders
             }
 
@@ -495,9 +497,9 @@ class SenderReportService:
             configured_senders = await self.sender_config_service.get_senders(chat_id)
             configured_account_numbers = {s.sender_account_number for s in configured_senders}
 
-            # Create mapping of account number to sender object
+            # Create mapping of (account_number, sender_name) tuple to sender object
             sender_map = {
-                s.sender_account_number: s
+                (s.sender_account_number, s.sender_name): s
                 for s in configured_senders
             }
 
@@ -627,26 +629,26 @@ class SenderReportService:
             category_groups = defaultdict(list)
             uncategorized_senders = []
 
-            for account_num in grouped["configured"].keys():
-                sender = sender_map.get(account_num)
+            for sender_key in grouped["configured"].keys():
+                sender = sender_map.get(sender_key)
                 if sender:
                     if sender.category_id:
-                        category_groups[sender.category_id].append(account_num)
+                        category_groups[sender.category_id].append(sender_key)
                     else:
-                        uncategorized_senders.append(account_num)
+                        uncategorized_senders.append(sender_key)
 
             # Display senders grouped by category (ordered by display_order)
             for category in categories:
                 if category.id in category_groups:
                     lines.append(f"<b>{category.category_name}:</b>")
 
-                    for account_num in sorted(category_groups[category.id]):
-                        transactions = grouped["configured"][account_num]
+                    for sender_key in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][sender_key]
                         totals = self._calculate_totals(transactions)
-                        sender = sender_map.get(account_num)
+                        sender = sender_map.get(sender_key)
 
                         # Use get_display_name() for consistent display
-                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                        sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                         count = len(transactions)
 
@@ -672,13 +674,13 @@ class SenderReportService:
             if uncategorized_senders:
                 lines.append("<b>Delivery:</b>")
 
-                for account_num in sorted(uncategorized_senders):
-                    transactions = grouped["configured"][account_num]
+                for sender_key in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][sender_key]
                     totals = self._calculate_totals(transactions)
-                    sender = sender_map.get(account_num)
+                    sender = sender_map.get(sender_key)
 
                     # Use get_display_name() for consistent display
-                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                    sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                     count = len(transactions)
 
@@ -804,26 +806,26 @@ class SenderReportService:
             category_groups = defaultdict(list)
             uncategorized_senders = []
 
-            for account_num in grouped["configured"].keys():
-                sender = sender_map.get(account_num)
+            for sender_key in grouped["configured"].keys():
+                sender = sender_map.get(sender_key)
                 if sender:
                     if sender.category_id:
-                        category_groups[sender.category_id].append(account_num)
+                        category_groups[sender.category_id].append(sender_key)
                     else:
-                        uncategorized_senders.append(account_num)
+                        uncategorized_senders.append(sender_key)
 
             # Display senders grouped by category (ordered by display_order)
             for category in categories:
                 if category.id in category_groups:
                     lines.append(f"<b>{category.category_name}:</b>")
 
-                    for account_num in sorted(category_groups[category.id]):
-                        transactions = grouped["configured"][account_num]
+                    for sender_key in sorted(category_groups[category.id]):
+                        transactions = grouped["configured"][sender_key]
                         totals = self._calculate_totals(transactions)
-                        sender = sender_map.get(account_num)
+                        sender = sender_map.get(sender_key)
 
                         # Use get_display_name() for consistent display
-                        sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                        sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                         count = len(transactions)
 
@@ -849,13 +851,13 @@ class SenderReportService:
             if uncategorized_senders:
                 lines.append("<b>Delivery:</b>")
 
-                for account_num in sorted(uncategorized_senders):
-                    transactions = grouped["configured"][account_num]
+                for sender_key in sorted(uncategorized_senders):
+                    transactions = grouped["configured"][sender_key]
                     totals = self._calculate_totals(transactions)
-                    sender = sender_map.get(account_num)
+                    sender = sender_map.get(sender_key)
 
                     # Use get_display_name() for consistent display
-                    sender_display = sender.get_display_name() if sender else f"*{account_num}"
+                    sender_display = sender.get_display_name() if sender else f"*{sender_key[0]}"
 
                     count = len(transactions)
 
