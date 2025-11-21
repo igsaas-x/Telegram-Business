@@ -60,26 +60,31 @@ class SenderConfigService:
                 session.close()
 
     @staticmethod
-    async def delete_sender(chat_id: int, sender_account_number: str) -> tuple[bool, str]:
+    async def delete_sender(
+        chat_id: int, sender_account_number: str, sender_name: str | None = None
+    ) -> tuple[bool, str]:
         """
         Delete a sender configuration.
 
         Args:
             chat_id: The chat ID
             sender_account_number: Last 3 digits of account number
+            sender_name: Sender name to uniquely identify the sender (recommended)
 
         Returns:
             Tuple of (success: bool, message: str)
         """
         with get_db_session() as session:
             try:
-                sender = (
-                    session.query(SenderConfig)
-                    .filter_by(
-                        chat_id=chat_id, sender_account_number=sender_account_number
-                    )
-                    .first()
+                query = session.query(SenderConfig).filter_by(
+                    chat_id=chat_id, sender_account_number=sender_account_number
                 )
+
+                # Add sender_name filter if provided to ensure we delete the correct sender
+                if sender_name is not None:
+                    query = query.filter_by(sender_name=sender_name)
+
+                sender = query.first()
 
                 if not sender:
                     return False, f"❌ Sender {sender_account_number} not found"
@@ -189,7 +194,7 @@ class SenderConfigService:
         chat_id: int, sender_account_number: str
     ) -> SenderConfig | None:
         """
-        Get a specific sender configuration.
+        Get a specific sender configuration (returns first match if multiple exist).
 
         Args:
             chat_id: The chat ID
@@ -221,6 +226,46 @@ class SenderConfigService:
                     f"Error fetching sender: {e}", "SenderConfigService", "ERROR"
                 )
                 return None
+
+            finally:
+                session.close()
+
+    @staticmethod
+    async def get_senders_by_account_number(
+        chat_id: int, sender_account_number: str
+    ) -> list[SenderConfig]:
+        """
+        Get all senders with the specified account number.
+
+        Args:
+            chat_id: The chat ID
+            sender_account_number: Last 3 digits of account number
+
+        Returns:
+            List of SenderConfig objects
+        """
+        with get_db_session() as session:
+            try:
+                senders = (
+                    session.query(SenderConfig)
+                    .filter_by(
+                        chat_id=chat_id,
+                        sender_account_number=sender_account_number,
+                        is_active=True,
+                    )
+                    .all()
+                )
+
+                # Detach objects from session to prevent lazy loading errors
+                session.expunge_all()
+
+                return senders
+
+            except Exception as e:
+                force_log(
+                    f"Error fetching senders: {e}", "SenderConfigService", "ERROR"
+                )
+                return []
 
             finally:
                 session.close()

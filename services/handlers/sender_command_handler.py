@@ -992,9 +992,80 @@ class SenderCommandHandler:
                 )
                 return
 
-            # Delete sender
-            success, message = await self.sender_service.delete_sender(
+            # Get all senders with this account number
+            senders = await self.sender_service.get_senders_by_account_number(
                 chat_id, account_number
+            )
+
+            if not senders:
+                await update.message.reply_text(
+                    f"❌ Sender *{account_number} not found.\n\n"
+                    "Please try again or send /cancel to cancel."
+                )
+                return
+
+            # If there's only one sender, delete it immediately
+            if len(senders) == 1:
+                sender = senders[0]
+                success, message = await self.sender_service.delete_sender(
+                    chat_id, account_number, sender_name=sender.sender_name
+                )
+                await update.message.reply_text(message)
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            # If there are multiple senders, ask user to select by name
+            sender_list = "\n".join(
+                [f"• {s.sender_name or 'No name'}" for s in senders]
+            )
+
+            self.conversation_manager.update_state(
+                chat_id,
+                user_id,
+                ConversationState.WAITING_FOR_NAME,
+                account_number=account_number,
+            )
+
+            await update.message.reply_text(
+                f"⚠️ Multiple senders found with account number *{account_number}:\n\n"
+                f"{sender_list}\n\n"
+                f"Please reply with the sender name to delete:"
+            )
+
+        except Exception as e:
+            force_log(f"Error in sender_delete_handle_account: {e}", "SenderCommandHandler", "ERROR")
+            await update.message.reply_text(
+                "❌ An error occurred. Please try again."
+            )
+
+    async def sender_delete_handle_name(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle sender name input for /sender_delete (when multiple senders exist)"""
+        try:
+            chat_id = update.effective_chat.id
+            user_id = update.effective_user.id
+
+            # Check if user is in delete conversation waiting for name
+            state = self.conversation_manager.get_state(chat_id, user_id)
+            command = self.conversation_manager.get_command(chat_id, user_id)
+
+            if state != ConversationState.WAITING_FOR_NAME or command != "sender_delete":
+                return
+
+            # Get conversation data
+            data = self.conversation_manager.get_data(chat_id, user_id)
+            if not data or "account_number" not in data:
+                await update.message.reply_text("❌ Session expired. Please start again with /sender_delete")
+                self.conversation_manager.end_conversation(chat_id, user_id)
+                return
+
+            account_number = data["account_number"]
+            sender_name = update.message.text.strip()
+
+            # Delete sender with both account number and name
+            success, message = await self.sender_service.delete_sender(
+                chat_id, account_number, sender_name=sender_name
             )
 
             await update.message.reply_text(message)
@@ -1003,7 +1074,7 @@ class SenderCommandHandler:
             self.conversation_manager.end_conversation(chat_id, user_id)
 
         except Exception as e:
-            force_log(f"Error in sender_delete_handle_account: {e}", "SenderCommandHandler", "ERROR")
+            force_log(f"Error in sender_delete_handle_name: {e}", "SenderCommandHandler", "ERROR")
             await update.message.reply_text(
                 "❌ An error occurred. Please try again."
             )
@@ -1296,6 +1367,9 @@ class SenderCommandHandler:
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
                     force_log(f"Routing to sender_delete_handle_account for user {user_id}", "SenderCommandHandler")
                     await self.sender_delete_handle_account(update, context)
+                elif state == ConversationState.WAITING_FOR_NAME:
+                    force_log(f"Routing to sender_delete_handle_name for user {user_id}", "SenderCommandHandler")
+                    await self.sender_delete_handle_name(update, context)
 
             elif command == "sender_update":
                 if state == ConversationState.WAITING_FOR_ACCOUNT_NUMBER:
