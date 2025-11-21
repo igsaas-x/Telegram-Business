@@ -69,35 +69,32 @@ def get_db_session():
 
 # Load the IncomeBalance model directly
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, String, BigInteger, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text
 
 Base = declarative_base()
 
 class IncomeBalance(Base):
     """Simplified IncomeBalance model for migration script"""
     __tablename__ = "income_balance"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True)
-    amount = Column(Float, nullable=False)
     chat_id = Column(BigInteger, nullable=False)
-    currency = Column(String(16), nullable=False)
-    original_amount = Column(Float, nullable=False)
     income_date = Column(DateTime, nullable=False)
-    message_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
-    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=True)
-    trx_id = Column(String(50), nullable=True)
-    sent_by = Column(String(50), nullable=True)
     paid_by = Column(String(10), nullable=True)
     paid_by_name = Column(String(100), nullable=True)
-    note = Column(Text, nullable=True)
+
+    # Note: Only defining columns we need to read/update
+    # This avoids foreign key issues with other tables
 
 # Import the name extraction function
 import re
 
 # Khmer-aware name extraction pattern
+# Supports: English letters, Khmer script, spaces, hyphens, apostrophes, dots
 PAID_BY_NAME_PATTERN = re.compile(
-    r'(?:paid|credited|ត្រូវបានបង់ដោយ)\s+(?:by\s+)?([A-Z\u1780-\u17FF\s]+?)(?:\s*\(\*\d{3}\)|\s*,\s*ABA Bank|\s*\(ABA Bank\)|\s+via|\s+នៅ)',
+    r'(?:paid|credited|ត្រូវបានបង់ដោយ)\s+(?:by\s+)?([A-Z\u1780-\u17FF][A-Z\u1780-\u17FF\s\-\'.]+?)(?:\s*\(\*\d{3}\)|\s*,\s*ABA Bank|\s*\(ABA Bank\)|\s+via|\s+នៅ)',
     re.IGNORECASE
 )
 

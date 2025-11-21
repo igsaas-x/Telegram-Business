@@ -722,6 +722,22 @@ class TestPaidByNameExtraction(unittest.TestCase):
         # Multiple spaces should be collapsed to single space
         self.assertEqual(paid_by_name, 'CHANRAINGSEY NORATH')
 
+    def test_name_with_hyphen(self):
+        """Test name extraction with hyphen in name"""
+        message = "$17.30 ត្រូវបានបង់ដោយ CHANG CHUN-WEI (*889) នៅថ្ងៃទី 19 ខែវិច្ឆិកា ឆ្នាំ 2025"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(currency, '$')
+        self.assertEqual(amount, 17.30)
+        self.assertEqual(paid_by, '889')
+        self.assertEqual(paid_by_name, 'CHANG CHUN-WEI')
+
+    def test_name_with_apostrophe(self):
+        """Test name extraction with apostrophe in name"""
+        message = "$10.00 paid by O'CONNOR JOHN (*123) on Nov 21 via ABA PAY"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(paid_by, '123')
+        self.assertEqual(paid_by_name, "O'CONNOR JOHN")
+
     def test_name_not_found(self):
         """Test paid_by_name is None when name pattern is not found"""
         message = "Received 10.50 USD from account 123, 11-Oct-2025 10:12AM."
