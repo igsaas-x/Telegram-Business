@@ -63,9 +63,9 @@ class MessageVerificationScheduler:
                 chat_ids = await self.chat_service.get_active_chat_ids_by_registered_by(self.mobile_number)
                 force_log(f"Additional client ({self.mobile_number}): Found {len(chat_ids)} chats registered by this number to verify")
 
-            # Calculate time range (last 60 minutes)
+            # Calculate time range (last 30 minutes)
             now = datetime.datetime.now(pytz.UTC)
-            sixty_minutes_ago = now - datetime.timedelta(minutes=60)
+            sixty_minutes_ago = now - datetime.timedelta(minutes=30)
             force_log(f"Checking messages from {sixty_minutes_ago} to {now}")
 
             verification_count = 0
