@@ -657,6 +657,80 @@ class TestPaidByFieldExtraction(unittest.TestCase):
         self.assertEqual(paid_by, '012')
 
 
+class TestPaidByNameExtraction(unittest.TestCase):
+    """Tests for paid_by_name field extraction with Khmer and English support"""
+
+    def test_english_name_english_message(self):
+        """Test English name extraction from English message"""
+        message = "៛14,000 paid by CHOR SEIHA (*655) on Oct 11, 10:21 AM via ABA PAY at KEAM LILAY."
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(currency, '៛')
+        self.assertEqual(amount, 14000)
+        self.assertEqual(paid_by, '655')
+        self.assertEqual(paid_by_name, 'CHOR SEIHA')
+
+    def test_khmer_name_english_message(self):
+        """Test Khmer name extraction from English message with 'paid by'"""
+        message = "៛14,000 paid by ពៅ សុនី (*670) on Nov 21, 11:20 PM via ABA KHQR (ACLEDA Bank Plc.) at HEN NEANG. Trx. ID: 176374200094510, APV: 903085."
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(currency, '៛')
+        self.assertEqual(amount, 14000)
+        self.assertEqual(paid_by, '670')
+        self.assertEqual(paid_by_name, 'ពៅ សុនី')
+
+    def test_english_name_khmer_message(self):
+        """Test English name extraction from Khmer message with 'ត្រូវបានបង់ដោយ'"""
+        message = "$17.50 ត្រូវបានបង់ដោយ KHAN SAMBO (*435) នៅថ្ងៃទី 21 ខែវិច្ឆិកា ឆ្នាំ 2025 ម៉ោង 22:58 តាម ABA PAY នៅ SAN SREYMOM។ លេខប្រតិបត្តិការ: 176374069457467។ APV: 700323។"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(currency, '$')
+        self.assertEqual(amount, 17.50)
+        self.assertEqual(paid_by, '435')
+        self.assertEqual(paid_by_name, 'KHAN SAMBO')
+
+    def test_khmer_name_khmer_message(self):
+        """Test Khmer name extraction from Khmer message"""
+        message = "៛10,400 ត្រូវបានបង់ដោយ ចាន់ ធីតា (*111) នៅថ្ងៃទី 11 ខែតុលា ឆ្នាំ 2025 ម៉ោង 10:15 តាម ABA PAY នៅ STORE។"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(currency, '៛')
+        self.assertEqual(amount, 10400)
+        self.assertEqual(paid_by, '111')
+        self.assertEqual(paid_by_name, 'ចាន់ ធីតា')
+
+    def test_name_with_aba_bank_suffix(self):
+        """Test name extraction with ABA Bank suffix"""
+        message = "105.00 USD is paid by SOYANUK SAMOEURN, ABA Bank *3961 on 31-October-2025"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "ccu_bank_bot")
+        self.assertEqual(paid_by_name, 'SOYANUK SAMOEURN')
+
+    def test_name_with_parentheses_bank(self):
+        """Test name extraction with bank in parentheses"""
+        message = "4,000 KHR was credited by CHANRAINGSEY NORATH (ABA Bank) via KHQR to Mixue"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PLBITBot")
+        self.assertEqual(paid_by_name, 'CHANRAINGSEY NORATH')
+
+    def test_mixed_english_khmer_name(self):
+        """Test extraction of name with mixed English and Khmer characters"""
+        message = "$10.00 paid by JOHN ចាន់ (*123) on Nov 21 via ABA PAY"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PayWayByABA_bot")
+        self.assertEqual(paid_by, '123')
+        self.assertEqual(paid_by_name, 'JOHN ចាន់')
+
+    def test_name_with_multiple_spaces(self):
+        """Test name extraction with multiple spaces (should be collapsed)"""
+        message = "4,000 KHR was credited by CHANRAINGSEY NORATH                                (ABA Bank) via KHQR"
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "PLBITBot")
+        # Multiple spaces should be collapsed to single space
+        self.assertEqual(paid_by_name, 'CHANRAINGSEY NORATH')
+
+    def test_name_not_found(self):
+        """Test paid_by_name is None when name pattern is not found"""
+        message = "Received 10.50 USD from account 123, 11-Oct-2025 10:12AM."
+        currency, amount, trx_time, paid_by, paid_by_name = extract_amount_currency_and_time(message, "ACLEDABankBot")
+        self.assertEqual(currency, '$')
+        self.assertEqual(amount, 10.50)
+        self.assertIsNone(paid_by_name)
+
+
 if __name__ == '__main__':
     # Run with verbose output
     unittest.main(verbosity=2)

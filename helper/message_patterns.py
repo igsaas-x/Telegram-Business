@@ -101,8 +101,10 @@ PAID_BY_PATTERN = re.compile(r'\(\*(\d{3})\)')
 # "paid by SOYANUK SAMOEURN, ABA Bank" -> "SOYANUK SAMOEURN"
 # "paid by CHANTARY MUNY (ABA Bank)" -> "CHANTARY MUNY"
 # "credited by CHANRAINGSEY NORATH                                (ABA Bank)" -> "CHANRAINGSEY NORATH"
+# "paid by ពៅ សុនី (*670)" -> "ពៅ សុនី" (Khmer name)
+# "ត្រូវបានបង់ដោយ KHAN SAMBO (*435)" -> "KHAN SAMBO" (Khmer "paid by")
 PAID_BY_NAME_PATTERN = re.compile(
-    r'(?:paid|credited)\s+by\s+([A-Z\s]+?)(?:\s*\(\*\d{3}\)|\s*,\s*ABA Bank|\s*\(ABA Bank\)|\s+via)',
+    r'(?:paid|credited|ត្រូវបានបង់ដោយ)\s+(?:by\s+)?([A-Z\u1780-\u17FF\s]+?)(?:\s*\(\*\d{3}\)|\s*,\s*ABA Bank|\s*\(ABA Bank\)|\s+via|\s+នៅ)',
     re.IGNORECASE
 )
 
