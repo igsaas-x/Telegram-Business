@@ -288,6 +288,7 @@ class SenderCategoryService:
         chat_id: int,
         sender_account_number: str,
         category_name: str | None,
+        sender_name: str | None = None,
     ) -> tuple[bool, str]:
         """
         Assign a sender to a category (or remove category assignment if None).
@@ -296,6 +297,7 @@ class SenderCategoryService:
             chat_id: The chat ID
             sender_account_number: Last 3 digits of sender account number
             category_name: Category name (None to remove category)
+            sender_name: Sender name to uniquely identify the sender (recommended)
 
         Returns:
             Tuple of (success: bool, message: str)
@@ -303,14 +305,16 @@ class SenderCategoryService:
         with get_db_session() as session:
             try:
                 # Find the sender
-                sender = (
-                    session.query(SenderConfig)
-                    .filter_by(
-                        chat_id=chat_id,
-                        sender_account_number=sender_account_number,
-                    )
-                    .first()
+                query = session.query(SenderConfig).filter_by(
+                    chat_id=chat_id,
+                    sender_account_number=sender_account_number,
                 )
+
+                # Add sender_name filter if provided to ensure we get the correct sender
+                if sender_name is not None:
+                    query = query.filter_by(sender_name=sender_name)
+
+                sender = query.first()
 
                 if not sender:
                     return False, f"❌ Sender {sender_account_number} not found"
@@ -467,6 +471,7 @@ class SenderCategoryService:
         chat_id: int,
         sender_account_number: str,
         nickname: str | None,
+        sender_name: str | None = None,
     ) -> tuple[bool, str]:
         """
         Update a sender's nickname.
@@ -475,20 +480,23 @@ class SenderCategoryService:
             chat_id: The chat ID
             sender_account_number: Last 3 digits of sender account number
             nickname: New nickname (None to remove)
+            sender_name: Sender name to uniquely identify the sender (recommended)
 
         Returns:
             Tuple of (success: bool, message: str)
         """
         with get_db_session() as session:
             try:
-                sender = (
-                    session.query(SenderConfig)
-                    .filter_by(
-                        chat_id=chat_id,
-                        sender_account_number=sender_account_number,
-                    )
-                    .first()
+                query = session.query(SenderConfig).filter_by(
+                    chat_id=chat_id,
+                    sender_account_number=sender_account_number,
                 )
+
+                # Add sender_name filter if provided to ensure we get the correct sender
+                if sender_name is not None:
+                    query = query.filter_by(sender_name=sender_name)
+
+                sender = query.first()
 
                 if not sender:
                     return False, f"❌ Sender {sender_account_number} not found"

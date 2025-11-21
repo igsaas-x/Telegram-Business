@@ -704,6 +704,7 @@ class CategoryCommandHandler:
                 user_id,
                 ConversationState.WAITING_FOR_NAME,
                 account_number=account_number,
+                sender_name=sender.sender_name,
             )
 
             await update.message.reply_text(
@@ -748,6 +749,7 @@ class CategoryCommandHandler:
                 return
 
             account_number = data["account_number"]
+            sender_name = data.get("sender_name")
             category_input = update.message.text.strip()
 
             # Handle 'none' to remove category
@@ -755,7 +757,7 @@ class CategoryCommandHandler:
 
             # Assign sender to category
             success, message = await self.category_service.assign_sender_to_category(
-                chat_id, account_number, category_name
+                chat_id, account_number, category_name, sender_name=sender_name
             )
 
             await update.message.reply_text(message)
@@ -874,6 +876,7 @@ class CategoryCommandHandler:
                 user_id,
                 ConversationState.WAITING_FOR_NAME,
                 account_number=account_number,
+                sender_name=sender.sender_name,
                 current_nickname=sender.nickname,
             )
 
@@ -925,6 +928,7 @@ class CategoryCommandHandler:
                 return
 
             account_number = data["account_number"]
+            sender_name = data.get("sender_name")
             nickname_input = update.message.text.strip()
 
             # Handle 'none' to remove nickname
@@ -932,7 +936,7 @@ class CategoryCommandHandler:
 
             # Update nickname
             success, message = await self.category_service.update_sender_nickname(
-                chat_id, account_number, nickname
+                chat_id, account_number, nickname, sender_name=sender_name
             )
 
             await update.message.reply_text(message)

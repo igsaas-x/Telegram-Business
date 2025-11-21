@@ -887,12 +887,12 @@ class SenderCommandHandler:
                 # Set nickname if provided
                 if nickname:
                     await self.category_service.update_sender_nickname(
-                        chat_id, account_number, nickname
+                        chat_id, account_number, nickname, sender_name=account_name
                     )
 
                 # Assign category to the newly created sender
                 assign_success, assign_message = await self.category_service.assign_sender_to_category(
-                    chat_id, account_number, category.category_name
+                    chat_id, account_number, category.category_name, sender_name=account_name
                 )
 
                 display_name = nickname if nickname else account_name
