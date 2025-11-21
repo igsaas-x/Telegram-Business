@@ -692,18 +692,8 @@ class SenderCommandHandler:
                 )
                 return
 
-            # Check if sender already exists
-            existing = await self.sender_service.get_sender_by_account_number(
-                chat_id, account_number
-            )
-            if existing:
-                await update.message.reply_text(
-                    f"❌ Sender *{account_number} already exists.\n\n"
-                    f"Name: {existing.sender_name or 'No name'}\n\n"
-                    "Please use /sender_update to update or try a different account number."
-                )
-                self.conversation_manager.end_conversation(chat_id, user_id)
-                return
+            # Note: Duplicate check is done later after getting sender name
+            # since the uniqueness is based on both account number AND sender name
 
             # Update conversation state
             self.conversation_manager.update_state(

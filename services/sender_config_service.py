@@ -46,7 +46,10 @@ class SenderConfigService:
 
             except IntegrityError:
                 session.rollback()
-                return False, f"❌ Sender {sender_account_number} already exists for this chat"
+                sender_display = f"{sender_account_number}"
+                if sender_name:
+                    sender_display += f" ({sender_name})"
+                return False, f"❌ Sender {sender_display} already exists for this chat"
 
             except Exception as e:
                 session.rollback()
